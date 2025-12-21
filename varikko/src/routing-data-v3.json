@@ -1,0 +1,133 @@
+{
+    "openapi": "3.0.1",
+    "info": {
+        "title": "Routing data v3",
+        "description": "Routing Data provides six types of OpenTripPlanner routing data: Helsinki region, Waltti regions, alternative smaller set of Waltti regions, Varsinais-Suomi, Kela distance routing and whole the Finland.\n\nMore information: https://digitransit.fi/en/developers/services/6-data-containers/routing-data/",
+        "version": "v3"
+    },
+    "servers": [
+        {
+            "url": "https://api.digitransit.fi/routing-data/v3"
+        }
+    ],
+    "paths": {
+        "/finland/*": {
+            "get": {
+                "summary": "Routing data v3 finland wildcard",
+                "description": "Routing data v3 finland",
+                "operationId": "finland-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/finland": {
+            "get": {
+                "summary": "Routing data v3 finland root",
+                "description": "Routing data v3 finland root",
+                "operationId": "finland-root-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/hsl/*": {
+            "get": {
+                "summary": "Routing data v3 hsl wildcard",
+                "description": "Routing data v3 hsl",
+                "operationId": "hsl-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/hsl": {
+            "get": {
+                "summary": "Routing data v3 hsl root",
+                "description": "Routing data v3 hsl root",
+                "operationId": "hsl-root-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/waltti/*": {
+            "get": {
+                "summary": "Routing data v3 waltti wildcard",
+                "description": "Routing data v3 waltti",
+                "operationId": "waltti",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/waltti": {
+            "get": {
+                "summary": "Routing data v3 waltti root",
+                "description": "Routing data v3 waltti root",
+                "operationId": "waltti-root",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/varely/*": {
+            "get": {
+                "summary": "Routing data v3 varely wildcard",
+                "description": "Routing data v3 varely",
+                "operationId": "varely-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        },
+        "/varely": {
+            "get": {
+                "summary": "Routing data v3 varely root",
+                "description": "Routing data v3 varely root",
+                "operationId": "varely-root-get",
+                "responses": {
+                    "200": {
+                        "description": "null"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "apiKeyHeader": {
+                "type": "apiKey",
+                "name": "digitransit-subscription-key",
+                "in": "header"
+            },
+            "apiKeyQuery": {
+                "type": "apiKey",
+                "name": "digitransit-subscription-key",
+                "in": "query"
+            }
+        }
+    },
+    "security": [
+        {
+            "apiKeyHeader": []
+        },
+        {
+            "apiKeyQuery": []
+        }
+    ]
+}

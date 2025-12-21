@@ -1,0 +1,28 @@
+{
+  "name": "varikko",
+  "version": "1.0.0",
+  "description": "Chrono-Map Data Pipeline",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "fetch:zones": "ts-node src/fetch_zones.ts",
+    "build:matrix": "ts-node src/build_matrix.ts",
+    "test:matrix": "ts-node src/build_matrix.ts --test",
+    "export:matrix": "ts-node src/export_matrix.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.3.1",
+    "axios": "^1.13.2",
+    "better-sqlite3": "^12.5.0",
+    "d3-geo": "^3.1.1",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/d3-geo": "^3.1.0",
+    "@types/node": "^25.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
