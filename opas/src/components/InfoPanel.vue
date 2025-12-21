@@ -1,61 +1,66 @@
 <script setup lang="ts">
-import { useMapDataStore } from '../stores/mapData';
-import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { useMapDataStore, type ZoneProperties } from '../stores/mapData'
+import { storeToRefs } from 'pinia'
+import { computed } from 'vue'
+import type { Feature, Geometry } from 'geojson'
 
-const store = useMapDataStore();
-const { activeZoneId, zones, matrix } = storeToRefs(store);
+const store = useMapDataStore()
+const { activeZoneId, zones, currentCosts } = storeToRefs(store)
 
 const zoneDetails = computed(() => {
-  if (!activeZoneId.value || !zones.value) return null;
-  const feature = zones.value.features.find((f: any) => f.properties.id === activeZoneId.value);
-  return feature ? feature.properties : null;
-});
+  if (!activeZoneId.value || !zones.value) return null
+  const feature = zones.value.features.find(
+    (f: Feature<Geometry, ZoneProperties>) => f.properties?.postinumeroalue === activeZoneId.value
+  )
+  return feature ? feature.properties : null
+})
 
 const reachabilityStats = computed(() => {
-    if (!activeZoneId.value || !matrix.value[activeZoneId.value]) return null;
-    
-    // Calculate simple stats: how many reach specific thresholds
-    const row = matrix.value[activeZoneId.value];
-    const total = Object.keys(row).length;
-    if (total === 0) return null;
+  if (!activeZoneId.value || currentCosts.value.size === 0) return null
 
-    const under30 = Object.values(row).filter(d => d < 1800 && d > 0).length;
-    
-    return {
-        count: total,
-        under30,
-        percent30: Math.round((under30 / total) * 100)
-    };
-});
+  // Calculate simple stats: how many reach specific thresholds
+  const costsArray = Array.from(currentCosts.value.values())
+  const total = zones.value?.features.length || costsArray.length
+  if (total === 0) return null
+
+  const under30 = costsArray.filter((d) => d < 1800 && d > 0).length
+
+  return {
+    count: total,
+    under30,
+    percent30: Math.round((under30 / total) * 100),
+  }
+})
 </script>
 
 <template>
-  <div class="fixed bottom-8 left-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans"
-       v-if="activeZoneId">
-    
+  <div
+    v-if="activeZoneId"
+    class="fixed bottom-8 left-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans"
+  >
     <div v-if="zoneDetails">
-      <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
+      <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.nimi }}</h2>
       <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">POSTAL CODE {{ activeZoneId }}</p>
-    
+
       <div v-if="reachabilityStats" class="space-y-2">
         <div class="flex justify-between items-baseline border-b border-vintage-dark/20 pb-2">
-           <span class="text-lg">Within 30 min:</span>
-           <span class="text-2xl font-bold">{{ reachabilityStats.percent30 }}%</span>
+          <span class="text-lg">Within 30 min:</span>
+          <span class="text-2xl font-bold">{{ reachabilityStats.percent30 }}%</span>
         </div>
         <p class="text-sm italic text-vintage-dark/80 mt-2">
-            This "chrono-map" shows travel times via public transport & walking from {{ zoneDetails.name }} on a typical Tuesday morning.
+          This "chrono-map" shows travel times via public transport & walking from {{ zoneDetails.nimi }} on a typical
+          Tuesday morning.
         </p>
       </div>
-      <div v-else class="text-sm italic">
-          No routing data available for this origin.
-      </div>
-
+      <div v-else class="text-sm italic">No routing data available for this origin.</div>
     </div>
   </div>
-  
-  <div v-else class="fixed bottom-8 left-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans opacity-80">
-      <h2 class="text-xl uppercase">Discover Helsinki</h2>
-      <p class="text-sm mt-2">Select a zone on the map to visualize travel times.</p>
+
+  <div
+    v-else
+    class="fixed bottom-8 left-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans opacity-80"
+  >
+    <h2 class="text-xl uppercase">Discover Helsinki</h2>
+    <p class="text-sm mt-2">Select a zone on the map to visualize travel times.</p>
   </div>
 </template>

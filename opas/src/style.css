@@ -1,10 +1,18 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200..700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-vintage-cream: #fdfbf7;
+  --color-vintage-teal: #2a9d8f;
+  --color-vintage-orange: #e76f51;
+  --color-vintage-dark: #264653;
+  --color-vintage-beige: #e9c46a;
+  --font-sans: 'Oswald', sans-serif;
+  --background-image-paper-texture: url('/noise.svg');
+}
 
 @layer base {
   body {
     @apply bg-vintage-cream text-vintage-dark font-sans;
-    /* Optional: Global grain effect can be added here later */
   }
 }
