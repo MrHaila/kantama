@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import readline from 'readline';
 
-const DB_PATH = path.resolve(__dirname, '../data/intermediate.db');
+const DB_PATH = path.resolve(__dirname, '../data/varikko.db');
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
@@ -20,7 +20,7 @@ async function main() {
 
   if (!force) {
     console.log(`Target Database: ${DB_PATH}`);
-    const answer = await ask('Are you sure you want to DELETE ALL matrix data? (y/N) ');
+    const answer = await ask('Are you sure you want to RESET ALL routes status to PENDING? (y/N) ');
     if (answer.toLowerCase() !== 'y') {
       console.log('Aborted.');
       process.exit(0);
@@ -29,16 +29,23 @@ async function main() {
 
   try {
     const db = new Database(DB_PATH);
-    console.log('Clearing matrix table...');
-    const info = db.prepare('DELETE FROM matrix').run();
-    console.log(`Deleted ${info.changes} rows.`);
+    console.log('Resetting routes table status and clearing metrics...');
+    const info = db.prepare(`
+      UPDATE routes 
+      SET duration = NULL, 
+          numberOfTransfers = NULL, 
+          walkDistance = NULL, 
+          legs = NULL, 
+          status = 'PENDING'
+    `).run();
+    console.log(`Updated ${info.changes} rows.`);
     
     console.log('Vacuuming database...');
     db.exec('VACUUM');
     console.log('Done.');
   } catch (error: any) {
     if (error.code === 'SQLITE_ERROR' && error.message.includes('no such table')) {
-        console.log("Table 'matrix' does not exist. Nothing to clear.");
+        console.log("Table 'routes' does not exist. Nothing to clear.");
     } else {
         console.error("Error clearing database:", error);
         process.exit(1);
