@@ -1,27 +1,52 @@
 # Varikko Data Pipeline Module
 
 ## Purpose
-This module serves as the **Data Pipeline** for the Chrono-Map project. It is responsible for fetching geospatial zone data, calculating travel time matrices using the OTP (OpenTripPlanner) instance, and managing the local SQLite database that stores this data.
+This module serves as the **Data Pipeline** for the Chrono-Map project. It is responsible for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and managing the local SQLite database (`varikko.db`) that stores all project data.
+
+## Data Schema (`data/varikko.db`)
+Everything is consolidated into a single SQLite database:
+
+- **`places`**: Stores zone metadata.
+    - `id`: Postal code id (e.g., "00100").
+    - `name`: Name of the area.
+    - `lat`, `lon`: Centroid coordinates.
+    - `geometry`: GeoJSON polygon string.
+- **`routes`**: Stores pre-calculated transit metadata between places.
+    - `from_id`, `to_id`, `time_period`: Unique identifier for a route at a specific time (MORNING, EVENING, MIDNIGHT).
+    - `duration`: Travel time in seconds.
+    - `numberOfTransfers`: Number of transit transfers.
+    - `walkDistance`: Total walking distance in meters.
+    - `legs`: Detailed JSON blob of the journey steps (from, to, mode, duration, distance).
+    - `status`: Processing state (`PENDING`, `OK`, `NO_ROUTE`, `ERROR`).
+- **`metadata`**: Key-value store for run progress and timestamps.
 
 ## Key Files
-- **`src/fetch_zones.ts`**: Fetches and processes geospatial zone data (likely from HSL or similar sources) and stores them in the database.
-- **`src/build_matrix.ts`**: The core script for generating traffic/travel time matrices. It queries the OTP instance for travel times between zones.
-- **`src/clear_matrix.ts`**: A utility script to clear existing matrix data from the database.
-- **`src/export_matrix.ts`**: Exports the processed matrix data, possibly for use by the frontend (`Opas`).
-- **`package.json`**: Defines the extraction/processing scripts and dependencies (including `better-sqlite3` and geospatial tools).
+- **`src/fetch_zones.ts`**: Fetches zone data from WFS services, initializes the database schema, populates `places`, and pre-fills the `routes` table with a Cartesian product of all places for each time period.
+- **`src/build_routes.ts`**: The core script for fetching detailed itineraries from OTP. It targets `PENDING` routes for a given `--period`.
+- **`src/clear_routes.ts`**: Resets `routes` table statuses and metrics to `PENDING`.
+- **`src/export_routes.ts`**: Exports the calculated durations into a JSON format for optimized use.
 
 ## Commands
-All commands are run via `pnpm` (or `npm`) within this directory:
+Run all commands via `pnpm`:
 
-- **`pnpm run fetch:zones`**: Runs `src/fetch_zones.ts` to populate zone data.
-- **`pnpm run build:matrix`**: Runs `src/build_matrix.ts` to calculate travel times.
-- **`pnpm run test:matrix`**: Runs `src/build_matrix.ts` in test mode (likely processing a smaller subset for validation).
-- **`pnpm run clear:matrix`**: Runs `src/clear_matrix.ts` to wipe matrix data.
-- **`pnpm run export:matrix`**: Runs `src/export_matrix.ts` to output the final dataset.
+- **`pnpm fetch:zones`**: Fetches zones and pre-fills the database.
+    - Use `--test` to limit to a few zones for quick testing.
+- **`pnpm build:routes`**: Calculates transit metrics for `PENDING` routes.
+    - `--period=MORNING` (default), `EVENING`, or `MIDNIGHT`.
+    - Use `--test` to process just a few random routes.
+- **`pnpm test:routes`**: Alias for `build:routes --test`.
+- **`pnpm clear:routes`**: Resets the route computational state.
+- **`pnpm export:routes`**: Generates a JSON export of durations.
 - **`pnpm test`**: Runs unit tests via `vitest`.
 
+## Workflow
+1.  **Initialize**: `pnpm fetch:zones` (creates schema and places).
+2.  **Generate**: `pnpm build:routes --period=MORNING` (computes itineraries).
+3.  **Monitor**: Check the `metadata` table or script logs for progress.
+4.  **Export**: `pnpm export:routes` for usage.
+
 ## Patterns
-1.  **Pipeline Workflow**: The general workflow is **Fetch Zones** -> **Build Matrix** -> **Export**.
-2.  **Database Storage**: Uses `better-sqlite3` for high-performance interaction with a local SQLite database to store zones and travel times.
-3.  **OTP Integration**: Relies on the `otp` module (running locally) to calculate travel times.
-4.  **Geospatial Processing**: Uses `@turf/turf` and `d3-geo` for spatial calculations.
+1.  **Relational Consolidation**: Prefer the SQLite database for all persistence to avoid syncing flat files.
+2.  **Multi-Period support**: Routes are calculated for different times of day to capture transit variability.
+3.  **Rich Metadata**: Store full OTP leg information in JSON columns to enable interesting UI visualizations without re-calculating.
+4.  **Idempotency**: `build_routes` picks up where it left off by querying `PENDING` statuses.
