@@ -6,10 +6,10 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "fetch:zones": "ts-node src/fetch_zones.ts",
-    "build:matrix": "ts-node src/build_matrix.ts",
-    "clear:matrix": "tsx src/clear_matrix.ts",
-    "test:matrix": "ts-node src/build_matrix.ts --test",
-    "export:matrix": "ts-node src/export_matrix.ts",
+    "build:routes": "ts-node src/build_routes.ts",
+    "clear:routes": "tsx src/clear_routes.ts",
+    "test:routes": "ts-node src/build_routes.ts --test",
+    "export:routes": "ts-node src/export_routes.ts",
     "test": "vitest run"
   },
   "dependencies": {
