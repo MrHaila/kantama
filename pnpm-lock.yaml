@@ -66,6 +66,9 @@ importers:
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.26(typescript@5.9.3))
+      sql.js:
+        specifier: ^1.13.0
+        version: 1.13.0
       vue:
         specifier: ^3.5.26
         version: 3.5.26(typescript@5.9.3)
@@ -103,6 +106,31 @@ importers:
       vue-tsc:
         specifier: ^3.2.0
         version: 3.2.0(typescript@5.9.3)
+
+  otp:
+    dependencies:
+      adm-zip:
+        specifier: ^0.5.16
+        version: 0.5.16
+      axios:
+        specifier: ^1.13.2
+        version: 1.13.2
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+    devDependencies:
+      '@types/adm-zip':
+        specifier: ^0.5.7
+        version: 0.5.7
+      '@types/node':
+        specifier: ^25.0.3
+        version: 25.0.3
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
 
   varikko:
     dependencies:
@@ -2307,6 +2335,9 @@ packages:
 
   splaytree-ts@1.0.2:
     resolution: {integrity: sha512-0kGecIZNIReCSiznK3uheYB8sbstLjCZLiwcQwbmLhgHJj2gz6OnSPkVzJQCMnmEz1BQ4gPK59ylhBoEWOhGNA==}
+
+  sql.js@1.13.0:
+    resolution: {integrity: sha512-RJbVP1HRDlUUXahJ7VMTcu9Rm1Nzw+EBpoPr94vnbD4LwR715F3CcxE2G2k45PewcaZ57pjetYa+LoSJLAASgA==}
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
@@ -5403,6 +5434,8 @@ snapshots:
   speakingurl@14.0.1: {}
 
   splaytree-ts@1.0.2: {}
+
+  sql.js@1.13.0: {}
 
   stackback@0.0.2: {}
 
