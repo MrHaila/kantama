@@ -10,7 +10,10 @@ const DB_PATH = path.resolve(__dirname, '../data/varikko.db');
 
 const IS_TEST = process.argv.includes('--test');
 const PERIOD_ARG = process.argv.find(a => a.startsWith('--period='));
-const PERIOD = PERIOD_ARG ? PERIOD_ARG.split('=')[1] : 'MORNING';
+const REQUESTED_PERIOD = PERIOD_ARG ? PERIOD_ARG.split('=')[1] : null;
+
+const ALL_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
+const PERIODS_TO_RUN = REQUESTED_PERIOD ? [REQUESTED_PERIOD] : ALL_PERIODS;
 
 // Mapping periods to specific target times
 const TIME_MAPPING: Record<string, string> = {
@@ -18,8 +21,6 @@ const TIME_MAPPING: Record<string, string> = {
   'EVENING': '17:30:00',
   'MIDNIGHT': '23:30:00'
 };
-
-const TARGET_TIME = TIME_MAPPING[PERIOD] || '08:30:00';
 
 const IS_LOCAL = process.env.USE_LOCAL_OTP !== 'false'; 
 const HSL_API_URL = IS_LOCAL 
@@ -37,7 +38,7 @@ const CONCURRENCY = IS_LOCAL ? 4 : 1;
 const RATE_LIMIT_DELAY = IS_LOCAL ? 0 : 200;
 
 console.log(`Using API: ${HSL_API_URL} (Local: ${IS_LOCAL})`);
-console.log(`Period: ${PERIOD} (${TARGET_TIME})`);
+console.log(`Running for periods: ${PERIODS_TO_RUN.join(', ')}`);
 console.log(`Concurrency: ${CONCURRENCY}`);
 
 const db = new Database(DB_PATH);
@@ -51,14 +52,14 @@ function getNextTuesday() {
 
 const TARGET_DATE = getNextTuesday();
 
-async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number) {
+async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number, targetTime: string) {
   const query = `
     {
       plan(
         from: {lat: ${fromLat}, lon: ${fromLon}}
         to: {lat: ${toLat}, lon: ${toLon}}
         date: "${TARGET_DATE}"
-        time: "${TARGET_TIME}"
+        time: "${targetTime}"
         numItineraries: 3
       ) {
         itineraries {
@@ -113,36 +114,35 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
   } catch (error: any) {
     if (error.response && error.response.status === 429) {
       await new Promise(r => setTimeout(r, 5000));
-      return fetchRoute(fromLat, fromLon, toLat, toLon);
+      return fetchRoute(fromLat, fromLon, toLat, toLon, targetTime);
     }
     return { status: 'ERROR', data: error.message };
   }
 }
 
-async function main() {
-  const places = db.prepare('SELECT id, lat, lon FROM places').all() as any[];
-  console.log(`Loaded ${places.length} places.`);
+async function runPeriod(period: string, placeMap: Map<string, any>) {
+  const targetTime = TIME_MAPPING[period] || '08:30:00';
+  console.log(`\n--- Processing Period: ${period} (${targetTime}) ---`);
 
   const pendingRoutes = db.prepare(`
     SELECT from_id, to_id 
     FROM routes 
     WHERE status = 'PENDING' AND time_period = ?
-  `).all(PERIOD) as any[];
+  `).all(period) as any[];
 
-  console.log(`Pending routes for ${PERIOD}: ${pendingRoutes.length}`);
+  console.log(`Pending routes for ${period}: ${pendingRoutes.length}`);
 
   if (pendingRoutes.length === 0) {
-    console.log("No pending routes to process.");
+    console.log(`No pending routes for ${period}.`);
     return;
   }
 
   let tasks = pendingRoutes;
   if (IS_TEST) {
-    console.log("Test mode: Processing 5 random routes.");
-    tasks = tasks.sort(() => Math.random() - 0.5).slice(0, 5);
+    console.log(`Test mode: Processing 5 random routes for ${period}.`);
+    tasks = [...tasks].sort(() => Math.random() - 0.5).slice(0, 5);
   }
 
-  const placeMap = new Map(places.map(p => [p.id, p]));
   const updateStmt = db.prepare(`
     UPDATE routes 
     SET duration = ?, numberOfTransfers = ?, walkDistance = ?, legs = ?, status = ?
@@ -169,7 +169,7 @@ async function main() {
       await new Promise(r => setTimeout(r, Math.random() * RATE_LIMIT_DELAY));
     }
 
-    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon);
+    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime);
 
     if (result.status === 'OK') {
       updateStmt.run(
@@ -180,15 +180,10 @@ async function main() {
         'OK',
         task.from_id,
         task.to_id,
-        PERIOD
+        period
       );
     } else {
-      // Store error details in legs column for debugging
-      updateStmt.run(null, null, null, result.data || null, result.status, task.from_id, task.to_id, PERIOD);
-      // Optional: Log error to console if needed for visibility
-      if (result.status === 'ERROR') {
-        // console.error(`Error for ${task.from_id}->${task.to_id}: ${result.data}`);
-      }
+      updateStmt.run(null, null, null, result.data || null, result.status, task.from_id, task.to_id, period);
     }
 
     completed++;
@@ -197,7 +192,7 @@ async function main() {
     // Occasional metadata update
     if (completed % 10 === 0 || completed === tasks.length) {
       db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)')
-        .run(`progress_${PERIOD}`, JSON.stringify({
+        .run(`progress_${period}`, JSON.stringify({
           completed,
           total: tasks.length,
           lastUpdate: new Date().toISOString()
@@ -208,7 +203,19 @@ async function main() {
   await Promise.all(tasks.map(t => limit(() => runTask(t))));
   
   progressBar.stop();
-  console.log("Batch complete!");
+  console.log(`Batch for ${period} complete!`);
+}
+
+async function main() {
+  const places = db.prepare('SELECT id, lat, lon FROM places').all() as any[];
+  console.log(`Loaded ${places.length} places.`);
+  const placeMap = new Map(places.map(p => [p.id, p]));
+
+  for (const period of PERIODS_TO_RUN) {
+    await runPeriod(period, placeMap);
+  }
+
+  console.log("\nAll requested periods complete!");
 }
 
 main();
