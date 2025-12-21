@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-vintage-cream text-vintage-dark font-sans;
+    /* Optional: Global grain effect can be added here later */
+  }
+}
