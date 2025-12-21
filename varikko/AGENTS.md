@@ -40,6 +40,8 @@ Run all commands via `pnpm`:
 - **`pnpm test`**: Runs unit tests via `vitest`.
 
 ## Workflow
+Use `pnpm` instead of `npm`.
+
 1.  **Initialize**: `pnpm fetch:zones` (creates schema and places).
 2.  **Generate**: `pnpm build:routes --period=MORNING` (computes itineraries).
 3.  **Monitor**: Check the `metadata` table or script logs for progress.
