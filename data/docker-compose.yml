@@ -1,0 +1,20 @@
+services:
+  otp:
+    image: hsldevcom/opentripplanner:v2-prod
+    ports:
+      - "9080:8080"
+    environment:
+      # Guide suggests 10G, but 4G-8G is often sufficient for dev. 
+      # Setting to 8G to be safe on typical dev machines, but close to guide.
+      - JAVA_OPTS=-Xmx10g
+    volumes:
+      # Mount the local hsl directory (containing obj.dat, etc.) to the container's run dir
+      - ./hsl:/var/opentripplanner
+    command:
+      - --load
+      - --serve
+      # Guide implies running in the mounted dir. Default workdir for this image is usually correct or /var/opentripplanner checks.
+    deploy:
+      resources:
+        limits:
+          memory: 10G

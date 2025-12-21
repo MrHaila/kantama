@@ -58,6 +58,11 @@ async function main() {
         console.warn(`Failed to calc centroid for ${code}`);
       }
 
+      if (!centroid || centroid.length !== 2) {
+        console.warn(`Invalid centroid for ${code}`);
+        return null;
+      }
+
       return {
         type: 'Feature',
         geometry: feature.geometry,
@@ -65,11 +70,10 @@ async function main() {
           id: code,
           name: name,
           centroid: centroid, 
-          // Keep original props? Maybe filter to save space.
-          // For now, let's keep only essential.
         }
       };
-    }).filter((f: any) => f !== null);
+    }).filter((f: any) => f !== null)
+      .sort((a: any, b: any) => a.properties.id.localeCompare(b.properties.id));
 
     const outputGeoJSON = {
       type: 'FeatureCollection',

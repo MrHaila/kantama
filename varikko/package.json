@@ -7,16 +7,20 @@
     "start": "ts-node src/index.ts",
     "fetch:zones": "ts-node src/fetch_zones.ts",
     "build:matrix": "ts-node src/build_matrix.ts",
+    "clear:matrix": "tsx src/clear_matrix.ts",
     "test:matrix": "ts-node src/build_matrix.ts --test",
     "export:matrix": "ts-node src/export_matrix.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "@turf/turf": "^7.3.1",
+    "@types/cli-progress": "^3.11.6",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.5.0",
+    "cli-progress": "^3.12.0",
     "d3-geo": "^3.1.1",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "p-limit": "^7.2.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

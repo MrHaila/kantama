@@ -1,0 +1,21 @@
+{
+  "name": "otp-data",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "fetch": "tsx src/fetch_data.ts",
+    "validate": "node -e \"const fs = require('fs'); if (fs.existsSync('hsl')) { console.log('Data exists.'); process.exit(0); } else { console.error('Data missing.'); process.exit(1); }\"",
+    "clean": "node -e \"const fs = require('fs'); if (fs.existsSync('hsl')) { fs.rmSync('hsl', { recursive: true }); console.log('Cleaned hsl/ directory'); } else { console.log('Nothing to clean.'); }\""
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^25.0.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

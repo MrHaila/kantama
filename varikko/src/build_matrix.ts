@@ -2,18 +2,37 @@ import axios from 'axios';
 import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
-import 'dotenv/config'; // Make sure to install dotenv or use --env-file in Node 20
+import 'dotenv/config';
+import pLimit from 'p-limit';
+import cliProgress from 'cli-progress';
 
 const DB_PATH = path.resolve(__dirname, '../data/intermediate.db');
 const ZONES_PATH = path.resolve(__dirname, '../data/zones.geojson');
-const HSL_API_URL = 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
-const API_KEY = process.env.HSL_API_KEY;
-const IS_TEST = process.argv.includes('--test');
 
-if (!API_KEY) {
-  console.error("Missing HSL_API_KEY environment variable.");
+const IS_TEST = process.argv.includes('--test');
+const SHOW_STATUS = process.argv.includes('--status');
+// Default to local if env var not set, or set explicitly. 
+const IS_LOCAL = process.env.USE_LOCAL_OTP !== 'false'; 
+
+const HSL_API_URL = IS_LOCAL 
+  ? 'http://localhost:9080/otp/gtfs/v1' 
+  : 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
+
+const API_KEY = process.env.HSL_API_KEY;
+
+if (!IS_LOCAL && !API_KEY) {
+  console.error("Missing HSL_API_KEY environment variable (required for remote API).");
   process.exit(1);
 }
+
+// Concurrency settings
+// Local: High concurrency (CPU/Memory bound)
+// Remote: Low concurrency (Rate limit bound)
+const CONCURRENCY = IS_LOCAL ? 2 : 1;
+const RATE_LIMIT_DELAY = IS_LOCAL ? 0 : 150; // ms between starts if needed, or inside fetch
+
+console.log(`Using API: ${HSL_API_URL} (Local: ${IS_LOCAL})`);
+console.log(`Concurrency: ${CONCURRENCY}`);
 
 const db = new Database(DB_PATH);
 
@@ -34,9 +53,16 @@ const insertStmt = db.prepare(`
   VALUES (?, ?, ?, ?, ?)
 `);
 
-const checkStmt = db.prepare(`
-  SELECT 1 FROM matrix WHERE from_id = ? AND to_id = ?
-`);
+const countStmt = db.prepare('SELECT COUNT(*) as count FROM matrix');
+
+function getNextTuesday() {
+  const d = new Date();
+  d.setDate(d.getDate() + (2 + 7 - d.getDay()) % 7);
+  return d.toISOString().split('T')[0];
+}
+
+const TARGET_DATE = getNextTuesday();
+const TARGET_TIME = "08:30:00";
 
 async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number) {
   const query = `
@@ -44,6 +70,8 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       plan(
         from: {lat: ${fromLat}, lon: ${fromLon}}
         to: {lat: ${toLat}, lon: ${toLon}}
+        date: "${TARGET_DATE}"
+        time: "${TARGET_TIME}"
         numItineraries: 1
       ) {
         itineraries {
@@ -66,12 +94,14 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
           'Content-Type': 'application/json',
           'digitransit-subscription-key': API_KEY,
         },
-        timeout: 10000 
+        timeout: 10000,
+        // For local, we don't want to keep connections open forever if we have high concurrency
+        httpAgent: new (require('http').Agent)({ keepAlive: true }),
       }
     );
 
     if (response.data.errors) {
-      console.warn("GraphQL Error:", response.data.errors);
+      // console.warn("GraphQL Error:", response.data.errors);
       return null;
     }
 
@@ -89,22 +119,41 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
 
   } catch (error: any) {
     if (error.response && error.response.status === 429) {
-      console.warn("Rate limited. Waiting...");
+      // Backoff
       await new Promise(r => setTimeout(r, 5000));
-      return fetchRoute(fromLat, fromLon, toLat, toLon); // Retry
+      return fetchRoute(fromLat, fromLon, toLat, toLon);
     }
-    console.error("Request failed:", error.message);
+    // console.error("Request failed:", error.message);
     return null;
   }
 }
 
 async function main() {
+  if (SHOW_STATUS) {
+    const row = countStmt.get() as { count: number };
+    const zonesRaw = fs.readFileSync(ZONES_PATH, 'utf-8');
+    const zones = JSON.parse(zonesRaw).features;
+    const totalPossible = zones.length * (zones.length - 1); // approximate, excluding self
+    const pct = (row.count / totalPossible * 100).toFixed(2);
+    console.log(`Matrix Status: ${row.count} / ~${totalPossible} rows (${pct}%)`);
+    return;
+  }
+
   const zonesRaw = fs.readFileSync(ZONES_PATH, 'utf-8');
   const zones = JSON.parse(zonesRaw).features;
 
   console.log(`Loaded ${zones.length} zones.`);
-  let processed = 0;
-  const total = zones.length * zones.length;
+  
+  // Pre-load existing pairs to skip
+  // Reading 1M+ rows might be slow but better than individual checks if DB is huge?
+  // For SQLite, singular checks are fast if indexed. Let's stick to checks or load a Set.
+  // Loading a Set of IDs "from:to" for 1M rows consumes ~50MB RAM. Safe.
+  console.log("Loading existing state...");
+  const existingRows = db.prepare('SELECT from_id, to_id FROM matrix').all() as {from_id: string, to_id: string}[];
+  const existingSet = new Set(existingRows.map(r => `${r.from_id}:${r.to_id}`));
+  console.log(`Found ${existingSet.size} existing entries.`);
+
+  const tasks: {from: any, to: any}[] = [];
 
   for (const fromZone of zones) {
     for (const toZone of zones) {
@@ -112,42 +161,72 @@ async function main() {
       const toId = toZone.properties.id;
 
       if (fromId === toId) continue;
+      if (existingSet.has(`${fromId}:${toId}`)) continue;
 
-      // Check if done
-      if (checkStmt.get(fromId, toId)) {
-        // console.log(`Skipping ${fromId} -> ${toId} (already done)`);
-        processed++;
-        continue;
-      }
-
-      const [fLon, fLat] = fromZone.properties.centroid;
-      const [tLon, tLat] = toZone.properties.centroid;
-
-      console.log(`Fetching ${fromId} -> ${toId} (${processed}/${total})...`);
-      
-      const result = await fetchRoute(fLat, fLon, tLat, tLon);
-      
-      if (result) {
-        console.log(`  Success: ${result.duration}s`);
-        insertStmt.run(fromId, toId, result.duration, result.walkDistance, result.legs);
-      } else {
-        // Record as unreachable? Or null. 
-        // For now, simpler to just skip or insert -1.
-        // insertStmt.run(fromId, toId, -1, 0, 0); 
-        console.warn(`No route ${fromId} -> ${toId}`);
-      }
-      
-      processed++;
-      
-      if (IS_TEST) {
-        console.log("Test mode: Exiting after one request.");
-        process.exit(0);
-      }
-
-      // Sleep to be nice
-      await new Promise(r => setTimeout(r, 100)); // 10 req/s limit roughly
+      tasks.push({ from: fromZone, to: toZone });
     }
   }
+
+  console.log(`Remaining pairs to compute: ${tasks.length}`);
+
+  if (tasks.length === 0) {
+    console.log("All done!");
+    return;
+  }
+
+  if (IS_TEST) {
+    console.log("Test mode: Running 5 random tasks...");
+    // Shuffle tasks
+    tasks.sort(() => Math.random() - 0.5);
+    const testTasks = tasks.slice(0, 5);
+    
+    for (const t of testTasks) {
+       const [fLon, fLat] = t.from.properties.centroid;
+       const [tLon, tLat] = t.to.properties.centroid;
+       console.log(`Test: ${t.from.properties.id} -> ${t.to.properties.id}`);
+       const result = await fetchRoute(fLat, fLon, tLat, tLon);
+       console.log("Result:", result);
+    }
+    return;
+  }
+
+  const limit = pLimit(CONCURRENCY);
+  const progressBar = new cliProgress.SingleBar({}, cliProgress.Presets.shades_classic);
+  progressBar.start(tasks.length, 0);
+
+  let completed = 0;
+
+  const runTask = async (task: {from: any, to: any}) => {
+    const { from, to } = task;
+    const fromId = from.properties.id;
+    const toId = to.properties.id;
+    const [fLon, fLat] = from.properties.centroid;
+    const [tLon, tLat] = to.properties.centroid;
+
+    // Small random delay for remote to avoid burst patterns even with low concurrency
+    if (!IS_LOCAL && RATE_LIMIT_DELAY > 0) {
+      await new Promise(r => setTimeout(r, Math.random() * RATE_LIMIT_DELAY));
+    }
+
+    const result = await fetchRoute(fLat, fLon, tLat, tLon);
+
+    if (result) {
+      insertStmt.run(fromId, toId, result.duration, result.walkDistance, result.legs);
+    } else {
+      // Mark as -1 or just log? 
+      // User says "evaluate status", maybe we should record failures.
+      // For now, let's just log failures to debug but not crash.
+    }
+    
+    completed++;
+    progressBar.update(completed);
+  };
+
+  const jobPromises = tasks.map(t => limit(() => runTask(t)));
+
+  await Promise.all(jobPromises);
+  
+  progressBar.stop();
   console.log("Done!");
 }
 
