@@ -1,31 +1,51 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import * as d3 from 'd3';
+import { dbService, type Place } from '../services/DatabaseService';
 
 export const useMapDataStore = defineStore('mapData', () => {
   const zones = ref<any>(null); // GeoJSON FeatureCollection
-  const matrix = ref<Record<string, Record<string, number>>>({}); // { fromId: { toId: seconds } }
+  const currentCosts = ref<Map<string, number>>(new Map()); // { toId: seconds }
   const activeZoneId = ref<string | null>(null);
+  const currentTimePeriod = ref<string>('MORNING'); // Default
   const isLoading = ref(false);
 
   // Load static data
   async function loadData() {
     isLoading.value = true;
     try {
-      const [zonesRes, matrixRes] = await Promise.all([
-        window.fetch('/data/zones.geojson'),
-        window.fetch('/data/matrix.json')
-      ]);
+      await dbService.init();
       
-      zones.value = await zonesRes.json();
-      matrix.value = await matrixRes.json();
-      console.log("Data loaded:", zones.value?.features?.length, "zones,", Object.keys(matrix.value).length, "matrix rows");
+      const places = dbService.getPlaces();
+      // Convert to GeoJSON FeatureCollection format for existing components
+      zones.value = {
+        type: "FeatureCollection",
+        features: places.map(p => ({
+          type: "Feature",
+          properties: {
+            postinumeroalue: p.id,
+            nimi: p.name,
+          },
+          geometry: p.geometry
+        }))
+      };
+      
+      console.log("Data loaded from DB:", places.length, "zones");
     } catch (e) {
       console.error("Failed to load map data:", e);
     } finally {
       isLoading.value = false;
     }
   }
+
+  // Watch for active zone or period changes to update costs
+  watch([activeZoneId, currentTimePeriod], () => {
+    if (activeZoneId.value) {
+      currentCosts.value = dbService.getRouteCosts(activeZoneId.value, currentTimePeriod.value);
+    } else {
+      currentCosts.value = new Map();
+    }
+  });
 
   // Get color scale for current selection
   const colorScale = computed(() => {
@@ -44,8 +64,8 @@ export const useMapDataStore = defineStore('mapData', () => {
   });
 
   function getDuration(toId: string) {
-    if (!activeZoneId.value || !matrix.value[activeZoneId.value]) return null;
-    return matrix.value[activeZoneId.value][toId] || null;
+    if (!activeZoneId.value) return null;
+    return currentCosts.value.get(toId) || null;
   }
 
   function getZoneColor(zoneId: string) {
@@ -60,8 +80,9 @@ export const useMapDataStore = defineStore('mapData', () => {
 
   return {
     zones,
-    matrix,
     activeZoneId,
+    currentTimePeriod,
+    currentCosts,
     isLoading,
     loadData,
     getDuration,

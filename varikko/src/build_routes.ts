@@ -6,7 +6,7 @@ import 'dotenv/config';
 import pLimit from 'p-limit';
 import cliProgress from 'cli-progress';
 
-const DB_PATH = path.resolve(__dirname, '../data/varikko.db');
+const DB_PATH = path.resolve(__dirname, '../../opas/public/data/varikko.db');
 
 const IS_TEST = process.argv.includes('--test');
 const PERIOD_ARG = process.argv.find(a => a.startsWith('--period='));
