@@ -12,7 +12,6 @@
     "export:routes": "tsx src/export_routes.ts",
     "process:map": "tsx src/process_map.ts",
     "generate:svg": "tsx src/generate_svg.ts",
-    "generate:zones": "tsx src/generate_zone_paths.ts",
     "test": "vitest run"
   },
   "dependencies": {

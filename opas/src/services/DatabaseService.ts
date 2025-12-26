@@ -1,53 +1,11 @@
 import initSqlJs, { type Database } from 'sql.js'
-import type { Geometry, Position, Polygon, MultiPolygon } from 'geojson'
 
 export interface Place {
   id: string
   name: string
   lat: number
   lon: number
-  geometry: Geometry
-}
-
-// Helsinki area bounds in WGS84
-const BOUNDS = {
-  minLon: 24.0,
-  maxLon: 25.5,
-  minLat: 59.9,
-  maxLat: 60.5,
-}
-
-function isValidRing(ring: Position[]): boolean {
-  // Check if all coordinates in the ring are within reasonable WGS84 bounds
-  return ring.every((coord) => {
-    const lon = coord[0]
-    const lat = coord[1]
-    if (lon === undefined || lat === undefined) return false
-    return lon >= BOUNDS.minLon && lon <= BOUNDS.maxLon && lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat
-  })
-}
-
-function cleanGeometry(geometry: Geometry): Geometry | null {
-  if (geometry.type === 'Polygon') {
-    const poly = geometry as Polygon
-    const validRings = poly.coordinates.filter(isValidRing)
-    if (validRings.length === 0) return null
-    return { type: 'Polygon', coordinates: validRings }
-  }
-
-  if (geometry.type === 'MultiPolygon') {
-    const multi = geometry as MultiPolygon
-    const validPolygons = multi.coordinates
-      .map((polygon) => polygon.filter(isValidRing))
-      .filter((polygon) => polygon.length > 0)
-    if (validPolygons.length === 0) return null
-    if (validPolygons.length === 1 && validPolygons[0]) {
-      return { type: 'Polygon', coordinates: validPolygons[0] }
-    }
-    return { type: 'MultiPolygon', coordinates: validPolygons }
-  }
-
-  return geometry
+  svgPath: string
 }
 
 class DatabaseService {
@@ -84,22 +42,19 @@ class DatabaseService {
   getPlaces(): Place[] {
     if (!this.db) throw new Error('Database not initialized')
 
-    // Select all places
-    const stmt = this.db.prepare('SELECT id, name, lat, lon, geometry FROM places')
+    const stmt = this.db.prepare('SELECT id, name, lat, lon, svg_path FROM places')
     const places: Place[] = []
 
     while (stmt.step()) {
       const row = stmt.getAsObject()
-      const rawGeometry = JSON.parse(row.geometry as string) as Geometry
-      const cleaned = cleanGeometry(rawGeometry)
-      if (!cleaned) continue // Skip places with invalid geometry
+      if (!row.svg_path) continue
 
       places.push({
         id: row.id as string,
         name: row.name as string,
         lat: row.lat as number,
         lon: row.lon as number,
-        geometry: cleaned,
+        svgPath: row.svg_path as string,
       })
     }
     stmt.free()
