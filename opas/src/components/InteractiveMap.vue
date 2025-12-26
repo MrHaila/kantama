@@ -1,25 +1,33 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import * as d3 from 'd3'
-import { useMapDataStore, type ZoneProperties } from '../stores/mapData'
+import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import type { Feature, Geometry } from 'geojson'
-import { MAP_CONFIG } from '../config/mapConfig'
+import { MAP_CONFIG } from '../config/mapConfig' // For viewBox
+
+interface ZonePath {
+  id: string
+  name: string
+  path: string
+}
 
 const store = useMapDataStore()
-const { zones, activeZoneId } = storeToRefs(store)
+const { activeZoneId } = storeToRefs(store)
 const containerRef = ref<HTMLElement | null>(null)
-
-type ZoneFeature = Feature<Geometry, ZoneProperties>
+const zonePaths = ref<ZonePath[]>([])
 
 let svg: d3.Selection<SVGSVGElement, unknown, null, undefined>
 let g: d3.Selection<SVGGElement, unknown, null, undefined>
-let projection: d3.GeoProjection
-let pathGenerator: d3.GeoPath<null, ZoneFeature>
 
-// Dimensions from shared config
-const width = MAP_CONFIG.width
-const height = MAP_CONFIG.height
+async function loadZonePaths() {
+  try {
+    const response = await fetch('/zone_paths.json')
+    zonePaths.value = await response.json()
+    console.log('Loaded', zonePaths.value.length, 'pre-generated zone paths')
+  } catch (error) {
+    console.error('Failed to load zone paths:', error)
+  }
+}
 
 function initMap() {
   if (!containerRef.value) return
@@ -37,57 +45,35 @@ function initMap() {
     .style('left', '0')
     .style('pointer-events', 'auto')
 
-  // Grainy texture overlay
-  // Handled via CSS on container usually, but SVG filter is also possible.
-
   g = svg.append('g')
-
-  // Projection needed.
-  // Center roughly on Helsinki.
-  // We'll update this once data loads to auto-fit.
-  projection = d3
-    .geoMercator()
-    .center([24.93, 60.17])
-    .scale(120000)
-    .translate([width / 2, height / 2])
-
-  pathGenerator = d3.geoPath<null, ZoneFeature>().projection(projection)
-
-  // No zoom behavior - static map
 }
 
 function renderZones() {
-  if (!zones.value || !g) return
+  if (!zonePaths.value.length || !g) return
 
-  // Don't use fitSize - it breaks alignment with background map
-  // The projection should match BackgroundMap exactly
-
+  // Use pre-generated SVG paths from Varikko
   const paths = g
-    .selectAll<SVGPathElement, ZoneFeature>('path')
-    .data(zones.value.features)
+    .selectAll<SVGPathElement, ZonePath>('path')
+    .data(zonePaths.value, (d) => d.id)
     .join('path')
-    .attr('d', pathGenerator as (d: unknown) => string | null)
+    .attr('d', (d) => d.path)
     .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[2px]')
-    .attr('fill', (d) => store.getZoneColor(d.properties.postinumeroalue))
+    .attr('fill', (d) => store.getZoneColor(d.id))
     .attr('fill-opacity', (d) => {
-      return store.activeZoneId === d.properties.postinumeroalue ? 1 : 0.5
+      return store.activeZoneId === d.id ? 1 : 0.5
     })
     .attr('opacity', 0)
 
-  // Events - attach before transition
+  // Events
   paths
     .on('mouseenter', function () {
       d3.select(this).attr('stroke-width', '2px')
-      // Could show tooltip here
     })
     .on('mouseleave', function () {
       d3.select(this).attr('stroke-width', '1px')
     })
     .on('click', (_event, d) => {
-      const feature = d as unknown as ZoneFeature
-      if (feature.properties) {
-        store.activeZoneId = feature.properties.postinumeroalue
-      }
+      store.activeZoneId = d.id
     })
 
   // Transition for opacity
@@ -99,21 +85,23 @@ function renderZones() {
 
 function updateColors() {
   if (!g) return
-  g.selectAll<SVGPathElement, ZoneFeature>('path')
+  g.selectAll<SVGPathElement, ZonePath>('path')
     .transition()
     .duration(300)
-    .attr('fill', (d) => store.getZoneColor(d.properties.postinumeroalue))
+    .attr('fill', (d) => store.getZoneColor(d.id))
     .attr('fill-opacity', (d) => {
-      // 0.5 opacity if not selected, full opacity if selected
-      return store.activeZoneId === d.properties.postinumeroalue ? 1 : 0.5
+      return store.activeZoneId === d.id ? 1 : 0.5
     })
 }
 
 onMounted(async () => {
   initMap()
-  // Data will be loaded automatically by the watch when zones is available
-  watch([zones], () => {
-    if (zones.value) renderZones()
+  await loadZonePaths()
+  // Also load store data for route costs
+  await store.loadData()
+  
+  watch([zonePaths], () => {
+    if (zonePaths.value.length) renderZones()
   }, { immediate: true })
 })
 
