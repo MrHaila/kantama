@@ -95,11 +95,13 @@ async function fetchRoute(
           numberOfTransfers
           walkDistance
           legs {
-            from { name }
-            to { name }
+            from { name lat lon }
+            to { name lat lon }
             mode
             duration
             distance
+            legGeometry { points }
+            route { shortName longName }
           }
         }
       }

@@ -216,7 +216,10 @@ function initDb() {
       lat REAL,
       lon REAL,
       geometry TEXT,
-      svg_path TEXT
+      svg_path TEXT,
+      routing_lat REAL,
+      routing_lon REAL,
+      routing_source TEXT
     );
 
     CREATE TABLE IF NOT EXISTS routes (
