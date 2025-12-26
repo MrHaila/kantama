@@ -4,8 +4,10 @@ interface Leg {
   duration: number
   distance?: number
   routeName?: string
-  from?: { name: string }
-  to?: { name: string }
+  from?: { name: string; lat?: number; lon?: number }
+  to?: { name: string; lat?: number; lon?: number }
+  legGeometry?: { points: string }
+  route?: { shortName?: string; longName?: string }
 }
 
 interface Props {
@@ -110,8 +112,8 @@ const getModeLabel = (mode: string): string => {
             </span>
           </div>
 
-          <div v-if="leg.routeName" class="text-xs text-vintage-dark/60 mt-0.5">
-            {{ leg.routeName }}
+          <div v-if="leg.route?.shortName || leg.route?.longName || leg.routeName" class="text-xs text-vintage-dark/60 mt-0.5">
+            {{ leg.route?.shortName || leg.route?.longName || leg.routeName }}
           </div>
 
           <div v-if="leg.from && leg.to" class="text-xs text-vintage-dark/50 mt-0.5 truncate">

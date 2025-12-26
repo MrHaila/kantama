@@ -36,8 +36,10 @@ export interface Leg {
   duration: number
   distance?: number
   routeName?: string
-  from?: { name: string }
-  to?: { name: string }
+  from?: { name: string; lat?: number; lon?: number }
+  to?: { name: string; lat?: number; lon?: number }
+  legGeometry?: { points: string }
+  route?: { shortName?: string; longName?: string }
 }
 
 class DatabaseService {
@@ -154,7 +156,8 @@ class DatabaseService {
   parseLegs(legsJson: string): Leg[] {
     try {
       const parsed = JSON.parse(legsJson)
-      return parsed.legs || []
+      // Database stores legs as direct array [...], not wrapped { legs: [...] }
+      return Array.isArray(parsed) ? parsed : (parsed.legs || [])
     } catch (e) {
       console.error('Failed to parse legs JSON:', e)
       return []
