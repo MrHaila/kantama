@@ -8,6 +8,7 @@ import type { Feature, Geometry } from 'geojson'
 const store = useMapDataStore()
 const { zones, activeZoneId } = storeToRefs(store)
 const containerRef = ref<HTMLElement | null>(null)
+const showZones = ref(true) // Initially show zones for debugging
 
 type ZoneFeature = Feature<Geometry, ZoneProperties>
 
@@ -30,7 +31,11 @@ function initMap() {
     .select(containerRef.value)
     .append('svg')
     .attr('viewBox', `0 0 ${width} ${height}`)
-    .attr('class', 'w-full h-auto drop-shadow-xl filter sepia-[0.3]')
+    .attr('class', 'w-full h-auto')
+    .style('position', 'absolute')
+    .style('top', '0')
+    .style('left', '0')
+    .style('pointer-events', showZones.value ? 'auto' : 'none')
 
   // Grainy texture overlay
   // Handled via CSS on container usually, but SVG filter is also possible.
@@ -48,30 +53,30 @@ function initMap() {
 
   pathGenerator = d3.geoPath<null, ZoneFeature>().projection(projection)
 
-  // Zoom behavior
-  const zoom = d3
-    .zoom<SVGSVGElement, unknown>()
-    .scaleExtent([1, 8])
-    .on('zoom', (event) => {
-      g.attr('transform', event.transform)
-    })
-
-  svg.call(zoom)
+  // No zoom behavior - static map
 }
 
 function renderZones() {
-  if (!zones.value || !g) return
+  if (!zones.value || !g || !showZones.value) return
 
-  // Auto-fit bounds
-  projection.fitSize([width, height], zones.value)
+  // Don't use fitSize - it breaks alignment with background map
+  // The projection should match BackgroundMap exactly
 
   const paths = g
     .selectAll<SVGPathElement, ZoneFeature>('path')
     .data(zones.value.features)
     .join('path')
-    .attr('d', pathGenerator)
-    .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[0.5px]')
-    .attr('fill', (d) => store.getZoneColor(d.properties.postinumeroalue))
+    .attr('d', pathGenerator as (d: unknown) => string | null)
+    .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[1px]')
+    .attr('fill', (d) => {
+      // Don't fill if no zone selected
+      if (!store.activeZoneId) return 'none'
+      return store.getZoneColor(d.properties.postinumeroalue)
+    })
+    .attr('opacity', 0)
+    .transition()
+    .duration(500)
+    .attr('opacity', 1)
 
   // Events
   paths
@@ -80,10 +85,13 @@ function renderZones() {
       // Could show tooltip here
     })
     .on('mouseleave', function () {
-      d3.select(this).attr('stroke-width', '0.5px')
+      d3.select(this).attr('stroke-width', '1px')
     })
     .on('click', (_event, d) => {
-      store.activeZoneId = d.properties.postinumeroalue
+      const feature = d as unknown as ZoneFeature
+      if (feature.properties) {
+        store.activeZoneId = feature.properties.postinumeroalue
+      }
     })
 }
 
@@ -97,25 +105,37 @@ function updateColors() {
 
 onMounted(async () => {
   initMap()
-  if (!store.zones) {
-    await store.loadData()
-  }
-})
-
-watch(zones, () => {
-  if (zones.value) renderZones()
+  // Data will be loaded automatically by the watch when zones is available
+  watch([zones, showZones], () => {
+    if (zones.value && showZones.value) renderZones()
+  }, { immediate: true })
 })
 
 watch(activeZoneId, () => {
   updateColors()
 })
+
+watch(showZones, () => {
+  if (svg) {
+    svg.style('pointer-events', showZones.value ? 'auto' : 'none')
+  }
+})
 </script>
 
 <template>
-  <div ref="containerRef" class="relative w-full aspect-square bg-[#A8B5B9] overflow-hidden rounded-lg shadow-inner">
-    <!-- SVG rendered here -->
-    <div v-if="store.isLoading" class="absolute inset-0 flex items-center justify-center bg-vintage-cream/80 z-10">
-      <span class="text-xl font-sans tracking-widest text-vintage-dark animate-pulse">LOADING MAP DATA...</span>
+  <div class="relative w-full aspect-square">
+    <div ref="containerRef" class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
+      <!-- SVG rendered here -->
+      <div v-if="store.isLoading" class="absolute inset-0 flex items-center justify-center bg-vintage-cream/80 z-10">
+        <span class="text-xl font-sans tracking-widest text-vintage-dark animate-pulse">LOADING MAP DATA...</span>
+      </div>
     </div>
+    <!-- Debug toggle for zones -->
+    <button
+      class="absolute top-4 right-4 z-20 px-3 py-1 text-sm bg-vintage-cream/90 hover:bg-vintage-cream text-vintage-dark rounded shadow transition-colors"
+      @click="showZones = !showZones"
+    >
+      {{ showZones ? 'Hide' : 'Show' }} Zones
+    </button>
   </div>
 </template>

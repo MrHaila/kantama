@@ -1,6 +1,17 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import BackgroundMap from './components/BackgroundMap.vue'
 import InteractiveMap from './components/InteractiveMap.vue'
 import InfoPanel from './components/InfoPanel.vue'
+import { useMapDataStore } from './stores/mapData'
+
+const store = useMapDataStore()
+
+onMounted(async () => {
+  if (!store.zones) {
+    await store.loadData()
+  }
+})
 </script>
 
 <template>
@@ -19,13 +30,18 @@ import InfoPanel from './components/InfoPanel.vue'
     </header>
 
     <!-- Main Content -->
-    <main class="flex-grow flex relative">
+    <main class="grow flex relative">
       <!-- Map Container -->
-      <div class="flex-grow relative bg-[#A8B5B9] p-4 md:p-8 flex items-center justify-center">
-        <div
-          class="w-full max-w-5xl aspect-square relative shadow-2xl border-8 border-white bg-white p-2"
-        >
-          <InteractiveMap />
+      <div class="grow relative bg-[#A8B5B9] p-4 md:p-8 flex items-center justify-center">
+        <div class="w-full max-w-5xl aspect-square relative shadow-2xl border-8 border-white bg-white p-2">
+          <!-- Background Map Layer -->
+          <div class="absolute inset-0">
+            <BackgroundMap />
+          </div>
+          <!-- Interactive Map Layer -->
+          <div class="absolute inset-0">
+            <InteractiveMap />
+          </div>
         </div>
       </div>
 

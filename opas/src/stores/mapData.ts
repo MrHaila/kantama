@@ -78,7 +78,7 @@ export const useMapDataStore = defineStore('mapData', () => {
   }
 
   function getZoneColor(zoneId: string) {
-    if (!activeZoneId.value) return '#FDFBF7' // Default Vintage Cream
+    if (!activeZoneId.value) return 'transparent' // Transparent when no zone selected
     if (activeZoneId.value === zoneId) return '#264653' // Selected origin (Dark)
 
     const duration = getDuration(zoneId)
