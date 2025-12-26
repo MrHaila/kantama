@@ -3,7 +3,7 @@
 ## Purpose
 This module serves as the **Data Pipeline** for the Chrono-Map project. It is responsible for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and managing the local SQLite database (`varikko.db`) that stores all project data.
 
-## Data Schema (`data/varikko.db`)
+## Data Schema (`varikko.db`)
 Everything is consolidated into a single SQLite database:
 
 - **`places`**: Stores zone metadata.

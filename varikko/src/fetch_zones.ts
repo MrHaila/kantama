@@ -5,8 +5,8 @@ import * as turf from '@turf/turf';
 import Database from 'better-sqlite3';
 
 const WFS_URL = 'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
-const DATA_DIR = path.resolve(__dirname, '../../opas/public/data');
-const DB_PATH = path.resolve(__dirname, '../../opas/public/data/varikko.db');
+const DATA_DIR = path.resolve(__dirname, '../../opas/public');
+const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
 const IS_TEST = process.argv.includes('--test');
 const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
