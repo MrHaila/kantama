@@ -227,8 +227,30 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
 }
 
 async function main() {
-  const places = db.prepare('SELECT id, lat, lon FROM places').all() as { id: string; lat: number; lon: number }[];
+  // Use routing_lat/routing_lon if available (address-based), otherwise fall back to lat/lon (geometric centroid)
+  const places = db.prepare(`
+    SELECT
+      id,
+      COALESCE(routing_lat, lat) as lat,
+      COALESCE(routing_lon, lon) as lon,
+      routing_source
+    FROM places
+  `).all() as { id: string; lat: number; lon: number; routing_source?: string }[];
+
   console.log(`Loaded ${places.length} places.`);
+
+  const geocoded = places.filter(p => p.routing_source && p.routing_source.startsWith('geocoded:')).length;
+  const fallback = places.filter(p => p.routing_source === 'fallback:geometric').length;
+  const notGeocoded = places.filter(p => !p.routing_source).length;
+
+  if (geocoded > 0 || fallback > 0 || notGeocoded > 0) {
+    console.log('Routing point sources:');
+    if (geocoded > 0) console.log(`  - Geocoded (address-based): ${geocoded}`);
+    if (fallback > 0) console.log(`  - Fallback (geometric centroid): ${fallback}`);
+    if (notGeocoded > 0) console.log(`  - Not geocoded yet (using geometric centroid): ${notGeocoded}`);
+    console.log('');
+  }
+
   const placeMap = new Map(places.map(p => [p.id, p]));
 
   for (const period of PERIODS_TO_RUN) {

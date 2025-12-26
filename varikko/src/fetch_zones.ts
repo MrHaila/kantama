@@ -12,11 +12,18 @@ interface FeatureProperties {
   nimi?: string;
 }
 
+/**
+ * Zone data structure
+ *
+ * lat/lon: Geometric centroid of the zone polygon, used for visualization.
+ *          For actual routing, use routing_lat/routing_lon which are set by
+ *          the geocoding script to ensure coordinates fall on valid addresses.
+ */
 interface ProcessedZone {
   id: string;
   name: string;
-  lat: number;
-  lon: number;
+  lat: number;           // Geometric centroid latitude (for visualization)
+  lon: number;           // Geometric centroid longitude (for visualization)
   geometry: string;
   svg_path: string;
 }
@@ -190,6 +197,9 @@ async function main() {
       if (!code) return null;
       if (!code.match(/^(00|01|02)/)) return null;
 
+      // Calculate geometric centroid for visualization
+      // Note: This may fall in invalid locations (water, parks, etc.)
+      // Run geocode:zones script to set address-based routing points
       let centroid: [number, number] | null = null;
       try {
         const center = turf.centroid(feature);

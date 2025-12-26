@@ -3,9 +3,12 @@ import initSqlJs, { type Database } from 'sql.js'
 export interface Place {
   id: string
   name: string
-  lat: number
-  lon: number
+  lat: number              // Geometric centroid (for visualization)
+  lon: number              // Geometric centroid (for visualization)
   svgPath: string
+  routingLat?: number      // Address-based routing point (if geocoded)
+  routingLon?: number      // Address-based routing point (if geocoded)
+  routingSource?: string   // Source of routing point (e.g., "geocoded:postal code")
 }
 
 class DatabaseService {
@@ -42,7 +45,12 @@ class DatabaseService {
   getPlaces(): Place[] {
     if (!this.db) throw new Error('Database not initialized')
 
-    const stmt = this.db.prepare('SELECT id, name, lat, lon, svg_path FROM places')
+    const stmt = this.db.prepare(`
+      SELECT
+        id, name, lat, lon, svg_path,
+        routing_lat, routing_lon, routing_source
+      FROM places
+    `)
     const places: Place[] = []
 
     while (stmt.step()) {
@@ -55,6 +63,9 @@ class DatabaseService {
         lat: row.lat as number,
         lon: row.lon as number,
         svgPath: row.svg_path as string,
+        routingLat: row.routing_lat !== null ? (row.routing_lat as number) : undefined,
+        routingLon: row.routing_lon !== null ? (row.routing_lon as number) : undefined,
+        routingSource: row.routing_source !== null ? (row.routing_source as string) : undefined,
       })
     }
     stmt.free()
