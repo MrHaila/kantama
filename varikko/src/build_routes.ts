@@ -4,6 +4,7 @@ import path from 'path';
 import 'dotenv/config';
 import pLimit from 'p-limit';
 import cliProgress from 'cli-progress';
+import { calculateDeciles } from './calculate_deciles';
 
 interface OTPItinerary {
   duration: number;
@@ -112,10 +113,19 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
     );
 
     if (response.data.errors) {
-      return { status: 'ERROR', data: response.data.errors[0].message };
+      const error = response.data.errors[0];
+      const errorMessage = error.message || 'Unknown OTP error';
+      const errorDetails = error.path ? ` (path: ${error.path.join('.')})` : '';
+      return { status: 'ERROR', data: `${errorMessage}${errorDetails}` };
     }
 
-    const itineraries = response.data.plan.itineraries;
+    // The response has a nested structure: response.data.data.plan.itineraries
+    const plan = response.data.data?.plan;
+    if (!plan) {
+      return { status: 'ERROR', data: 'OTP response missing plan data' };
+    }
+
+    const itineraries = plan.itineraries;
     if (!itineraries || itineraries.length === 0) {
       return { status: 'NO_ROUTE' };
     }
@@ -133,9 +143,27 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
 
   } catch (error: unknown) {
     if (error instanceof Error && 'response' in error && (error as AxiosError).response?.status === 429) {
+      console.warn('Rate limited, waiting 5 seconds...');
       await new Promise(r => setTimeout(r, 5000));
       return fetchRoute(fromLat, fromLon, toLat, toLon, targetTime);
     }
+    
+    // More detailed error logging
+    if (error instanceof Error && 'response' in error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response) {
+        return { 
+          status: 'ERROR', 
+          data: `HTTP ${axiosError.response.status}` 
+        };
+      } else {
+        return { 
+          status: 'ERROR', 
+          data: `Network error: ${axiosError.message || 'Failed to connect to OTP server'}` 
+        };
+      }
+    }
+    
     return { status: 'ERROR', data: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -180,6 +208,7 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
     const to = placeMap.get(task.to_id);
 
     if (!from || !to) {
+      console.error(`Missing coordinates for route: ${task.from_id} -> ${task.to_id}`);
       completed++;
       progressBar.update(completed);
       return;
@@ -203,6 +232,13 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
         period
       );
     } else {
+      // Log error details
+      if (result.status === 'ERROR') {
+        console.error(`Route error [${task.from_id} -> ${task.to_id} (${period})]: ${result.data}`);
+      } else if (result.status === 'NO_ROUTE') {
+        console.warn(`No route found [${task.from_id} -> ${task.to_id} (${period})]`);
+      }
+      
       updateStmt.run(null, null, null, result.data || null, result.status, task.from_id, task.to_id, period);
     }
 
@@ -223,6 +259,20 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
   await Promise.all(tasks.map(t => limit(() => runTask(t))));
   
   progressBar.stop();
+  
+  // Print summary statistics
+  const summary = db.prepare(`
+    SELECT status, COUNT(*) as count 
+    FROM routes 
+    WHERE time_period = ?
+    GROUP BY status
+  `).all(period) as { status: string; count: number }[];
+  
+  console.log(`\nSummary for ${period}:`);
+  summary.forEach(s => {
+    console.log(`  ${s.status}: ${s.count} routes`);
+  });
+  
   console.log(`Batch for ${period} complete!`);
 }
 
@@ -258,6 +308,30 @@ async function main() {
   }
 
   console.log("\nAll requested periods complete!");
+  
+  // Print overall statistics
+  const overallSummary = db.prepare(`
+    SELECT status, COUNT(*) as count 
+    FROM routes 
+    GROUP BY status
+  `).all() as { status: string; count: number }[];
+  
+  console.log("\nOverall Summary:");
+  overallSummary.forEach(s => {
+    console.log(`  ${s.status}: ${s.count} routes`);
+  });
+  
+  // Check if we have any successful routes before calculating deciles
+  const successfulRoutes = db.prepare('SELECT COUNT(*) as count FROM routes WHERE status = \'OK\'').get() as { count: number };
+  
+  if (successfulRoutes.count === 0) {
+    console.log("\n⚠️  Warning: No successful routes found. Deciles cannot be calculated.");
+    console.log("   Check the OTP server connection and try again.");
+  } else {
+    // Automatically calculate deciles after route calculation
+    console.log("\nCalculating deciles for heatmap...");
+    calculateDeciles(db, true); // Force recalculation to ensure fresh data
+  }
 }
 
 main();
