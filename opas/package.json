@@ -12,7 +12,6 @@
     "format": "prettier --write \"src/**/*.{ts,vue,js,css}\""
   },
   "dependencies": {
-    "d3": "^7.9.0",
     "pinia": "^3.0.4",
     "sql.js": "^1.13.0",
     "topojson-client": "^3.1.0",
@@ -22,7 +21,6 @@
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.18",
-    "@types/d3": "^7.4.3",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^25.0.3",
     "@types/sql.js": "^1.4.9",

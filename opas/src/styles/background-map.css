@@ -28,7 +28,7 @@
   --water-color: #000000;
   --road-color: #ff0000;
   --bg-color: #ffffff;
-  --road-width: 1.0;
+  --road-width: 1;
 }
 
 /* Ensure the SVG fills the container properly */

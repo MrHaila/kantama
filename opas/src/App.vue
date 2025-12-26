@@ -13,8 +13,8 @@ const currentTheme = ref<'vintage' | 'modern' | 'dark' | 'contrast'>('vintage')
 const themes: Array<'vintage' | 'modern' | 'dark' | 'contrast'> = ['vintage', 'modern', 'dark', 'contrast']
 
 function cycleTheme(): void {
-  const currentIndex = themes.indexOf(currentTheme.value)
-  currentTheme.value = themes[(currentIndex + 1) % themes.length]
+  const currentIndex = themes.indexOf(currentTheme.value!)
+  currentTheme.value = themes[(currentIndex + 1) % themes.length]!
 }
 
 onMounted(() => {
@@ -33,7 +33,7 @@ onMounted(() => {
       </div>
       <div class="hidden md:block text-right font-sans text-sm tracking-widest opacity-70">
         <p>HOW FAR IS EVERYTHING FROM EVERYTHING ELSE?</p>
-        <button 
+        <button
           class="mt-2 px-3 py-1 bg-vintage-dark/10 hover:bg-vintage-dark/20 transition-colors text-vintage-dark rounded text-xs"
           @click="cycleTheme"
         >
@@ -47,7 +47,9 @@ onMounted(() => {
       <!-- Loading State -->
       <div v-if="currentState === 'loading'" class="grow flex items-center justify-center bg-[#A8B5B9]">
         <div class="text-center">
-          <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-vintage-dark border-t-transparent mb-4"></div>
+          <div
+            class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-vintage-dark border-t-transparent mb-4"
+          ></div>
           <p class="text-xl font-sans tracking-widest text-vintage-dark animate-pulse">LOADING MAP DATA...</p>
         </div>
       </div>
@@ -58,7 +60,7 @@ onMounted(() => {
           <div class="text-vintage-dark text-6xl mb-4">⚠️</div>
           <h2 class="text-2xl font-sans font-bold text-vintage-dark mb-2">Failed to Load</h2>
           <p class="text-vintage-dark/80 mb-4">{{ error || 'Unable to load map data' }}</p>
-          <button 
+          <button
             class="px-6 py-2 bg-vintage-dark text-vintage-cream hover:bg-vintage-orange transition-colors font-sans tracking-widest text-sm"
             @click="initialize()"
           >

@@ -1,90 +1,33 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import * as d3 from 'd3'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
-import type { Place } from '../services/DatabaseService'
 
 const store = useMapDataStore()
-const { activeZoneId, zones } = storeToRefs(store)
-const containerRef = ref<HTMLElement | null>(null)
+const { zones } = storeToRefs(store)
 
-let svg: d3.Selection<SVGSVGElement, unknown, null, undefined>
-let g: d3.Selection<SVGGElement, unknown, null, undefined>
+// Track hovered zone for hover effects
+const hoveredZoneId = ref<string | null>(null)
 
-function initMap() {
-  if (!containerRef.value) return
-
-  d3.select(containerRef.value).selectAll('*').remove()
-
-  svg = d3
-    .select(containerRef.value)
-    .append('svg')
-    .attr('viewBox', MAP_CONFIG.viewBox)
-    .attr('class', 'w-full h-auto')
-    .style('position', 'absolute')
-    .style('top', '0')
-    .style('left', '0')
-    .style('pointer-events', 'auto')
-
-  g = svg.append('g')
+// Handle zone click
+function handleZoneClick(zoneId: string) {
+  store.activeZoneId = zoneId
 }
 
-function renderZones() {
-  if (!zones.value.length || !g) return
-
-  const paths = g
-    .selectAll<SVGPathElement, Place>('path')
-    .data(zones.value, (d) => d.id)
-    .join('path')
-    .attr('d', (d) => d.svgPath)
-    .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[2px]')
-    .attr('fill', (d) => store.getZoneColor(d.id))
-    .attr('fill-opacity', (d) => {
-      return store.activeZoneId === d.id ? 1 : 0.5
-    })
-    .attr('opacity', 0)
-
-  paths
-    .on('mouseenter', function () {
-      d3.select(this).attr('stroke-width', '2px')
-    })
-    .on('mouseleave', function () {
-      d3.select(this).attr('stroke-width', '1px')
-    })
-    .on('click', (_event, d) => {
-      store.activeZoneId = d.id
-    })
-
-  paths
-    .transition()
-    .duration(500)
-    .attr('opacity', 1)
+// Handle mouse enter
+function handleMouseEnter(zoneId: string) {
+  hoveredZoneId.value = zoneId
 }
 
-function updateColors() {
-  if (!g) return
-  g.selectAll<SVGPathElement, Place>('path')
-    .transition()
-    .duration(300)
-    .attr('fill', (d) => store.getZoneColor(d.id))
-    .attr('fill-opacity', (d) => {
-      return store.activeZoneId === d.id ? 1 : 0.5
-    })
+// Handle mouse leave
+function handleMouseLeave() {
+  hoveredZoneId.value = null
 }
 
+// Load data on mount
 onMounted(async () => {
-  initMap()
   await store.loadData()
-  
-  watch([zones], () => {
-    if (zones.value.length) renderZones()
-  }, { immediate: true })
-})
-
-watch(activeZoneId, () => {
-  updateColors()
 })
 
 // ESC key handler to deselect zone
@@ -101,13 +44,59 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
 })
-
 </script>
 
 <template>
   <div class="relative w-full aspect-square">
-    <div ref="containerRef" class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
-      <!-- SVG rendered here -->
+    <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
+      <svg
+        :viewBox="MAP_CONFIG.viewBox"
+        class="w-full h-auto"
+        style="position: absolute; top: 0; left: 0; pointer-events: auto"
+      >
+        <g>
+          <!-- Render all zones -->
+          <path
+            v-for="zone in zones"
+            :key="zone.id"
+            :d="zone.svgPath"
+            class="cursor-pointer transition-colors duration-300 stroke-vintage-dark stroke-2 hover:fill-vintage-teal"
+            :fill="store.getZoneColor(zone.id)"
+            :fill-opacity="store.activeZoneId === zone.id ? 1 : 0.5"
+            @mouseenter="handleMouseEnter(zone.id)"
+            @mouseleave="handleMouseLeave"
+            @click="handleZoneClick(zone.id)"
+          />
+        </g>
+        <!-- Selected zone border on top -->
+        <g v-if="store.activeZoneId">
+          <path
+            v-for="zone in zones"
+            v-show="zone.id === store.activeZoneId"
+            :key="`selected-${zone.id}`"
+            :d="zone.svgPath"
+            class="pointer-events-none stroke-vintage-orange"
+            fill="none"
+            stroke-width="3"
+          />
+        </g>
+      </svg>
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ensure smooth transitions for hover effects */
+path {
+  transition: stroke-width 0.2s ease-in-out;
+}
+</style>
