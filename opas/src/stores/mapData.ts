@@ -72,7 +72,7 @@ export const useMapDataStore = defineStore('mapData', () => {
 
   function getZoneColor(zoneId: string) {
     if (!activeZoneId.value) return 'transparent' // Transparent when no zone selected
-    if (activeZoneId.value === zoneId) return '#264653' // Selected origin (Dark)
+    if (activeZoneId.value === zoneId) return 'transparent' // Selected zone - will be transparent via opacity
 
     const duration = getDuration(zoneId)
     if (duration === null) return '#e0e0e0' // Unreachable / No Data (Light Grey)
