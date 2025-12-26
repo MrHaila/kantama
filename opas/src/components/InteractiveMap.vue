@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import * as d3 from 'd3'
 import { useMapDataStore, type ZoneProperties } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
@@ -8,7 +8,6 @@ import type { Feature, Geometry } from 'geojson'
 const store = useMapDataStore()
 const { zones, activeZoneId } = storeToRefs(store)
 const containerRef = ref<HTMLElement | null>(null)
-const showZones = ref(true) // Initially show zones for debugging
 
 type ZoneFeature = Feature<Geometry, ZoneProperties>
 
@@ -35,7 +34,7 @@ function initMap() {
     .style('position', 'absolute')
     .style('top', '0')
     .style('left', '0')
-    .style('pointer-events', showZones.value ? 'auto' : 'none')
+    .style('pointer-events', 'auto')
 
   // Grainy texture overlay
   // Handled via CSS on container usually, but SVG filter is also possible.
@@ -57,7 +56,7 @@ function initMap() {
 }
 
 function renderZones() {
-  if (!zones.value || !g || !showZones.value) return
+  if (!zones.value || !g) return
 
   // Don't use fitSize - it breaks alignment with background map
   // The projection should match BackgroundMap exactly
@@ -74,11 +73,8 @@ function renderZones() {
       return store.getZoneColor(d.properties.postinumeroalue)
     })
     .attr('opacity', 0)
-    .transition()
-    .duration(500)
-    .attr('opacity', 1)
 
-  // Events
+  // Events - attach before transition
   paths
     .on('mouseenter', function () {
       d3.select(this).attr('stroke-width', '2px')
@@ -93,6 +89,12 @@ function renderZones() {
         store.activeZoneId = feature.properties.postinumeroalue
       }
     })
+
+  // Transition for opacity
+  paths
+    .transition()
+    .duration(500)
+    .attr('opacity', 1)
 }
 
 function updateColors() {
@@ -106,8 +108,8 @@ function updateColors() {
 onMounted(async () => {
   initMap()
   // Data will be loaded automatically by the watch when zones is available
-  watch([zones, showZones], () => {
-    if (zones.value && showZones.value) renderZones()
+  watch([zones], () => {
+    if (zones.value) renderZones()
   }, { immediate: true })
 })
 
@@ -115,27 +117,27 @@ watch(activeZoneId, () => {
   updateColors()
 })
 
-watch(showZones, () => {
-  if (svg) {
-    svg.style('pointer-events', showZones.value ? 'auto' : 'none')
+// ESC key handler to deselect zone
+function handleKeyDown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && store.activeZoneId) {
+    store.activeZoneId = null
   }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
 })
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
+
 </script>
 
 <template>
   <div class="relative w-full aspect-square">
     <div ref="containerRef" class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <!-- SVG rendered here -->
-      <div v-if="store.isLoading" class="absolute inset-0 flex items-center justify-center bg-vintage-cream/80 z-10">
-        <span class="text-xl font-sans tracking-widest text-vintage-dark animate-pulse">LOADING MAP DATA...</span>
-      </div>
     </div>
-    <!-- Debug toggle for zones -->
-    <button
-      class="absolute top-4 right-4 z-20 px-3 py-1 text-sm bg-vintage-cream/90 hover:bg-vintage-cream text-vintage-dark rounded shadow transition-colors"
-      @click="showZones = !showZones"
-    >
-      {{ showZones ? 'Hide' : 'Show' }} Zones
-    </button>
   </div>
 </template>

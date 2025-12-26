@@ -14,11 +14,9 @@ export const useMapDataStore = defineStore('mapData', () => {
   const currentCosts = ref<Map<string, number>>(new Map()) // { toId: seconds }
   const activeZoneId = ref<string | null>(null)
   const currentTimePeriod = ref<string>('MORNING') // Default
-  const isLoading = ref(false)
 
   // Load static data
   async function loadData() {
-    isLoading.value = true
     try {
       await dbService.init()
 
@@ -39,8 +37,6 @@ export const useMapDataStore = defineStore('mapData', () => {
       console.log('Data loaded from DB:', places.length, 'zones')
     } catch (e) {
       console.error('Failed to load map data:', e)
-    } finally {
-      isLoading.value = false
     }
   }
 
@@ -92,7 +88,6 @@ export const useMapDataStore = defineStore('mapData', () => {
     activeZoneId,
     currentTimePeriod,
     currentCosts,
-    isLoading,
     loadData,
     getDuration,
     getZoneColor,
