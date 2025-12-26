@@ -26,11 +26,11 @@ Most development work happens in **Opas** – improving the visualisation withou
 
 ## Sub-Projects
 
-| Directory | Purpose | Details |
-|-----------|---------|---------|
-| `otp/` | OpenTripPlanner instance | Fetches HSL routing data, runs local Docker OTP server |
-| `varikko/` | Data pipeline | Calculates transit times between postal zones, stores in SQLite |
-| `opas/` | Web frontend | Vue 3 + D3.js interactive chrono-map visualisation |
+| Directory  | Purpose                  | Details                                                         |
+| ---------- | ------------------------ | --------------------------------------------------------------- |
+| `otp/`     | OpenTripPlanner instance | Fetches HSL routing data, runs local Docker OTP server          |
+| `varikko/` | Data pipeline            | Calculates transit times between postal zones, stores in SQLite |
+| `opas/`    | Web frontend             | Vue 3 + D3.js interactive chrono-map visualisation              |
 
 See each sub-project's `AGENTS.md` for specific implementation details.
 
