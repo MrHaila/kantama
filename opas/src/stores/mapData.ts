@@ -1,16 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import { dbService, type Place } from '../services/DatabaseService'
+import { dbService, type Place, type Decile } from '../services/DatabaseService'
+import { themes } from '../config/themes'
 
-// Simple threshold scale function to replace D3's scaleThreshold
-function getThresholdColor(duration: number): string {
-  // Thresholds: 900, 1800, 2700, 3600 seconds (15, 30, 45, 60 mins)
-  // Colors: Deep Orange -> Light Orange -> Beige -> Teal -> Dark Blue
-  if (duration < 900) return '#E76F51' // < 15 min: Deep Orange
-  if (duration < 1800) return '#F4A261' // 15-30 min: Light Orange
-  if (duration < 2700) return '#E9C46A' // 30-45 min: Beige
-  if (duration < 3600) return '#2A9D8F' // 45-60 min: Teal
-  return '#264653' // 60+ min: Dark Blue
+// Get decile color for a given duration
+function getDecileColor(duration: number, deciles: Decile[]): string {
+  // Find which decile this duration falls into
+  for (const decile of deciles) {
+    if (duration >= decile.min_duration && (decile.max_duration === -1 || duration <= decile.max_duration)) {
+      return decile.color_hex
+    }
+  }
+  
+  // If no decile matches (shouldn't happen), return a default color
+  return '#e0e0e0'
+}
+
+// Get themed decile colors
+function getThemedDeciles(deciles: Decile[]): Decile[] {
+  const currentTheme = themes.vintage
+  
+  // Ensure theme exists
+  if (!currentTheme || !currentTheme.decileColors) {
+    return deciles
+  }
+  
+  // Override colors with theme colors if we have the right number
+  if (deciles.length === currentTheme.decileColors.length) {
+    return deciles.map((decile, index) => ({
+      ...decile,
+      color_hex: currentTheme.decileColors[index] || decile.color_hex
+    }))
+  }
+  
+  return deciles
 }
 
 export const useMapDataStore = defineStore('mapData', () => {
@@ -18,12 +41,16 @@ export const useMapDataStore = defineStore('mapData', () => {
   const currentCosts = ref<Map<string, number>>(new Map())
   const activeZoneId = ref<string | null>(null)
   const currentTimePeriod = ref<string>('MORNING')
+  const deciles = ref<Decile[]>([])
 
   async function loadData() {
     try {
       await dbService.init()
       zones.value = dbService.getPlaces()
+      const rawDeciles = dbService.getDeciles()
+      deciles.value = getThemedDeciles(rawDeciles)
       console.log('Data loaded from DB:', zones.value.length, 'zones')
+      console.log('Deciles loaded:', deciles.value.length, 'deciles')
     } catch (e) {
       console.error('Failed to load map data:', e)
     }
@@ -45,12 +72,12 @@ export const useMapDataStore = defineStore('mapData', () => {
 
   function getZoneColor(zoneId: string) {
     if (!activeZoneId.value) return 'transparent' // Transparent when no zone selected
-    if (activeZoneId.value === zoneId) return '#264653' // Selected origin (Dark)
+    if (activeZoneId.value === zoneId) return 'transparent' // Selected zone - will be transparent via opacity
 
     const duration = getDuration(zoneId)
     if (duration === null) return '#e0e0e0' // Unreachable / No Data (Light Grey)
 
-    return getThresholdColor(duration)
+    return getDecileColor(duration, deciles.value)
   }
 
   return {
@@ -58,6 +85,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     activeZoneId,
     currentTimePeriod,
     currentCosts,
+    deciles,
     loadData,
     getDuration,
     getZoneColor,
