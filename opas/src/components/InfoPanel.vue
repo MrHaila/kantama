@@ -47,9 +47,7 @@ const reachabilityStats = computed(() => {
           <span class="text-lg">Within 30 min:</span>
           <span class="text-2xl font-bold">{{ reachabilityStats.percent30 }}%</span>
         </div>
-        <p class="text-sm italic text-vintage-dark/80 mt-2">
-          TBD
-        </p>
+        <p class="text-sm italic text-vintage-dark/80 mt-2">TBD</p>
       </div>
       <div v-else class="text-sm italic">No routing data available for this origin.</div>
     </div>
