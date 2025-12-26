@@ -2,8 +2,8 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-const DB_PATH = path.resolve(__dirname, '../data/varikko.db');
-const OUT_FILE = path.resolve(__dirname, '../data/routes_export.json');
+const DB_PATH = path.resolve(__dirname, '../varikko.db');
+const OUT_FILE = path.resolve(__dirname, '../routes_export.json');
 
 const PERIOD_ARG = process.argv.find(a => a.startsWith('--period='));
 const PERIOD = PERIOD_ARG ? PERIOD_ARG.split('=')[1] : 'MORNING';

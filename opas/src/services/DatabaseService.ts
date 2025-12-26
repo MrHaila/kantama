@@ -13,7 +13,7 @@ class DatabaseService {
   private db: Database | null = null
   private isInitialized = false
 
-  async init(dbUrl: string = '/data/varikko.db') {
+  async init(dbUrl: string = '/varikko.db') {
     if (this.isInitialized) return
 
     try {

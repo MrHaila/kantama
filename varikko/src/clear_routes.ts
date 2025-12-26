@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import readline from 'readline';
 
-const DB_PATH = path.resolve(__dirname, '../../opas/public/data/varikko.db');
+const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
