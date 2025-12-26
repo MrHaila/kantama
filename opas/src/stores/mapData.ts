@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
-import { dbService, type Place, type Decile } from '../services/DatabaseService'
+import { ref, watch, computed } from 'vue'
+import { dbService, type Place, type Decile, type Leg } from '../services/DatabaseService'
 import { themes } from '../config/themes'
 
 // Get decile color for a given duration
@@ -81,6 +81,22 @@ export const useMapDataStore = defineStore('mapData', () => {
     return getDecileColor(duration, deciles.value)
   }
 
+  // Get route legs for the currently hovered route
+  const currentRouteLegs = computed<Leg[]>(() => {
+    if (!activeZoneId.value || !hoveredZoneId.value) return []
+    if (activeZoneId.value === hoveredZoneId.value) return []
+
+    const routeDetails = dbService.getRouteDetails(
+      activeZoneId.value,
+      hoveredZoneId.value,
+      currentTimePeriod.value
+    )
+
+    if (!routeDetails || routeDetails.status !== 'OK') return []
+
+    return dbService.parseLegs(routeDetails.legs)
+  })
+
   return {
     zones,
     activeZoneId,
@@ -88,6 +104,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     currentTimePeriod,
     currentCosts,
     deciles,
+    currentRouteLegs,
     loadData,
     getDuration,
     getZoneColor,
