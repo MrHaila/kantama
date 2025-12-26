@@ -231,8 +231,19 @@ function initDb() {
       value TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS deciles (
+      id INTEGER PRIMARY KEY,
+      decile_number INTEGER NOT NULL UNIQUE,
+      min_duration INTEGER NOT NULL,
+      max_duration INTEGER NOT NULL,
+      color_hex TEXT NOT NULL,
+      label TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_routes_to ON routes(to_id, time_period);
     CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
+    CREATE INDEX IF NOT EXISTS idx_deciles_number ON deciles(decile_number);
   `);
 
   return db;

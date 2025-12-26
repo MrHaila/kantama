@@ -8,6 +8,15 @@ export interface Place {
   svgPath: string
 }
 
+export interface Decile {
+  id: number
+  decile_number: number
+  min_duration: number
+  max_duration: number
+  color_hex: string
+  label: string
+}
+
 class DatabaseService {
   private db: Database | null = null
   private isInitialized = false
@@ -79,6 +88,27 @@ class DatabaseService {
     }
     stmt.free()
     return costs
+  }
+
+  getDeciles(): Decile[] {
+    if (!this.db) throw new Error('Database not initialized')
+
+    const stmt = this.db.prepare('SELECT * FROM deciles ORDER BY decile_number ASC')
+    const deciles: Decile[] = []
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      deciles.push({
+        id: row.id as number,
+        decile_number: row.decile_number as number,
+        min_duration: row.min_duration as number,
+        max_duration: row.max_duration as number,
+        color_hex: row.color_hex as string,
+        label: row.label as string,
+      })
+    }
+    stmt.free()
+    return deciles
   }
 }
 

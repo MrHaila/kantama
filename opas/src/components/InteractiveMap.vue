@@ -4,6 +4,7 @@ import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
+import HeatmapLegend from './HeatmapLegend.vue'
 
 const store = useMapDataStore()
 const { zones } = storeToRefs(store)
@@ -65,6 +66,7 @@ onUnmounted(() => {
 
 <template>
   <div class="relative w-full aspect-square">
+    <HeatmapLegend />
     <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <svg
         :viewBox="MAP_CONFIG.viewBox"
