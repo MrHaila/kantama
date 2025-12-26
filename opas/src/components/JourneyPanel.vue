@@ -26,29 +26,25 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
 
   // If no hover, show hint
   if (!hoveredZoneId.value || activeZoneId.value === hoveredZoneId.value) {
-    const fromZone = zones.value?.find(z => z.id === activeZoneId.value)
+    const fromZone = zones.value?.find((z) => z.id === activeZoneId.value)
     return {
       isHint: true,
-      from: fromZone!
+      from: fromZone!,
     }
   }
 
-  const fromZone = zones.value?.find(z => z.id === activeZoneId.value)
-  const toZone = zones.value?.find(z => z.id === hoveredZoneId.value)
-  
+  const fromZone = zones.value?.find((z) => z.id === activeZoneId.value)
+  const toZone = zones.value?.find((z) => z.id === hoveredZoneId.value)
+
   if (!fromZone || !toZone) return null
 
-  const routeDetails = dbService.getRouteDetails(
-    activeZoneId.value,
-    hoveredZoneId.value,
-    currentTimePeriod.value
-  )
+  const routeDetails = dbService.getRouteDetails(activeZoneId.value, hoveredZoneId.value, currentTimePeriod.value)
 
   if (!routeDetails || routeDetails.status !== 'OK') {
     return {
       isError: true,
       from: fromZone,
-      to: toZone
+      to: toZone,
     }
   }
 
@@ -60,7 +56,7 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
     duration: routeDetails.duration,
     walkDistance: routeDetails.walkDistance,
     transfers: routeDetails.numberOfTransfers,
-    legs: legs
+    legs: legs,
   }
 })
 </script>
@@ -81,20 +77,14 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
     <!-- Hint State -->
     <div v-if="journeyDetails.isHint" class="text-center py-8">
       <div class="text-4xl mb-3">👆</div>
-      <p class="text-sm text-vintage-dark/70">
-        Hover over another zone to see journey details
-      </p>
-      <p class="text-xs text-vintage-dark/50 mt-2">
-        from {{ journeyDetails.from.name }}
-      </p>
+      <p class="text-sm text-vintage-dark/70">Hover over another zone to see journey details</p>
+      <p class="text-xs text-vintage-dark/50 mt-2">from {{ journeyDetails.from.name }}</p>
     </div>
 
     <!-- Error State -->
     <div v-else-if="journeyDetails.isError" class="text-center py-8">
       <div class="text-4xl mb-3">❌</div>
-      <p class="text-sm text-vintage-dark/70">
-        No route found
-      </p>
+      <p class="text-sm text-vintage-dark/70">No route found</p>
       <p class="text-xs text-vintage-dark/50 mt-2">
         from {{ journeyDetails.from.name }} to {{ journeyDetails.to?.name }}
       </p>
@@ -102,24 +92,29 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
 
     <!-- Journey Details -->
     <div v-else>
-      <!-- From/To -->
-      <div class="space-y-2 mb-4">
-        <div class="flex items-center space-x-2">
-          <div class="w-3 h-3 bg-vintage-orange rounded-full flex-shrink-0"></div>
+      <!-- From/To with Duration -->
+      <div class="mb-6">
+        <div class="grid grid-cols-[auto_1fr_auto] gap-x-4 gap-y-2 items-center">
+          <!-- From row -->
+          <span class="text-xs uppercase tracking-wide text-vintage-dark/50 font-medium">From</span>
           <span class="text-sm font-medium text-vintage-dark">{{ journeyDetails.from.name }}</span>
-        </div>
-        <div class="flex items-center space-x-2">
-          <div class="w-3 h-3 bg-vintage-dark rounded-full flex-shrink-0"></div>
+          <!-- Duration spans From and To rows -->
+          <div class="text-2xl font-bold text-vintage-dark row-span-2 flex items-center">
+            {{ journeyDetails.duration ? Math.round(journeyDetails.duration / 60) + ' min' : '' }}
+          </div>
+          
+          <!-- To row -->
+          <span class="text-xs uppercase tracking-wide text-vintage-dark/50 font-medium">To</span>
           <span class="text-sm font-medium text-vintage-dark">{{ journeyDetails.to?.name }}</span>
         </div>
       </div>
 
       <JourneyDetails
-        v-if="journeyDetails.legs && journeyDetails.duration !== undefined && journeyDetails.walkDistance !== undefined && journeyDetails.transfers !== undefined"
+        v-if="journeyDetails.legs && journeyDetails.duration !== undefined"
         :legs="journeyDetails.legs"
         :total-duration="journeyDetails.duration"
-        :walk-distance="journeyDetails.walkDistance"
-        :transfers="journeyDetails.transfers"
+        :walk-distance="journeyDetails.walkDistance ?? 0"
+        :transfers="journeyDetails.transfers ?? 0"
       />
     </div>
   </div>

@@ -14,7 +14,7 @@ interface Decile {
 const store = useMapDataStore()
 
 // Current theme (could be made reactive in the future)
-const currentTheme = computed<ThemeColors>(() => themes.vintage || themes.vintage)
+const currentTheme = computed<ThemeColors>(() => themes.vintage!)
 
 // Computed property to get deciles from the store
 const deciles = computed<Decile[]>(() => {
@@ -50,10 +50,9 @@ const deciles = computed<Decile[]>(() => {
   top: 20px;
   right: 20px;
   background: v-bind('currentTheme.background');
-  border: 2px solid v-bind('currentTheme.border');
-  border-radius: 8px;
+  border: 2px solid #264653;
   padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 4px 4px 0px rgba(38, 70, 83, 1);
   z-index: 1000;
   min-width: 140px;
 }
@@ -63,8 +62,8 @@ const deciles = computed<Decile[]>(() => {
   font-weight: 600;
   color: v-bind('currentTheme.title');
   margin-bottom: 12px;
-  text-align: center;
-  border-bottom: 1px solid v-bind('currentTheme.border');
+  text-align: left;
+  border-bottom: 1px solid rgba(38, 70, 83, 0.2);
   padding-bottom: 8px;
 }
 

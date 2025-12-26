@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getModeColor } from '../utils/transportColors'
+
 interface Leg {
   mode: string
   duration: number
@@ -29,13 +31,6 @@ const formatDuration = (seconds: number): string => {
   return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
 }
 
-const formatDistance = (meters: number): string => {
-  if (meters < 1000) {
-    return `${Math.round(meters)}m`
-  }
-  return `${(meters / 1000).toFixed(1)}km`
-}
-
 const getTransportIcon = (mode: string): string => {
   switch (mode.toLowerCase()) {
     case 'walk':
@@ -48,7 +43,7 @@ const getTransportIcon = (mode: string): string => {
       return '🚇'
     case 'ferry':
       return '⛴️'
-    case 'train':
+    case 'rail':
       return '🚆'
     default:
       return '🚌'
@@ -67,7 +62,7 @@ const getModeLabel = (mode: string): string => {
       return 'Metro'
     case 'ferry':
       return 'Ferry'
-    case 'train':
+    case 'rail':
       return 'Train'
     default:
       return mode
@@ -77,24 +72,8 @@ const getModeLabel = (mode: string): string => {
 
 <template>
   <div class="space-y-3">
-    <!-- Journey Summary -->
-    <div class="border-b border-vintage-dark/20 pb-3">
-      <div class="flex items-center justify-between text-sm">
-        <span class="text-vintage-dark/70">Total time:</span>
-        <span class="font-bold text-vintage-dark">{{ formatDuration(totalDuration) }}</span>
-      </div>
-      <div class="flex items-center justify-between text-sm mt-1">
-        <span class="text-vintage-dark/70">Walking:</span>
-        <span class="text-vintage-dark">{{ formatDistance(walkDistance) }}</span>
-      </div>
-      <div class="flex items-center justify-between text-sm mt-1">
-        <span class="text-vintage-dark/70">Transfers:</span>
-        <span class="text-vintage-dark">{{ transfers }}</span>
-      </div>
-    </div>
-
     <!-- Legs List -->
-    <div class="space-y-2">
+    <div class="space-y-3">
       <div v-for="(leg, index) in legs" :key="index" class="flex items-start space-x-3">
         <!-- Transport Icon -->
         <div class="text-xl flex-shrink-0 mt-0.5">
@@ -104,19 +83,25 @@ const getModeLabel = (mode: string): string => {
         <!-- Leg Details -->
         <div class="flex-grow min-w-0">
           <div class="flex items-center justify-between">
-            <span class="font-medium text-vintage-dark text-sm">
-              {{ getModeLabel(leg.mode) }}
-            </span>
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-vintage-dark text-sm">
+                {{ getModeLabel(leg.mode) }}
+              </span>
+              <!-- Colored badge for route number/name -->
+              <span
+                v-if="leg.route?.shortName || leg.route?.longName || leg.routeName"
+                class="px-1 py-0.5 text-xs font-medium rounded"
+                :style="{ backgroundColor: getModeColor(leg.mode), color: 'white' }"
+              >
+                {{ leg.route?.shortName || leg.route?.longName || leg.routeName }}
+              </span>
+            </div>
             <span class="text-sm text-vintage-dark/70">
               {{ formatDuration(leg.duration) }}
             </span>
           </div>
 
-          <div v-if="leg.route?.shortName || leg.route?.longName || leg.routeName" class="text-xs text-vintage-dark/60 mt-0.5">
-            {{ leg.route?.shortName || leg.route?.longName || leg.routeName }}
-          </div>
-
-          <div v-if="leg.from && leg.to" class="text-xs text-vintage-dark/50 mt-0.5 truncate">
+          <div v-if="leg.from && leg.to" class="text-xs text-vintage-dark/50 mt-1 truncate">
             {{ leg.from.name }} → {{ leg.to.name }}
           </div>
         </div>

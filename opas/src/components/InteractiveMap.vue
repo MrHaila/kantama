@@ -6,6 +6,7 @@ import { MAP_CONFIG } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
 import { decodePolyline } from '../utils/polyline'
+import { modeColors } from '../utils/transportColors'
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
@@ -24,16 +25,6 @@ const projection = computed(() => {
 // Convert lat/lon to SVG coordinates
 function latLonToSvg(lat: number, lon: number): [number, number] | null {
   return projection.value([lon, lat])
-}
-
-// Mode colors for route visualization
-const modeColors: Record<string, string> = {
-  WALK: '#8B7355',
-  BUS: '#007AC9',
-  TRAM: '#00985F',
-  METRO: '#FF6319',
-  FERRY: '#00B9E4',
-  TRAIN: '#8C4799',
 }
 
 // Convert route legs to SVG path data for visualization

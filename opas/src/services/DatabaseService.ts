@@ -157,7 +157,7 @@ class DatabaseService {
     try {
       const parsed = JSON.parse(legsJson)
       // Database stores legs as direct array [...], not wrapped { legs: [...] }
-      return Array.isArray(parsed) ? parsed : (parsed.legs || [])
+      return Array.isArray(parsed) ? parsed : parsed.legs || []
     } catch (e) {
       console.error('Failed to parse legs JSON:', e)
       return []

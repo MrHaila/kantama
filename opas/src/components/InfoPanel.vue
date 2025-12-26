@@ -56,11 +56,10 @@ function deselectZone() {
       <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">POSTAL CODE {{ activeZoneId }}</p>
 
       <div v-if="reachabilityStats" class="space-y-2">
-        <div class="flex justify-between items-baseline border-b border-vintage-dark/20 pb-2">
-          <span class="text-lg">Within 30 min:</span>
+        <div class="flex items-baseline space-x-1.5">
           <span class="text-2xl font-bold">{{ reachabilityStats.percent30 }}%</span>
+          <span class="text-lg">within 30 min travel</span>
         </div>
-        <p class="text-sm italic text-vintage-dark/80 mt-2">TBD</p>
       </div>
       <div v-else class="text-sm italic">No routing data available for this origin.</div>
     </div>
@@ -68,7 +67,7 @@ function deselectZone() {
 
   <div
     v-else
-    class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-80 opacity-80"
+    class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm"
   >
     <h2 class="text-xl uppercase">Discover Helsinki</h2>
     <p class="text-sm mt-2">Select a zone on the map to visualize travel times.</p>
