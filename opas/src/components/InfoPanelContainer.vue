@@ -9,11 +9,11 @@ const { activeZoneId } = storeToRefs(store)
 </script>
 
 <template>
-  <div class="fixed left-8 top-8 z-20 space-y-4 font-sans">
-    <!-- InfoPanel - always shown -->
+  <div class="fixed left-6 bottom-6 z-20 flex flex-col-reverse gap-4 font-sans">
+    <!-- InfoPanel - always shown (bottom) -->
     <InfoPanel />
 
-    <!-- JourneyPanel - only shown when zone is selected -->
+    <!-- JourneyPanel - only shown when zone is selected (above info) -->
     <JourneyPanel v-if="activeZoneId" />
   </div>
 </template>
