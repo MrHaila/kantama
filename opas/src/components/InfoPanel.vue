@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { useMapDataStore, type ZoneProperties } from '../stores/mapData'
+import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
-import type { Feature, Geometry } from 'geojson'
+import type { Place } from '../services/DatabaseService'
 
 const store = useMapDataStore()
 const { activeZoneId, zones, currentCosts } = storeToRefs(store)
 
 const zoneDetails = computed(() => {
   if (!activeZoneId.value || !zones.value) return null
-  const feature = zones.value.features.find(
-    (f: Feature<Geometry, ZoneProperties>) => f.properties?.postinumeroalue === activeZoneId.value
-  )
-  return feature ? feature.properties : null
+  const zone = zones.value.find((z: Place) => z.id === activeZoneId.value)
+  return zone
 })
 
 const reachabilityStats = computed(() => {
@@ -20,7 +18,7 @@ const reachabilityStats = computed(() => {
 
   // Calculate simple stats: how many reach specific thresholds
   const costsArray = Array.from(currentCosts.value.values())
-  const total = zones.value?.features.length || costsArray.length
+  const total = zones.value?.length || costsArray.length
   if (total === 0) return null
 
   const under30 = costsArray.filter((d) => d < 1800 && d > 0).length
@@ -39,7 +37,7 @@ const reachabilityStats = computed(() => {
     class="fixed bottom-8 left-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans"
   >
     <div v-if="zoneDetails">
-      <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.nimi }}</h2>
+      <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
       <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">POSTAL CODE {{ activeZoneId }}</p>
 
       <div v-if="reachabilityStats" class="space-y-2">

@@ -7,7 +7,7 @@ export function useAppState() {
   const store = useMapDataStore()
   const error = ref<string | null>(null)
   const isLoading = ref(false)
-  
+
   const currentState = computed<AppState>(() => {
     if (error.value) return 'error'
     if (isLoading.value || !store.zones) return 'loading'
@@ -16,7 +16,7 @@ export function useAppState() {
 
   async function initialize() {
     if (store.zones) return // Already loaded
-    
+
     try {
       error.value = null
       isLoading.value = true
@@ -32,6 +32,6 @@ export function useAppState() {
   return {
     currentState,
     error,
-    initialize
+    initialize,
   }
 }

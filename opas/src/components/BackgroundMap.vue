@@ -27,13 +27,13 @@ async function loadBackgroundMap() {
     const parser = new DOMParser()
     const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
     const svgElement = svgDoc.documentElement
-    
+
     // Add class for styling
     svgElement.setAttribute('class', 'w-full h-auto')
-    
+
     // The SVG already has the correct viewBox from the file
     // No need to override it here
-    
+
     containerRef.value.appendChild(svgElement)
 
     console.log('Background map loaded successfully')
@@ -48,13 +48,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div 
-    ref="containerRef" 
-    :class="[
-      'relative w-full aspect-square overflow-hidden',
-      'background-map-container',
-      `theme-${theme}`
-    ]"
+  <div
+    ref="containerRef"
+    :class="['relative w-full aspect-square overflow-hidden', 'background-map-container', `theme-${theme}`]"
   >
     <!-- SVG loaded here -->
   </div>

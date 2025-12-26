@@ -1,7 +1,17 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
-import * as d3 from 'd3'
+import { ref, watch } from 'vue'
 import { dbService, type Place } from '../services/DatabaseService'
+
+// Simple threshold scale function to replace D3's scaleThreshold
+function getThresholdColor(duration: number): string {
+  // Thresholds: 900, 1800, 2700, 3600 seconds (15, 30, 45, 60 mins)
+  // Colors: Deep Orange -> Light Orange -> Beige -> Teal -> Dark Blue
+  if (duration < 900) return '#E76F51' // < 15 min: Deep Orange
+  if (duration < 1800) return '#F4A261' // 15-30 min: Light Orange
+  if (duration < 2700) return '#E9C46A' // 30-45 min: Beige
+  if (duration < 3600) return '#2A9D8F' // 45-60 min: Teal
+  return '#264653' // 60+ min: Dark Blue
+}
 
 export const useMapDataStore = defineStore('mapData', () => {
   const zones = ref<Place[]>([])
@@ -28,25 +38,6 @@ export const useMapDataStore = defineStore('mapData', () => {
     }
   })
 
-  // Get color scale for current selection
-  const colorScale = computed(() => {
-    return (
-      d3
-        .scaleThreshold<number, string>()
-        .domain([900, 1800, 2700, 3600]) // 15, 30, 45, 60 mins
-        // Vintage palette: deep orange -> light orange -> beige -> teal -> dark blue
-        // .range(["#E76F51", "#F4A261", "#E9C46A", "#2A9D8F", "#264653"])
-        // Adjusting for "close is hot/good" vs "far is cold/bad"?
-        // User requested:
-        // < 15 min: Deep Orange (#E76F51) (Actually user said Deep Orange)
-        // 15-30 min: Light Orange (#F4A261)
-        // 30-45 min: Beige (#E9C46A)
-        // 45-60 min: Teal (#2A9D8F)
-        // 60+ min: Dark Blue (#264653)
-        .range(['#E76F51', '#F4A261', '#E9C46A', '#2A9D8F', '#264653'])
-    )
-  })
-
   function getDuration(toId: string) {
     if (!activeZoneId.value) return null
     return currentCosts.value.get(toId) || null
@@ -59,7 +50,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     const duration = getDuration(zoneId)
     if (duration === null) return '#e0e0e0' // Unreachable / No Data (Light Grey)
 
-    return colorScale.value(duration)
+    return getThresholdColor(duration)
   }
 
   return {
