@@ -86,11 +86,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     if (!activeZoneId.value || !hoveredZoneId.value) return []
     if (activeZoneId.value === hoveredZoneId.value) return []
 
-    const routeDetails = dbService.getRouteDetails(
-      activeZoneId.value,
-      hoveredZoneId.value,
-      currentTimePeriod.value
-    )
+    const routeDetails = dbService.getRouteDetails(activeZoneId.value, hoveredZoneId.value, currentTimePeriod.value)
 
     if (!routeDetails || routeDetails.status !== 'OK') return []
 
