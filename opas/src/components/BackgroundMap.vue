@@ -31,6 +31,22 @@ async function loadBackgroundMap() {
     // Add class for styling
     svgElement.setAttribute('class', 'w-full h-auto')
     
+    // Add transform to move map down (show more area at top)
+    // Adjust the viewBox to shift the visible area up
+    const currentViewBox = svgElement.getAttribute('viewBox')
+    if (currentViewBox) {
+      const values = currentViewBox.split(' ').map(Number)
+      if (values.length === 4) {
+        const [x, y, width, height] = values
+        // Ensure all values are valid numbers
+        if (!isNaN(x!) && !isNaN(y!) && !isNaN(width!) && !isNaN(height!)) {
+          // Move the view up by 25% of height (equivalent to moving map down)
+          const newY = y! - (height! * 0.25)
+          svgElement.setAttribute('viewBox', `${x} ${newY} ${width} ${height}`)
+        }
+      }
+    }
+    
     containerRef.value.appendChild(svgElement)
 
     console.log('Background map loaded successfully')

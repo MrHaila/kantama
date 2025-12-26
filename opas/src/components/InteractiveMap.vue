@@ -29,7 +29,7 @@ function initMap() {
   svg = d3
     .select(containerRef.value)
     .append('svg')
-    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('viewBox', `0 -200 ${width} ${height}`)
     .attr('class', 'w-full h-auto')
     .style('position', 'absolute')
     .style('top', '0')
