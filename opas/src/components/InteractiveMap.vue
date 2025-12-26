@@ -4,6 +4,7 @@ import * as d3 from 'd3'
 import { useMapDataStore, type ZoneProperties } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import type { Feature, Geometry } from 'geojson'
+import { MAP_CONFIG } from '../config/mapConfig'
 
 const store = useMapDataStore()
 const { zones, activeZoneId } = storeToRefs(store)
@@ -16,9 +17,9 @@ let g: d3.Selection<SVGGElement, unknown, null, undefined>
 let projection: d3.GeoProjection
 let pathGenerator: d3.GeoPath<null, ZoneFeature>
 
-// Dimensions
-const width = 800 // Will be responsive
-const height = 800
+// Dimensions from shared config
+const width = MAP_CONFIG.width
+const height = MAP_CONFIG.height
 
 function initMap() {
   if (!containerRef.value) return
@@ -29,7 +30,7 @@ function initMap() {
   svg = d3
     .select(containerRef.value)
     .append('svg')
-    .attr('viewBox', `0 -200 ${width} ${height}`)
+    .attr('viewBox', MAP_CONFIG.viewBox)
     .attr('class', 'w-full h-auto')
     .style('position', 'absolute')
     .style('top', '0')

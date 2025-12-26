@@ -9,9 +9,16 @@ const OUTPUT_DIR = path.join(__dirname, '../../opas/public')
 const TOPOJSON_FILE = path.join(OUTPUT_DIR, 'background_map.json')
 const SVG_FILE = path.join(OUTPUT_DIR, 'background_map.svg')
 
-// SVG dimensions - should match BackgroundMap.vue
-const width = 800
-const height = 800
+// SVG dimensions - should match MAP_CONFIG in opas
+const zoomLevel = 1.2 // 20% zoom out
+const baseWidth = 800
+const baseHeight = 800
+const width = baseWidth * zoomLevel
+const height = baseHeight * zoomLevel
+
+// ViewBox parameters to keep bottom edge fixed while expanding
+const viewBoxX = -(width - baseWidth) / 2 + 60 // Center horizontally, then move 60px right
+const viewBoxY = -120 - (height - baseHeight) // Keep bottom fixed, moved up from -140
 
 // Projection parameters - must match BackgroundMap.vue exactly
 function createProjection() {
@@ -39,7 +46,7 @@ function generateSVG() {
     const pathGenerator = d3.geoPath().projection(projection)
 
     // Start building SVG
-    let svg = `<svg viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">\n`
+    let svg = `<svg viewBox="${viewBoxX} ${viewBoxY} ${width} ${height}" xmlns="http://www.w3.org/2000/svg">\n`
     
     // Add CSS styles with CSS variables
     svg += `  <defs>
@@ -60,7 +67,7 @@ function generateSVG() {
   </defs>\n`
 
     // Add background rectangle
-    svg += `  <rect class="background-rect" width="${width}" height="${height}"/>\n`
+    svg += `  <rect class="background-rect" x="${viewBoxX}" y="${viewBoxY}" width="${width}" height="${height}"/>\n`
 
     // Add main group
     svg += `  <g>\n`
