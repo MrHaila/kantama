@@ -28,6 +28,10 @@ const baseHeight = 800;
 const width = baseWidth * zoomLevel;
 const height = baseHeight * zoomLevel;
 
+// Calculate viewBox boundaries matching MAP_CONFIG
+const viewBoxX = -(width - baseWidth) / 2 + 60;
+const viewBoxY = -120 - (height - baseHeight);
+
 function createProjection() {
   return d3
     .geoMercator()
@@ -67,9 +71,75 @@ function projectGeometry(geometry: Geometry, proj: d3.GeoProjection): Geometry |
 function generateSvgPath(geometry: Geometry, projection: d3.GeoProjection): string | null {
   const projectedGeometry = projectGeometry(geometry, projection);
   if (!projectedGeometry) return null;
-  
+
   const pathGenerator = d3.geoPath();
   return pathGenerator(projectedGeometry) || null;
+}
+
+// Calculate the visible area bounding box in lat/lon coordinates
+function getVisibleAreaBounds(projection: d3.GeoProjection): {
+  minLon: number;
+  maxLon: number;
+  minLat: number;
+  maxLat: number;
+} {
+  // Get the four corners of the visible viewBox in SVG coordinates
+  const topLeft = [viewBoxX, viewBoxY];
+  const topRight = [viewBoxX + width, viewBoxY];
+  const bottomLeft = [viewBoxX, viewBoxY + height];
+  const bottomRight = [viewBoxX + width, viewBoxY + height];
+
+  // Inverse project to get lat/lon coordinates
+  const corners = [topLeft, topRight, bottomLeft, bottomRight]
+    .map(coord => projection.invert!(coord as [number, number]))
+    .filter((coord): coord is [number, number] => coord !== null);
+
+  if (corners.length === 0) {
+    throw new Error('Failed to calculate visible area bounds');
+  }
+
+  // Find the bounding box
+  const lons = corners.map(c => c[0]);
+  const lats = corners.map(c => c[1]);
+
+  return {
+    minLon: Math.min(...lons),
+    maxLon: Math.max(...lons),
+    minLat: Math.min(...lats),
+    maxLat: Math.max(...lats),
+  };
+}
+
+// Check if any point of a geometry is inside the visible area
+function isGeometryInVisibleArea(
+  geometry: Geometry,
+  bounds: { minLon: number; maxLon: number; minLat: number; maxLat: number }
+): boolean {
+  const isPointInBounds = (coord: Position): boolean => {
+    const [lon, lat] = coord;
+    return (
+      lon >= bounds.minLon &&
+      lon <= bounds.maxLon &&
+      lat >= bounds.minLat &&
+      lat <= bounds.maxLat
+    );
+  };
+
+  const checkRing = (ring: Position[]): boolean => {
+    return ring.some(isPointInBounds);
+  };
+
+  if (geometry.type === 'Polygon') {
+    const poly = geometry as Polygon;
+    return poly.coordinates.some(checkRing);
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    const multi = geometry as MultiPolygon;
+    return multi.coordinates.some(polygon => polygon.some(checkRing));
+  }
+
+  return false;
 }
 
 const WFS_URL = 'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
@@ -182,6 +252,12 @@ async function main() {
     const geojson = response.data;
     console.log(`Downloaded ${geojson.features.length} features.`);
 
+    // Calculate visible area bounds for filtering
+    const projection = createProjection();
+    const visibleBounds = getVisibleAreaBounds(projection);
+    console.log(`Visible area bounds:`, visibleBounds);
+
+    let helsinkiZonesCount = 0;
     let processedZones = geojson.features.map((feature: Feature<Geometry, FeatureProperties>) => {
       const props = feature.properties;
       const code = props.postinumeroalue || props.posti_alue;
@@ -189,6 +265,8 @@ async function main() {
 
       if (!code) return null;
       if (!code.match(/^(00|01|02)/)) return null;
+
+      helsinkiZonesCount++;
 
       let centroid: [number, number] | null = null;
       try {
@@ -205,8 +283,12 @@ async function main() {
         return null;
       }
 
+      // Filter out zones not in visible area
+      if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
+        return null;
+      }
+
       // Generate SVG path at fetch time
-      const projection = createProjection();
       const svgPath = generateSvgPath(cleanedGeometry, projection);
       if (!svgPath) {
         console.warn(`Skipping zone ${code}: Could not generate SVG path`);
@@ -222,6 +304,10 @@ async function main() {
         svg_path: svgPath
       };
     }).filter((f: ProcessedZone | null): f is ProcessedZone => f !== null);
+
+    console.log(`Helsinki area zones: ${helsinkiZonesCount}`);
+    console.log(`Zones in visible area: ${processedZones.length}`);
+    console.log(`Filtered out: ${helsinkiZonesCount - processedZones.length} zones`);
 
     if (IS_TEST) {
       console.log('Test mode: Limiting to 5 zones.');
