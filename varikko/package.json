@@ -4,14 +4,14 @@
   "description": "Chrono-Map Data Pipeline",
   "main": "dist/index.js",
   "scripts": {
-    "start": "ts-node src/index.ts",
-    "fetch:zones": "ts-node src/fetch_zones.ts",
-    "build:routes": "ts-node src/build_routes.ts",
+    "start": "tsx src/index.ts",
+    "fetch:zones": "tsx src/fetch_zones.ts",
+    "build:routes": "tsx src/build_routes.ts",
     "clear:routes": "tsx src/clear_routes.ts",
-    "test:routes": "ts-node src/build_routes.ts --test",
-    "export:routes": "ts-node src/export_routes.ts",
-    "process:map": "ts-node src/process_map.ts",
-    "generate:svg": "ts-node src/generate_svg.ts",
+    "test:routes": "tsx src/build_routes.ts --test",
+    "export:routes": "tsx src/export_routes.ts",
+    "process:map": "tsx src/process_map.ts",
+    "generate:svg": "tsx src/generate_svg.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -28,10 +28,11 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/d3-geo": "^3.1.0",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^25.0.3",
     "@types/topojson-client": "^3.1.5",
     "mapshaper": "^0.6.113",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3"
   }
 }

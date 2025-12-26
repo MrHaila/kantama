@@ -22,7 +22,7 @@ function main() {
   // Structure: { "00100": { "00120": 120, "00130": 400 }, ... }
   const exportData: Record<string, Record<string, number>> = {};
 
-  for (const row of rows as any[]) {
+  for (const row of rows as { from_id: string; to_id: string; duration: number }[]) {
     if (!exportData[row.from_id]) {
       exportData[row.from_id] = {};
     }

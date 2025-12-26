@@ -2,6 +2,7 @@ import * as d3 from 'd3-geo'
 import * as topojson from 'topojson-client'
 import fs from 'fs'
 import path from 'path'
+import type { Feature } from 'geojson'
 import type { Topology } from 'topojson-specification'
 
 const OUTPUT_DIR = path.join(__dirname, '../../opas/public')
@@ -70,7 +71,7 @@ function generateSVG() {
       
       svg += `    <g class="water-layer">\n`
       waterGeoJson.features.forEach((feature, index) => {
-        const path = pathGenerator(feature as any)
+        const path = pathGenerator(feature as Feature)
         if (path) {
           svg += `      <path d="${path}" data-index="${index}"/>\n`
         }
@@ -84,7 +85,7 @@ function generateSVG() {
       
       svg += `    <g class="road-layer">\n`
       roadGeoJson.features.forEach((feature, index) => {
-        const path = pathGenerator(feature as any)
+        const path = pathGenerator(feature as Feature)
         if (path) {
           svg += `      <path d="${path}" data-index="${index}"/>\n`
         }

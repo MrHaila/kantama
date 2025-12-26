@@ -1,10 +1,31 @@
 import axios from 'axios';
 import Database from 'better-sqlite3';
-import fs from 'fs';
 import path from 'path';
 import 'dotenv/config';
 import pLimit from 'p-limit';
 import cliProgress from 'cli-progress';
+
+interface OTPItinerary {
+  duration: number;
+  numberOfTransfers: number;
+  walkDistance: number;
+  legs: unknown[];
+}
+
+interface AxiosError extends Error {
+  response?: {
+    status: number;
+  };
+}
+
+interface RouteResult {
+  status: 'OK' | 'ERROR' | 'NO_ROUTE';
+  duration?: number;
+  numberOfTransfers?: number;
+  walkDistance?: number;
+  legs?: unknown[];
+  data?: string;
+}
 
 const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
@@ -52,7 +73,7 @@ function getNextTuesday() {
 
 const TARGET_DATE = getNextTuesday();
 
-async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number, targetTime: string) {
+async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number, targetTime: string): Promise<RouteResult> {
   const query = `
     {
       plan(
@@ -85,9 +106,8 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       {
         headers: {
           'Content-Type': 'application/json',
-          'digitransit-subscription-key': API_KEY || '',
-        },
-        timeout: 15000,
+          'Accept': 'application/json'
+        }
       }
     );
 
@@ -95,13 +115,13 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       return { status: 'ERROR', data: response.data.errors[0].message };
     }
 
-    const itineraries = response.data.data.plan?.itineraries;
+    const itineraries = response.data.plan.itineraries;
     if (!itineraries || itineraries.length === 0) {
       return { status: 'NO_ROUTE' };
     }
 
     // Pick the best itinerary (fastest)
-    const best = itineraries.sort((a: any, b: any) => a.duration - b.duration)[0];
+    const best = itineraries.sort((a: OTPItinerary, b: OTPItinerary) => a.duration - b.duration)[0];
 
     return {
       status: 'OK',
@@ -111,16 +131,16 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       legs: best.legs
     };
 
-  } catch (error: any) {
-    if (error.response && error.response.status === 429) {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'response' in error && (error as AxiosError).response?.status === 429) {
       await new Promise(r => setTimeout(r, 5000));
       return fetchRoute(fromLat, fromLon, toLat, toLon, targetTime);
     }
-    return { status: 'ERROR', data: error.message };
+    return { status: 'ERROR', data: error instanceof Error ? error.message : String(error) };
   }
 }
 
-async function runPeriod(period: string, placeMap: Map<string, any>) {
+async function runPeriod(period: string, placeMap: Map<string, { lat: number; lon: number }>) {
   const targetTime = TIME_MAPPING[period] || '08:30:00';
   console.log(`\n--- Processing Period: ${period} (${targetTime}) ---`);
 
@@ -128,7 +148,7 @@ async function runPeriod(period: string, placeMap: Map<string, any>) {
     SELECT from_id, to_id 
     FROM routes 
     WHERE status = 'PENDING' AND time_period = ?
-  `).all(period) as any[];
+  `).all(period) as { from_id: string; to_id: string }[];
 
   console.log(`Pending routes for ${period}: ${pendingRoutes.length}`);
 
@@ -155,7 +175,7 @@ async function runPeriod(period: string, placeMap: Map<string, any>) {
 
   let completed = 0;
 
-  const runTask = async (task: any) => {
+  const runTask = async (task: { from_id: string; to_id: string }) => {
     const from = placeMap.get(task.from_id);
     const to = placeMap.get(task.to_id);
 
@@ -207,7 +227,7 @@ async function runPeriod(period: string, placeMap: Map<string, any>) {
 }
 
 async function main() {
-  const places = db.prepare('SELECT id, lat, lon FROM places').all() as any[];
+  const places = db.prepare('SELECT id, lat, lon FROM places').all() as { id: string; lat: number; lon: number }[];
   console.log(`Loaded ${places.length} places.`);
   const placeMap = new Map(places.map(p => [p.id, p]));
 

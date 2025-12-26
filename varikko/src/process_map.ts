@@ -26,7 +26,8 @@ const LAYERS = [
 // Coordinate system:
 // Maanmittauslaitos data is usually EUREF-FIN (ETRS-TM35FIN).
 // We should reproject to WGS84 for web use.
-const SOURCE_CRS = 'EPSG:3067'; 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const SOURCE_CRS = 'EPSG:3067'; // TODO: Use this for reprojection when needed
 const TARGET_CRS = 'EPSG:4326';
 
 async function run() {
