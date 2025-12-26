@@ -1,5 +1,4 @@
 
-/// <reference types="mapshaper" />
 import mapshaper from 'mapshaper';
 import path from 'path';
 import fs from 'fs';
@@ -69,7 +68,7 @@ async function run() {
                 `-proj ${TARGET_CRS}`,
                 `-rename-layers ${layer.name}`,
                 `-clip ${CLIP_MASK_FILE}`, // Clip using file directly, avoiding layer projection merge checks
-                `-simplify 10% keep-shapes`,
+                `-simplify 80% keep-shapes`,
                 `-o ${tempFile} format=topojson`
             ].join(' ');
 
