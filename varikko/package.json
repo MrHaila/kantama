@@ -10,6 +10,8 @@
     "clear:routes": "tsx src/clear_routes.ts",
     "test:routes": "tsx src/build_routes.ts --test",
     "export:routes": "tsx src/export_routes.ts",
+    "calculate:deciles": "tsx src/calculate_deciles.ts",
+    "status": "tsx src/status.ts",
     "process:map": "tsx src/process_map.ts",
     "generate:svg": "tsx src/generate_svg.ts",
     "test": "vitest run"
