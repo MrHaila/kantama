@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import BackgroundMap from './components/BackgroundMap.vue'
 import InteractiveMap from './components/InteractiveMap.vue'
 import InfoPanel from './components/InfoPanel.vue'
 import { useAppState } from './composables/useAppState'
 
 const { currentState, error, initialize } = useAppState()
+
+// Theme management
+const currentTheme = ref<'vintage' | 'modern' | 'dark' | 'contrast'>('vintage')
+
+const themes: Array<'vintage' | 'modern' | 'dark' | 'contrast'> = ['vintage', 'modern', 'dark', 'contrast']
+
+function cycleTheme(): void {
+  const currentIndex = themes.indexOf(currentTheme.value)
+  currentTheme.value = themes[(currentIndex + 1) % themes.length]
+}
 
 onMounted(() => {
   initialize()
@@ -23,7 +33,12 @@ onMounted(() => {
       </div>
       <div class="hidden md:block text-right font-sans text-sm tracking-widest opacity-70">
         <p>HOW FAR IS EVERYTHING FROM EVERYTHING ELSE?</p>
-        <!-- <p>GENERATED ON TBD</p> -->
+        <button 
+          class="mt-2 px-3 py-1 bg-vintage-dark/10 hover:bg-vintage-dark/20 transition-colors text-vintage-dark rounded text-xs"
+          @click="cycleTheme"
+        >
+          Theme: {{ currentTheme.toUpperCase() }}
+        </button>
       </div>
     </header>
 
@@ -57,7 +72,7 @@ onMounted(() => {
         <div class="w-full max-w-5xl aspect-square relative shadow-2xl border-8 border-white bg-white p-2">
           <!-- Background Map Layer -->
           <div class="absolute inset-0">
-            <BackgroundMap />
+            <BackgroundMap :theme="currentTheme" />
           </div>
           <!-- Interactive Map Layer -->
           <div class="absolute inset-0">

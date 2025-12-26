@@ -169,6 +169,9 @@ importers:
       p-limit:
         specifier: ^7.2.0
         version: 7.2.0
+      topojson-client:
+        specifier: ^3.1.0
+        version: 3.1.0
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.13
@@ -179,6 +182,9 @@ importers:
       '@types/node':
         specifier: ^25.0.3
         version: 25.0.3
+      '@types/topojson-client':
+        specifier: ^3.1.5
+        version: 3.1.5
       mapshaper:
         specifier: ^0.6.113
         version: 0.6.113(@types/geojson@7946.0.16)
@@ -1289,6 +1295,9 @@ packages:
 
   '@types/sql.js@1.4.9':
     resolution: {integrity: sha512-ep8b36RKHlgWPqjNG9ToUrPiwkhwh0AEzy883mO5Xnd+cL6VBH1EvSjBAAuxLUFF2Vn/moE3Me6v9E1Lo+48GQ==}
+
+  '@types/topojson-client@3.1.5':
+    resolution: {integrity: sha512-C79rySTyPxnQNNguTZNI1Ct4D7IXgvyAs3p9HPecnl6mNrJ5+UhvGNYcZfpROYV2lMHI48kJPxwR+F9C6c7nmw==}
 
   '@types/topojson-specification@1.0.5':
     resolution: {integrity: sha512-C7KvcQh+C2nr6Y2Ub4YfgvWvWCgP2nOQMtfhlnwsRL4pYmmwzBS7HclGiS87eQfDOU/DLQpX6GEscviaz4yLIQ==}
@@ -4674,6 +4683,11 @@ snapshots:
     dependencies:
       '@types/emscripten': 1.41.5
       '@types/node': 25.0.3
+
+  '@types/topojson-client@3.1.5':
+    dependencies:
+      '@types/geojson': 7946.0.16
+      '@types/topojson-specification': 1.0.5
 
   '@types/topojson-specification@1.0.5':
     dependencies:
