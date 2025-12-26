@@ -1,40 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import * as d3 from 'd3'
-import { dbService } from '../services/DatabaseService'
-import type { FeatureCollection, Geometry } from 'geojson'
-
-export interface ZoneProperties {
-  postinumeroalue: string
-  nimi: string
-}
+import { dbService, type Place } from '../services/DatabaseService'
 
 export const useMapDataStore = defineStore('mapData', () => {
-  const zones = ref<FeatureCollection<Geometry, ZoneProperties> | null>(null)
-  const currentCosts = ref<Map<string, number>>(new Map()) // { toId: seconds }
+  const zones = ref<Place[]>([])
+  const currentCosts = ref<Map<string, number>>(new Map())
   const activeZoneId = ref<string | null>(null)
-  const currentTimePeriod = ref<string>('MORNING') // Default
+  const currentTimePeriod = ref<string>('MORNING')
 
-  // Load static data
   async function loadData() {
     try {
       await dbService.init()
-
-      const places = dbService.getPlaces()
-      // Convert to GeoJSON FeatureCollection format for existing components
-      zones.value = {
-        type: 'FeatureCollection',
-        features: places.map((p) => ({
-          type: 'Feature',
-          properties: {
-            postinumeroalue: p.id,
-            nimi: p.name,
-          },
-          geometry: p.geometry,
-        })),
-      }
-
-      console.log('Data loaded from DB:', places.length, 'zones')
+      zones.value = dbService.getPlaces()
+      console.log('Data loaded from DB:', zones.value.length, 'zones')
     } catch (e) {
       console.error('Failed to load map data:', e)
     }

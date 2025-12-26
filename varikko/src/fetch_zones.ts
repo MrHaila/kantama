@@ -2,6 +2,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import * as turf from '@turf/turf';
+import * as d3 from 'd3-geo';
 import Database from 'better-sqlite3';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature } from 'geojson';
 
@@ -17,6 +18,58 @@ interface ProcessedZone {
   lat: number;
   lon: number;
   geometry: string;
+  svg_path: string;
+}
+
+// SVG projection parameters - must match MAP_CONFIG in opas
+const zoomLevel = 1.2;
+const baseWidth = 800;
+const baseHeight = 800;
+const width = baseWidth * zoomLevel;
+const height = baseHeight * zoomLevel;
+
+function createProjection() {
+  return d3
+    .geoMercator()
+    .center([24.93, 60.17])
+    .scale(120000)
+    .translate([width / 2, height / 2]);
+}
+
+// Manually project coordinates to avoid D3's spherical clipping artifacts
+function projectGeometry(geometry: Geometry, proj: d3.GeoProjection): Geometry | null {
+  const projectRing = (ring: Position[]): Position[] => {
+    return ring.map((coord) => {
+      const projected = proj(coord as [number, number]);
+      return projected ? [projected[0], projected[1]] : coord;
+    });
+  };
+
+  if (geometry.type === 'Polygon') {
+    const poly = geometry as Polygon;
+    return {
+      type: 'Polygon',
+      coordinates: poly.coordinates.map(projectRing),
+    };
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    const multi = geometry as MultiPolygon;
+    return {
+      type: 'MultiPolygon',
+      coordinates: multi.coordinates.map((polygon) => polygon.map(projectRing)),
+    };
+  }
+
+  return null;
+}
+
+function generateSvgPath(geometry: Geometry, projection: d3.GeoProjection): string | null {
+  const projectedGeometry = projectGeometry(geometry, projection);
+  if (!projectedGeometry) return null;
+  
+  const pathGenerator = d3.geoPath();
+  return pathGenerator(projectedGeometry) || null;
 }
 
 const WFS_URL = 'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
@@ -78,12 +131,15 @@ function initDb() {
   db.pragma('journal_mode = WAL');
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS places (
+    DROP TABLE IF EXISTS routes;
+    DROP TABLE IF EXISTS places;
+    CREATE TABLE places (
       id TEXT PRIMARY KEY,
       name TEXT,
       lat REAL,
       lon REAL,
-      geometry TEXT
+      geometry TEXT,
+      svg_path TEXT
     );
 
     CREATE TABLE IF NOT EXISTS routes (
@@ -149,12 +205,21 @@ async function main() {
         return null;
       }
 
+      // Generate SVG path at fetch time
+      const projection = createProjection();
+      const svgPath = generateSvgPath(cleanedGeometry, projection);
+      if (!svgPath) {
+        console.warn(`Skipping zone ${code}: Could not generate SVG path`);
+        return null;
+      }
+
       return {
         id: code,
         name: name || '',
         lat: centroid[1],
         lon: centroid[0],
-        geometry: JSON.stringify(cleanedGeometry)
+        geometry: JSON.stringify(cleanedGeometry),
+        svg_path: svgPath
       };
     }).filter((f: ProcessedZone | null): f is ProcessedZone => f !== null);
 
@@ -166,8 +231,8 @@ async function main() {
     console.log(`Processing ${processedZones.length} zones...`);
 
     const insertPlace = db.prepare(`
-      INSERT OR REPLACE INTO places (id, name, lat, lon, geometry)
-      VALUES (@id, @name, @lat, @lon, @geometry)
+      INSERT OR REPLACE INTO places (id, name, lat, lon, geometry, svg_path)
+      VALUES (@id, @name, @lat, @lon, @geometry, @svg_path)
     `);
 
     const insertRoute = db.prepare(`
