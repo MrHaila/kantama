@@ -2,21 +2,25 @@
   "name": "kantama",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "lint": "eslint . --ext .js,.ts,.vue",
     "format": "prettier --write .",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@types/topojson-specification": "^1.0.5",
     "@typescript-eslint/eslint-plugin": "^8.50.0",
     "@typescript-eslint/parser": "^8.50.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.6.2",
+    "globals": "^16.5.0",
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "vue-eslint-parser": "^10.0.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

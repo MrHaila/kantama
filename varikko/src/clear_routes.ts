@@ -78,8 +78,8 @@ async function main() {
     console.log('Vacuuming database...');
     db.exec('VACUUM');
     console.log('Done.');
-  } catch (error: any) {
-    if (error.code === 'SQLITE_ERROR' && error.message.includes('no such table')) {
+  } catch (error: unknown) {
+    if (error instanceof Error && 'code' in error && (error as { code?: string }).code === 'SQLITE_ERROR' && error.message.includes('no such table')) {
         console.log("Database tables do not exist or are already empty.");
     } else {
         console.error("Error clearing database:", error);

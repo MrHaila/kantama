@@ -45,7 +45,7 @@ async function main() {
 
     console.log('Extracting /hsl folder...');
     const zip = new AdmZip(zipPath);
-    const zipEntries = zip.getEntries();
+    zip.getEntries(); // Get entries (not used further)
 
     // The zip structure has a 'hsl/' directory
     // We want to extract 'hsl/' to the current directory (data/otp/)

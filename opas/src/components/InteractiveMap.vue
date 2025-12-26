@@ -66,11 +66,10 @@ function renderZones() {
     .data(zones.value.features)
     .join('path')
     .attr('d', pathGenerator as (d: unknown) => string | null)
-    .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[1px]')
-    .attr('fill', (d) => {
-      // Don't fill if no zone selected
-      if (!store.activeZoneId) return 'none'
-      return store.getZoneColor(d.properties.postinumeroalue)
+    .attr('class', 'cursor-pointer transition-colors duration-300 ease-in-out stroke-vintage-dark stroke-[2px]')
+    .attr('fill', (d) => store.getZoneColor(d.properties.postinumeroalue))
+    .attr('fill-opacity', (d) => {
+      return store.activeZoneId === d.properties.postinumeroalue ? 1 : 0.5
     })
     .attr('opacity', 0)
 
@@ -103,6 +102,10 @@ function updateColors() {
     .transition()
     .duration(300)
     .attr('fill', (d) => store.getZoneColor(d.properties.postinumeroalue))
+    .attr('fill-opacity', (d) => {
+      // 0.5 opacity if not selected, full opacity if selected
+      return store.activeZoneId === d.properties.postinumeroalue ? 1 : 0.5
+    })
 }
 
 onMounted(async () => {

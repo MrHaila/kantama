@@ -3,6 +3,21 @@ import fs from 'fs';
 import path from 'path';
 import * as turf from '@turf/turf';
 import Database from 'better-sqlite3';
+import type { Geometry, Position, Polygon, MultiPolygon, Feature } from 'geojson';
+
+interface FeatureProperties {
+  postinumeroalue?: string;
+  posti_alue?: string;
+  nimi?: string;
+}
+
+interface ProcessedZone {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  geometry: string;
+}
 
 const WFS_URL = 'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
 const DATA_DIR = path.resolve(__dirname, '../../opas/public');
@@ -10,6 +25,47 @@ const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
 const IS_TEST = process.argv.includes('--test');
 const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
+
+// Helsinki area bounds in WGS84
+const BOUNDS = {
+  minLon: 24.0,
+  maxLon: 25.5,
+  minLat: 59.9,
+  maxLat: 60.5,
+};
+
+function isValidRing(ring: Position[]): boolean {
+  // Check if all coordinates in the ring are within reasonable WGS84 bounds
+  return ring.every((coord) => {
+    const lon = coord[0];
+    const lat = coord[1];
+    if (lon === undefined || lat === undefined) return false;
+    return lon >= BOUNDS.minLon && lon <= BOUNDS.maxLon && lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat;
+  });
+}
+
+function cleanGeometry(geometry: Geometry): Geometry | null {
+  if (geometry.type === 'Polygon') {
+    const poly = geometry as Polygon;
+    const validRings = poly.coordinates.filter(isValidRing);
+    if (validRings.length === 0) return null;
+    return { type: 'Polygon', coordinates: validRings };
+  }
+
+  if (geometry.type === 'MultiPolygon') {
+    const multi = geometry as MultiPolygon;
+    const validPolygons = multi.coordinates
+      .map((polygon) => polygon.filter(isValidRing))
+      .filter((polygon) => polygon.length > 0);
+    if (validPolygons.length === 0) return null;
+    if (validPolygons.length === 1 && validPolygons[0]) {
+      return { type: 'Polygon', coordinates: validPolygons[0] };
+    }
+    return { type: 'MultiPolygon', coordinates: validPolygons };
+  }
+
+  return geometry;
+}
 
 function initDb() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -70,7 +126,7 @@ async function main() {
     const geojson = response.data;
     console.log(`Downloaded ${geojson.features.length} features.`);
 
-    let processedZones = geojson.features.map((feature: any) => {
+    let processedZones = geojson.features.map((feature: Feature<Geometry, FeatureProperties>) => {
       const props = feature.properties;
       const code = props.postinumeroalue || props.posti_alue;
       const name = props.nimi;
@@ -78,22 +134,29 @@ async function main() {
       if (!code) return null;
       if (!code.match(/^(00|01|02)/)) return null;
 
-      let centroid = null;
+      let centroid: [number, number] | null = null;
       try {
         const center = turf.centroid(feature);
-        centroid = center.geometry.coordinates; // [lon, lat]
-      } catch (e) {
+        centroid = center.geometry.coordinates as [number, number];
+      } catch {
+        return null;
+      }
+
+      // Clean the geometry to remove corrupt polygon rings
+      const cleanedGeometry = cleanGeometry(feature.geometry);
+      if (!cleanedGeometry) {
+        console.warn(`Skipping zone ${code}: Invalid geometry after cleaning`);
         return null;
       }
 
       return {
         id: code,
-        name: name,
+        name: name || '',
         lat: centroid[1],
         lon: centroid[0],
-        geometry: JSON.stringify(feature.geometry)
+        geometry: JSON.stringify(cleanedGeometry)
       };
-    }).filter((f: any) => f !== null);
+    }).filter((f: ProcessedZone | null): f is ProcessedZone => f !== null);
 
     if (IS_TEST) {
       console.log('Test mode: Limiting to 5 zones.');
