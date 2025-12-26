@@ -1,11 +1,28 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
+import { geoMercator } from 'd3-geo'
 
 const store = useMapDataStore()
 const { zones } = storeToRefs(store)
+
+// Create D3 projection to convert lat/lon to SVG coordinates
+// Must match the projection used in fetch_zones.ts
+const projection = computed(() => {
+  const width = MAP_CONFIG.width
+  const height = MAP_CONFIG.height
+  return geoMercator()
+    .center([24.93, 60.17])
+    .scale(120000)
+    .translate([width / 2, height / 2])
+})
+
+// Convert lat/lon to SVG coordinates
+function latLonToSvg(lat: number, lon: number): [number, number] | null {
+  return projection.value([lon, lat])
+}
 
 // Track hovered zone for hover effects
 const hoveredZoneId = ref<string | null>(null)
@@ -79,6 +96,22 @@ onUnmounted(() => {
             fill="none"
             stroke-width="3"
           />
+        </g>
+        <!-- Centroids on top for debugging -->
+        <g class="centroids">
+          <template v-for="zone in zones" :key="`centroid-${zone.id}`">
+            <circle
+              v-if="latLonToSvg(zone.lat, zone.lon)"
+              :cx="latLonToSvg(zone.lat, zone.lon)![0]"
+              :cy="latLonToSvg(zone.lat, zone.lon)![1]"
+              r="4"
+              fill="#ff0000"
+              stroke="#ffffff"
+              stroke-width="1.5"
+              class="pointer-events-none"
+              opacity="0.8"
+            />
+          </template>
         </g>
       </svg>
     </div>
