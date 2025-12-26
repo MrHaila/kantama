@@ -2,9 +2,9 @@ services:
   otp:
     image: hsldevcom/opentripplanner:v2-prod
     ports:
-      - "9080:8080"
+      - '9080:8080'
     environment:
-      # Guide suggests 10G, but 4G-8G is often sufficient for dev. 
+      # Guide suggests 10G, but 4G-8G is often sufficient for dev.
       # Setting to 8G to be safe on typical dev machines, but close to guide.
       - JAVA_OPTS=-Xmx12g
     volumes:

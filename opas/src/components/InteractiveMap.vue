@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
@@ -25,9 +25,6 @@ function latLonToSvg(lat: number, lon: number): [number, number] | null {
   return projection.value([lon, lat])
 }
 
-// Track hovered zone for hover effects
-const hoveredZoneId = ref<string | null>(null)
-
 // Handle zone click
 function handleZoneClick(zoneId: string) {
   store.activeZoneId = zoneId
@@ -35,12 +32,12 @@ function handleZoneClick(zoneId: string) {
 
 // Handle mouse enter
 function handleMouseEnter(zoneId: string) {
-  hoveredZoneId.value = zoneId
+  store.hoveredZoneId = zoneId
 }
 
 // Handle mouse leave
 function handleMouseLeave() {
-  hoveredZoneId.value = null
+  store.hoveredZoneId = null
 }
 
 // Load data on mount

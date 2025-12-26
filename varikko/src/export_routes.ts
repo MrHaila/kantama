@@ -5,19 +5,21 @@ import path from 'path';
 const DB_PATH = path.resolve(__dirname, '../varikko.db');
 const OUT_FILE = path.resolve(__dirname, '../routes_export.json');
 
-const PERIOD_ARG = process.argv.find(a => a.startsWith('--period='));
+const PERIOD_ARG = process.argv.find((a) => a.startsWith('--period='));
 const PERIOD = PERIOD_ARG ? PERIOD_ARG.split('=')[1] : 'MORNING';
 
 function main() {
   if (!fs.existsSync(DB_PATH)) {
-    console.error("Database not found:", DB_PATH);
+    console.error('Database not found:', DB_PATH);
     process.exit(1);
   }
 
   const db = new Database(DB_PATH, { readonly: true });
-  
+
   console.log(`Reading ${PERIOD} routes from DB...`);
-  const rows = db.prepare('SELECT from_id, to_id, duration FROM routes WHERE status = "OK" AND time_period = ?').all(PERIOD);
+  const rows = db
+    .prepare('SELECT from_id, to_id, duration FROM routes WHERE status = "OK" AND time_period = ?')
+    .all(PERIOD);
 
   // Structure: { "00100": { "00120": 120, "00130": 400 }, ... }
   const exportData: Record<string, Record<string, number>> = {};

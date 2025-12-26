@@ -3,12 +3,12 @@ import initSqlJs, { type Database } from 'sql.js'
 export interface Place {
   id: string
   name: string
-  lat: number              // Geometric centroid (for visualization)
-  lon: number              // Geometric centroid (for visualization)
+  lat: number // Geometric centroid (for visualization)
+  lon: number // Geometric centroid (for visualization)
   svgPath: string
-  routingLat?: number      // Address-based routing point (if geocoded)
-  routingLon?: number      // Address-based routing point (if geocoded)
-  routingSource?: string   // Source of routing point (e.g., "geocoded:postal code")
+  routingLat?: number // Address-based routing point (if geocoded)
+  routingLon?: number // Address-based routing point (if geocoded)
+  routingSource?: string // Source of routing point (e.g., "geocoded:postal code")
 }
 
 export interface Decile {
@@ -18,6 +18,26 @@ export interface Decile {
   max_duration: number
   color_hex: string
   label: string
+}
+
+export interface RouteDetails {
+  from_id: string
+  to_id: string
+  time_period: string
+  duration: number
+  numberOfTransfers: number
+  walkDistance: number
+  legs: string
+  status: string
+}
+
+export interface Leg {
+  mode: string
+  duration: number
+  distance?: number
+  routeName?: string
+  from?: { name: string }
+  to?: { name: string }
 }
 
 class DatabaseService {
@@ -99,6 +119,46 @@ class DatabaseService {
     }
     stmt.free()
     return costs
+  }
+
+  getRouteDetails(fromId: string, toId: string, period: string): RouteDetails | null {
+    if (!this.db) throw new Error('Database not initialized')
+
+    const stmt = this.db.prepare(`
+      SELECT from_id, to_id, time_period, duration, numberOfTransfers, walkDistance, legs, status
+      FROM routes 
+      WHERE from_id = $fromId AND to_id = $toId AND time_period = $period
+    `)
+    stmt.bind({ $fromId: fromId, $toId: toId, $period: period })
+
+    let result: RouteDetails | null = null
+
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      result = {
+        from_id: row.from_id as string,
+        to_id: row.to_id as string,
+        time_period: row.time_period as string,
+        duration: row.duration as number,
+        numberOfTransfers: row.numberOfTransfers as number,
+        walkDistance: row.walkDistance as number,
+        legs: row.legs as string,
+        status: row.status as string,
+      }
+    }
+
+    stmt.free()
+    return result
+  }
+
+  parseLegs(legsJson: string): Leg[] {
+    try {
+      const parsed = JSON.parse(legsJson)
+      return parsed.legs || []
+    } catch (e) {
+      console.error('Failed to parse legs JSON:', e)
+      return []
+    }
   }
 
   getDeciles(): Decile[] {

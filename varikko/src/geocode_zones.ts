@@ -1,8 +1,11 @@
 import axios from 'axios';
 import Database from 'better-sqlite3';
 import path from 'path';
-import 'dotenv/config';
+import { config } from 'dotenv';
 import cliProgress from 'cli-progress';
+
+// Load .env from project root (two levels up from __dirname)
+config({ path: path.resolve(__dirname, '../../.env') });
 
 interface GeocodingFeature {
   geometry: {
@@ -62,8 +65,8 @@ db.pragma('journal_mode = WAL');
 function updateSchema() {
   console.log('\nUpdating database schema...');
 
-  const columns = db.prepare("PRAGMA table_info(places)").all() as Array<{name: string}>;
-  const columnNames = columns.map(c => c.name);
+  const columns = db.prepare('PRAGMA table_info(places)').all() as Array<{ name: string }>;
+  const columnNames = columns.map((c) => c.name);
 
   if (!columnNames.includes('routing_lat')) {
     db.prepare('ALTER TABLE places ADD COLUMN routing_lat REAL').run();
@@ -161,7 +164,6 @@ async function geocodeZone(zone: Place): Promise<{
       success: false,
       error: 'No geocoding results found',
     };
-
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
@@ -179,7 +181,7 @@ async function geocodeZone(zone: Place): Promise<{
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
@@ -215,7 +217,7 @@ async function main() {
   const results = {
     success: 0,
     failed: 0,
-    errors: [] as Array<{id: string, name: string, error: string}>,
+    errors: [] as Array<{ id: string; name: string; error: string }>,
   };
 
   for (let i = 0; i < zones.length; i++) {
@@ -257,7 +259,7 @@ async function main() {
     console.log('\n' + '-'.repeat(60));
     console.log('FAILED ZONES (using geometric centroid as fallback):');
     console.log('-'.repeat(60));
-    results.errors.forEach(err => {
+    results.errors.forEach((err) => {
       console.log(`${err.id} - ${err.name}`);
       console.log(`  Error: ${err.error}`);
     });

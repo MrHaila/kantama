@@ -14,6 +14,7 @@ Zones in this system are based on Finnish postal code polygons. Previously, we c
 - Other non-routeable locations
 
 This can lead to:
+
 - Inaccurate routing results
 - Failed route calculations
 - Routes that don't represent realistic travel times
@@ -77,12 +78,14 @@ pnpm --filter varikko geocode:test
 ```
 
 This will:
+
 - Process only **5 zones**
 - Show detailed output for each zone
 - Help verify API key is working
 - Check rate limiting is working
 
 Expected output:
+
 ```
 ============================================================
 Zone Geocoding - Address-based Routing Point Resolution
@@ -119,6 +122,7 @@ pnpm --filter varikko geocode:zones
 ```
 
 This will:
+
 - Process **all zones** (~279 zones)
 - Take approximately **30-40 seconds** (100ms delay between requests)
 - Update the database with routing points
@@ -133,6 +137,7 @@ pnpm --filter varikko build:routes
 ```
 
 The routing script will automatically:
+
 - Use `routing_lat/routing_lon` if available (geocoded points)
 - Fall back to `lat/lon` if not geocoded yet
 - Display statistics showing how many zones use each type
@@ -141,12 +146,12 @@ The routing script will automatically:
 
 The geocoding script adds these columns to the `places` table:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `routing_lat` | REAL | Latitude of address-based routing point |
-| `routing_lon` | REAL | Longitude of address-based routing point |
-| `routing_source` | TEXT | Source of routing point (see below) |
-| `geocoding_error` | TEXT | Error message if geocoding failed |
+| Column            | Type | Description                              |
+| ----------------- | ---- | ---------------------------------------- |
+| `routing_lat`     | REAL | Latitude of address-based routing point  |
+| `routing_lon`     | REAL | Longitude of address-based routing point |
+| `routing_source`  | TEXT | Source of routing point (see below)      |
+| `geocoding_error` | TEXT | Error message if geocoding failed        |
 
 ### Routing Source Values
 
@@ -180,6 +185,7 @@ For ~279 zones: `279 × 100ms = 27.9 seconds` (plus API response time)
 **Problem:** All geocoding requests fail with 404 status
 
 **Solution:**
+
 1. Verify API key is set correctly in `.env`
 2. Check API key header name (script uses `digitransit-subscription-key`)
 3. Try testing directly with curl:
@@ -201,11 +207,13 @@ For ~279 zones: `279 × 100ms = 27.9 seconds` (plus API response time)
 **Problem:** Many zones show "Failed (using fallback)"
 
 **Possible causes:**
+
 1. API authentication issues
 2. Zone names/postal codes not recognized by geocoding API
 3. Network connectivity issues
 
 **Solution:**
+
 1. Check `geocoding_error` column in database for specific error messages:
    ```bash
    pnpm exec tsx -e "
@@ -235,17 +243,17 @@ The Opas UI has been updated to support both coordinate types:
 Example code to display routing points:
 
 ```typescript
-import { dbService } from '@/services/DatabaseService'
+import { dbService } from '@/services/DatabaseService';
 
-const places = dbService.getPlaces()
+const places = dbService.getPlaces();
 
-places.forEach(place => {
+places.forEach((place) => {
   if (place.routingLat && place.routingLon) {
     // Show routing point marker
-    console.log(`${place.name}: routing point at ${place.routingLat}, ${place.routingLon}`)
-    console.log(`  Source: ${place.routingSource}`)
+    console.log(`${place.name}: routing point at ${place.routingLat}, ${place.routingLon}`);
+    console.log(`  Source: ${place.routingSource}`);
   }
-})
+});
 ```
 
 ## Data Pipeline
@@ -283,11 +291,13 @@ The complete workflow is:
 ### Digitransit Geocoding API
 
 **Endpoint:**
+
 ```
 https://api.digitransit.fi/geocoding/v1/search
 ```
 
 **Parameters:**
+
 - `text` - Search query (postal code, address, place name)
 - `size` - Number of results (default: 10)
 - `boundary.rect.min_lat` - Minimum latitude for bounding box
@@ -297,16 +307,18 @@ https://api.digitransit.fi/geocoding/v1/search
 - `layers` - Filter by place type (neighbourhood, locality, address, etc.)
 
 **Headers:**
+
 - `digitransit-subscription-key` - API key for authentication
 
 **Response:**
+
 ```json
 {
   "type": "FeatureCollection",
   "features": [
     {
       "geometry": {
-        "coordinates": [24.9384, 60.1699]  // [lon, lat]
+        "coordinates": [24.9384, 60.1699] // [lon, lat]
       },
       "properties": {
         "name": "Mannerheimintie 2",
