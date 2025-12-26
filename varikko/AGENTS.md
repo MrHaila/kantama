@@ -28,7 +28,8 @@ Everything is consolidated into a single SQLite database:
 - **`src/build_routes.ts`**: The core script for fetching detailed itineraries from OTP. It targets `PENDING` routes for a given `--period`.
 - **`src/clear_routes.ts`**: Resets `routes` table statuses and metrics to `PENDING`.
 - **`src/export_routes.ts`**: Exports the calculated durations into a JSON format for optimized use.
-- **`src/process_map.ts`**: Processes background map data from Maanmittauslaitos (Finnish Land Survey). Converts ETRS-TM35FIN shapefiles to WGS84 TopoJSON format for web visualization. Outputs `background_map.json` to Opas public directory with water and road layers.
+- **`src/process_map.ts`**: Processes background map data from Maanmittauslaitos (Finnish Land Survey). Converts ETRS-TM35FIN shapefiles to WGS84 TopoJSON format for web visualization. Outputs `background_map.json` to Opas public directory with water and road layers. Also triggers SVG generation.
+- **`src/generate_svg.ts`**: Generates a pre-rendered SVG from the TopoJSON data. Applies the same projection parameters used in Opas but moves the transformation to build-time. Outputs `background_map.svg` to Opas public directory with CSS classes for runtime styling.
 
 ## Commands
 
@@ -42,7 +43,8 @@ Run all commands via `pnpm`:
 - **`pnpm test:routes`**: Alias for `build:routes --test`.
 - **`pnpm clear:routes`**: Resets the route computational state.
 - **`pnpm export:routes`**: Generates a JSON export of durations.
-- **`pnpm process:map`**: Processes background map shapefiles into TopoJSON for Opas visualization.
+- **`pnpm process:map`**: Processes background map shapefiles into TopoJSON and generates SVG for Opas visualization.
+- **`pnpm generate:svg`**: Generates SVG from existing TopoJSON file (useful for re-styling without reprocessing shapefiles).
 - **`pnpm test`**: Runs unit tests via `vitest`.
 
 ## Workflow
@@ -51,8 +53,11 @@ Use `pnpm` instead of `npm`.
 
 1. **Initialize**: `pnpm fetch:zones` (creates schema and places).
 2. **Generate**: `pnpm build:routes --period=MORNING` (computes itineraries).
-3. **Monitor**: Check the `metadata` table or script logs for progress.
-4. **Export**: `pnpm export:routes` for usage.
+3. **Process Map**: `pnpm process:map` (generates both TopoJSON and SVG for Opas).
+4. **Monitor**: Check the `metadata` table or script logs for progress.
+5. **Export**: `pnpm export:routes` for usage.
+
+Note: The SVG generation moves all D3 projections from Opas runtime to Varikko build-time, improving performance while keeping styling flexible via CSS.
 
 ## Patterns
 

@@ -11,6 +11,7 @@
     "test:routes": "ts-node src/build_routes.ts --test",
     "export:routes": "ts-node src/export_routes.ts",
     "process:map": "ts-node src/process_map.ts",
+    "generate:svg": "ts-node src/generate_svg.ts",
     "test": "vitest run"
   },
   "dependencies": {
@@ -21,12 +22,14 @@
     "cli-progress": "^3.12.0",
     "d3-geo": "^3.1.1",
     "dotenv": "^17.2.3",
-    "p-limit": "^7.2.0"
+    "p-limit": "^7.2.0",
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/d3-geo": "^3.1.0",
     "@types/node": "^25.0.3",
+    "@types/topojson-client": "^3.1.5",
     "mapshaper": "^0.6.113",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"

@@ -1,8 +1,9 @@
 
-// @ts-ignore
+/// <reference types="mapshaper" />
 import mapshaper from 'mapshaper';
 import path from 'path';
 import fs from 'fs';
+import { generateSVG } from './generate_svg';
 
 const DATA_DIR = path.join(__dirname, '../data/maastokartta_esri');
 const OUTPUT_DIR = path.join(__dirname, '../../opas/public');
@@ -96,6 +97,10 @@ async function run() {
         // Check size
         const stats = fs.statSync(OUTPUT_FILE);
         console.log(`Output size: ${(stats.size / 1024 / 1024).toFixed(2)} MB`);
+
+        // Generate SVG from the TopoJSON
+        console.log('\nGenerating SVG from TopoJSON...');
+        generateSVG();
 
     } catch (e) {
         console.error('Error running mapshaper:', e);

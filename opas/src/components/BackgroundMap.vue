@@ -1,81 +1,37 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import * as d3 from 'd3'
-import * as topojson from 'topojson-client'
-import type { Topology } from 'topojson-specification'
-import { defaultConfig, type BackgroundMapConfig } from '../config/backgroundMap'
+import '../styles/background-map.css'
 
-// Use default configuration
-const config = ref<BackgroundMapConfig>(defaultConfig)
+// Props for configuration
+interface Props {
+  theme?: 'vintage' | 'modern' | 'dark' | 'contrast'
+}
+
+const { theme = 'vintage' } = defineProps<Props>()
 
 const containerRef = ref<HTMLElement | null>(null)
 
-// Dimensions - should match InteractiveMap
-const width = 800
-const height = 800
-
+// Load pre-generated SVG
 async function loadBackgroundMap() {
   if (!containerRef.value) return
 
   try {
-    // Load the TopoJSON file
-    const response = await fetch('/background_map.json')
-    const topology: Topology = await response.json()
+    // Load the SVG file
+    const response = await fetch('/background_map.svg')
+    const svgContent = await response.text()
 
     // Clear previous content
-    d3.select(containerRef.value).selectAll('*').remove()
+    containerRef.value.innerHTML = ''
 
-    // Create SVG
-    const svg = d3
-      .select(containerRef.value)
-      .append('svg')
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .attr('class', 'w-full h-auto')
-
-    // Set background color
-    svg.append('rect').attr('width', width).attr('height', height).attr('fill', config.value.backgroundColor)
-
-    const g = svg.append('g')
-
-    // Create projection - centered on Helsinki
-    const projection = d3
-      .geoMercator()
-      .center([24.93, 60.17])
-      .scale(120000)
-      .translate([width / 2, height / 2])
-
-    const pathGenerator = d3.geoPath().projection(projection)
-
-    // Extract and render water layer
-    if (topology.objects.water) {
-      const waterGeoJson = topojson.feature(topology, topology.objects.water) as { features: unknown[] }
-
-      g.append('g')
-        .attr('class', 'water-layer')
-        .selectAll('path')
-        .data(waterGeoJson.features)
-        .join('path')
-        .attr('d', pathGenerator as (d: unknown) => string | null)
-        .attr('fill', config.value.waterColor)
-        .attr('stroke', 'none')
-    }
-
-    // Extract and render road layer
-    if (topology.objects.roads) {
-      const roadGeoJson = topojson.feature(topology, topology.objects.roads) as { features: unknown[] }
-
-      g.append('g')
-        .attr('class', 'road-layer')
-        .selectAll('path')
-        .data(roadGeoJson.features)
-        .join('path')
-        .attr('d', pathGenerator as (d: unknown) => string | null)
-        .attr('fill', 'none')
-        .attr('stroke', config.value.roadColor)
-        .attr('stroke-width', config.value.roadWidth)
-        .attr('stroke-linecap', 'round')
-        .attr('stroke-linejoin', 'round')
-    }
+    // Parse and inject SVG
+    const parser = new DOMParser()
+    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
+    const svgElement = svgDoc.documentElement
+    
+    // Add class for styling
+    svgElement.setAttribute('class', 'w-full h-auto')
+    
+    containerRef.value.appendChild(svgElement)
 
     console.log('Background map loaded successfully')
   } catch (error) {
@@ -89,7 +45,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative w-full aspect-square overflow-hidden">
-    <!-- SVG rendered here -->
+  <div 
+    ref="containerRef" 
+    :class="[
+      'relative w-full aspect-square overflow-hidden',
+      'background-map-container',
+      `theme-${theme}`
+    ]"
+  >
+    <!-- SVG loaded here -->
   </div>
 </template>
