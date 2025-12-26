@@ -38,7 +38,7 @@ function deselectZone() {
 <template>
   <div
     v-if="activeZoneId"
-    class="fixed bottom-8 right-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans"
+    class="relative p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm"
   >
     <!-- Close button in top right corner -->
     <button
@@ -50,7 +50,7 @@ function deselectZone() {
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </button>
-    
+
     <div v-if="zoneDetails" class="pr-8">
       <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
       <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">POSTAL CODE {{ activeZoneId }}</p>
@@ -68,7 +68,7 @@ function deselectZone() {
 
   <div
     v-else
-    class="fixed bottom-8 right-8 p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] max-w-sm w-full z-20 font-sans opacity-80"
+    class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-80 opacity-80"
   >
     <h2 class="text-xl uppercase">Discover Helsinki</h2>
     <p class="text-sm mt-2">Select a zone on the map to visualize travel times.</p>

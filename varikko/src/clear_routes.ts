@@ -9,10 +9,12 @@ const ask = (query: string): Promise<string> => {
     input: process.stdin,
     output: process.stdout,
   });
-  return new Promise(resolve => rl.question(query, ans => {
-    rl.close();
-    resolve(ans);
-  }));
+  return new Promise((resolve) =>
+    rl.question(query, (ans) => {
+      rl.close();
+      resolve(ans);
+    })
+  );
 };
 
 async function main() {
@@ -20,7 +22,7 @@ async function main() {
   const clearRoutesOnly = process.argv.includes('--routes');
   const clearPlacesOnly = process.argv.includes('--places');
   const clearMetadataOnly = process.argv.includes('--metadata');
-  
+
   // Default to clearing everything if no specific flags
   const clearAll = !clearRoutesOnly && !clearPlacesOnly && !clearMetadataOnly;
 
@@ -53,14 +55,16 @@ async function main() {
     } else {
       if (clearRoutesOnly) {
         console.log('Resetting routes table status to PENDING...');
-        db.prepare(`
+        db.prepare(
+          `
           UPDATE routes 
           SET duration = NULL, 
               numberOfTransfers = NULL, 
               walkDistance = NULL, 
               legs = NULL, 
               status = 'PENDING'
-        `).run();
+        `
+        ).run();
       }
 
       if (clearPlacesOnly) {
@@ -79,11 +83,16 @@ async function main() {
     db.exec('VACUUM');
     console.log('Done.');
   } catch (error: unknown) {
-    if (error instanceof Error && 'code' in error && (error as { code?: string }).code === 'SQLITE_ERROR' && error.message.includes('no such table')) {
-        console.log("Database tables do not exist or are already empty.");
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      (error as { code?: string }).code === 'SQLITE_ERROR' &&
+      error.message.includes('no such table')
+    ) {
+      console.log('Database tables do not exist or are already empty.');
     } else {
-        console.error("Error clearing database:", error);
-        process.exit(1);
+      console.error('Error clearing database:', error);
+      process.exit(1);
     }
   }
 }

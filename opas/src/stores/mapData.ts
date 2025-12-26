@@ -11,7 +11,7 @@ function getDecileColor(duration: number, deciles: Decile[]): string {
       return decile.color_hex
     }
   }
-  
+
   // If no decile matches (shouldn't happen), return a default color
   return '#e0e0e0'
 }
@@ -19,20 +19,20 @@ function getDecileColor(duration: number, deciles: Decile[]): string {
 // Get themed decile colors
 function getThemedDeciles(deciles: Decile[]): Decile[] {
   const currentTheme = themes.vintage
-  
+
   // Ensure theme exists
   if (!currentTheme || !currentTheme.decileColors) {
     return deciles
   }
-  
+
   // Override colors with theme colors if we have the right number
   if (deciles.length === currentTheme.decileColors.length) {
     return deciles.map((decile, index) => ({
       ...decile,
-      color_hex: currentTheme.decileColors[index] || decile.color_hex
+      color_hex: currentTheme.decileColors[index] || decile.color_hex,
     }))
   }
-  
+
   return deciles
 }
 
@@ -40,6 +40,7 @@ export const useMapDataStore = defineStore('mapData', () => {
   const zones = ref<Place[]>([])
   const currentCosts = ref<Map<string, number>>(new Map())
   const activeZoneId = ref<string | null>(null)
+  const hoveredZoneId = ref<string | null>(null)
   const currentTimePeriod = ref<string>('MORNING')
   const deciles = ref<Decile[]>([])
 
@@ -83,6 +84,7 @@ export const useMapDataStore = defineStore('mapData', () => {
   return {
     zones,
     activeZoneId,
+    hoveredZoneId,
     currentTimePeriod,
     currentCosts,
     deciles,

@@ -12,11 +12,18 @@ interface FeatureProperties {
   nimi?: string;
 }
 
+/**
+ * Zone data structure
+ *
+ * lat/lon: Geometric centroid of the zone polygon, used for visualization.
+ *          For actual routing, use routing_lat/routing_lon which are set by
+ *          the geocoding script to ensure coordinates fall on valid addresses.
+ */
 interface ProcessedZone {
   id: string;
   name: string;
-  lat: number;
-  lon: number;
+  lat: number; // Geometric centroid latitude (for visualization)
+  lon: number; // Geometric centroid longitude (for visualization)
   geometry: string;
   svg_path: string;
 }
@@ -91,7 +98,7 @@ function getVisibleAreaBounds(projection: d3.GeoProjection): {
 
   // Inverse project to get lat/lon coordinates
   const corners = [topLeft, topRight, bottomLeft, bottomRight]
-    .map(coord => projection.invert!(coord as [number, number]))
+    .map((coord) => projection.invert!(coord as [number, number]))
     .filter((coord): coord is [number, number] => coord !== null);
 
   if (corners.length === 0) {
@@ -99,8 +106,8 @@ function getVisibleAreaBounds(projection: d3.GeoProjection): {
   }
 
   // Find the bounding box
-  const lons = corners.map(c => c[0]);
-  const lats = corners.map(c => c[1]);
+  const lons = corners.map((c) => c[0]);
+  const lats = corners.map((c) => c[1]);
 
   return {
     minLon: Math.min(...lons),
@@ -118,10 +125,7 @@ function isGeometryInVisibleArea(
   const isPointInBounds = (coord: Position): boolean => {
     const [lon, lat] = coord;
     return (
-      lon >= bounds.minLon &&
-      lon <= bounds.maxLon &&
-      lat >= bounds.minLat &&
-      lat <= bounds.maxLat
+      lon >= bounds.minLon && lon <= bounds.maxLon && lat >= bounds.minLat && lat <= bounds.maxLat
     );
   };
 
@@ -136,13 +140,14 @@ function isGeometryInVisibleArea(
 
   if (geometry.type === 'MultiPolygon') {
     const multi = geometry as MultiPolygon;
-    return multi.coordinates.some(polygon => polygon.some(checkRing));
+    return multi.coordinates.some((polygon) => polygon.some(checkRing));
   }
 
   return false;
 }
 
-const WFS_URL = 'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
+const WFS_URL =
+  'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
 const DATA_DIR = path.resolve(__dirname, '../../opas/public');
 const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
@@ -163,7 +168,9 @@ function isValidRing(ring: Position[]): boolean {
     const lon = coord[0];
     const lat = coord[1];
     if (lon === undefined || lat === undefined) return false;
-    return lon >= BOUNDS.minLon && lon <= BOUNDS.maxLon && lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat;
+    return (
+      lon >= BOUNDS.minLon && lon <= BOUNDS.maxLon && lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat
+    );
   });
 }
 
@@ -196,7 +203,7 @@ function initDb() {
   }
 
   const db = new Database(DB_PATH);
-  
+
   // Enable WAL mode for better performance
   db.pragma('journal_mode = WAL');
 
@@ -257,7 +264,7 @@ async function main() {
     const response = await axios.get(WFS_URL, {
       responseType: 'json',
       maxContentLength: Infinity,
-      maxBodyLength: Infinity
+      maxBodyLength: Infinity,
     });
 
     const geojson = response.data;
@@ -269,52 +276,57 @@ async function main() {
     console.log(`Visible area bounds:`, visibleBounds);
 
     let helsinkiZonesCount = 0;
-    let processedZones = geojson.features.map((feature: Feature<Geometry, FeatureProperties>) => {
-      const props = feature.properties;
-      const code = props.postinumeroalue || props.posti_alue;
-      const name = props.nimi;
+    let processedZones = geojson.features
+      .map((feature: Feature<Geometry, FeatureProperties>) => {
+        const props = feature.properties;
+        const code = props.postinumeroalue || props.posti_alue;
+        const name = props.nimi;
 
-      if (!code) return null;
-      if (!code.match(/^(00|01|02)/)) return null;
+        if (!code) return null;
+        if (!code.match(/^(00|01|02)/)) return null;
 
-      helsinkiZonesCount++;
+        helsinkiZonesCount++;
 
-      let centroid: [number, number] | null = null;
-      try {
-        const center = turf.centroid(feature);
-        centroid = center.geometry.coordinates as [number, number];
-      } catch {
-        return null;
-      }
+        // Calculate geometric centroid for visualization
+        // Note: This may fall in invalid locations (water, parks, etc.)
+        // Run geocode:zones script to set address-based routing points
+        let centroid: [number, number] | null = null;
+        try {
+          const center = turf.centroid(feature);
+          centroid = center.geometry.coordinates as [number, number];
+        } catch {
+          return null;
+        }
 
-      // Clean the geometry to remove corrupt polygon rings
-      const cleanedGeometry = cleanGeometry(feature.geometry);
-      if (!cleanedGeometry) {
-        console.warn(`Skipping zone ${code}: Invalid geometry after cleaning`);
-        return null;
-      }
+        // Clean the geometry to remove corrupt polygon rings
+        const cleanedGeometry = cleanGeometry(feature.geometry);
+        if (!cleanedGeometry) {
+          console.warn(`Skipping zone ${code}: Invalid geometry after cleaning`);
+          return null;
+        }
 
-      // Filter out zones not in visible area
-      if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
-        return null;
-      }
+        // Filter out zones not in visible area
+        if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
+          return null;
+        }
 
-      // Generate SVG path at fetch time
-      const svgPath = generateSvgPath(cleanedGeometry, projection);
-      if (!svgPath) {
-        console.warn(`Skipping zone ${code}: Could not generate SVG path`);
-        return null;
-      }
+        // Generate SVG path at fetch time
+        const svgPath = generateSvgPath(cleanedGeometry, projection);
+        if (!svgPath) {
+          console.warn(`Skipping zone ${code}: Could not generate SVG path`);
+          return null;
+        }
 
-      return {
-        id: code,
-        name: name || '',
-        lat: centroid[1],
-        lon: centroid[0],
-        geometry: JSON.stringify(cleanedGeometry),
-        svg_path: svgPath
-      };
-    }).filter((f: ProcessedZone | null): f is ProcessedZone => f !== null);
+        return {
+          id: code,
+          name: name || '',
+          lat: centroid[1],
+          lon: centroid[0],
+          geometry: JSON.stringify(cleanedGeometry),
+          svg_path: svgPath,
+        };
+      })
+      .filter((f: ProcessedZone | null): f is ProcessedZone => f !== null);
 
     console.log(`Helsinki area zones: ${helsinkiZonesCount}`);
     console.log(`Zones in visible area: ${processedZones.length}`);
@@ -355,15 +367,16 @@ async function main() {
 
     transaction(processedZones);
 
-    db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)')
-      .run('last_fetch', JSON.stringify({
+    db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
+      'last_fetch',
+      JSON.stringify({
         date: new Date().toISOString(),
         zoneCount: processedZones.length,
-        isTest: IS_TEST
-      }));
+        isTest: IS_TEST,
+      })
+    );
 
     console.log('Database updated successfully.');
-
   } catch (error) {
     console.error('Error fetching/processing zones:', error);
     process.exit(1);
