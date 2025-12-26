@@ -6,6 +6,8 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "fetch:zones": "tsx src/fetch_zones.ts",
+    "geocode:zones": "tsx src/geocode_zones.ts",
+    "geocode:test": "tsx src/geocode_zones.ts --test",
     "build:routes": "tsx src/build_routes.ts",
     "clear:routes": "tsx src/clear_routes.ts",
     "test:routes": "tsx src/build_routes.ts --test",
