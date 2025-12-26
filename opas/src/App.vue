@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import BackgroundMap from './components/BackgroundMap.vue'
 import InteractiveMap from './components/InteractiveMap.vue'
-import InfoPanel from './components/InfoPanel.vue'
+import InfoPanelContainer from './components/InfoPanelContainer.vue'
 import { useAppState } from './composables/useAppState'
 
 const { currentState, error, initialize } = useAppState()
@@ -87,8 +87,8 @@ onMounted(() => {
       <div class="pointer-events-none absolute inset-0 opacity-[0.15] bg-paper-texture mix-blend-multiply z-30"></div>
     </main>
 
-    <!-- InfoPanel only shows when ready -->
-    <InfoPanel v-if="currentState === 'ready'" />
+    <!-- InfoPanelContainer only shows when ready -->
+    <InfoPanelContainer v-if="currentState === 'ready'" />
   </div>
 </template>
 

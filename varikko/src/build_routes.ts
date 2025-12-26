@@ -31,7 +31,7 @@ interface RouteResult {
 const DB_PATH = path.resolve(__dirname, '../../opas/public/varikko.db');
 
 const IS_TEST = process.argv.includes('--test');
-const PERIOD_ARG = process.argv.find(a => a.startsWith('--period='));
+const PERIOD_ARG = process.argv.find((a) => a.startsWith('--period='));
 const REQUESTED_PERIOD = PERIOD_ARG ? PERIOD_ARG.split('=')[1] : null;
 
 const ALL_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
@@ -39,20 +39,20 @@ const PERIODS_TO_RUN = REQUESTED_PERIOD ? [REQUESTED_PERIOD] : ALL_PERIODS;
 
 // Mapping periods to specific target times
 const TIME_MAPPING: Record<string, string> = {
-  'MORNING': '08:30:00',
-  'EVENING': '17:30:00',
-  'MIDNIGHT': '23:30:00'
+  MORNING: '08:30:00',
+  EVENING: '17:30:00',
+  MIDNIGHT: '23:30:00',
 };
 
-const IS_LOCAL = process.env.USE_LOCAL_OTP !== 'false'; 
-const HSL_API_URL = IS_LOCAL 
-  ? 'http://localhost:9080/otp/gtfs/v1' 
+const IS_LOCAL = process.env.USE_LOCAL_OTP !== 'false';
+const HSL_API_URL = IS_LOCAL
+  ? 'http://localhost:9080/otp/gtfs/v1'
   : 'https://api.digitransit.fi/routing/v2/hsl/gtfs/v1';
 
 const API_KEY = process.env.HSL_API_KEY;
 
 if (!IS_LOCAL && !API_KEY) {
-  console.error("Missing HSL_API_KEY environment variable (required for remote API).");
+  console.error('Missing HSL_API_KEY environment variable (required for remote API).');
   process.exit(1);
 }
 
@@ -68,13 +68,19 @@ db.pragma('journal_mode = WAL');
 
 function getNextTuesday() {
   const d = new Date();
-  d.setDate(d.getDate() + (2 + 7 - d.getDay()) % 7);
+  d.setDate(d.getDate() + ((2 + 7 - d.getDay()) % 7));
   return d.toISOString().split('T')[0];
 }
 
 const TARGET_DATE = getNextTuesday();
 
-async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon: number, targetTime: string): Promise<RouteResult> {
+async function fetchRoute(
+  fromLat: number,
+  fromLon: number,
+  toLat: number,
+  toLon: number,
+  targetTime: string
+): Promise<RouteResult> {
   const query = `
     {
       plan(
@@ -107,8 +113,8 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+          Accept: 'application/json',
+        },
       }
     );
 
@@ -138,32 +144,35 @@ async function fetchRoute(fromLat: number, fromLon: number, toLat: number, toLon
       duration: best.duration,
       numberOfTransfers: best.numberOfTransfers,
       walkDistance: best.walkDistance,
-      legs: best.legs
+      legs: best.legs,
     };
-
   } catch (error: unknown) {
-    if (error instanceof Error && 'response' in error && (error as AxiosError).response?.status === 429) {
+    if (
+      error instanceof Error &&
+      'response' in error &&
+      (error as AxiosError).response?.status === 429
+    ) {
       console.warn('Rate limited, waiting 5 seconds...');
-      await new Promise(r => setTimeout(r, 5000));
+      await new Promise((r) => setTimeout(r, 5000));
       return fetchRoute(fromLat, fromLon, toLat, toLon, targetTime);
     }
-    
+
     // More detailed error logging
     if (error instanceof Error && 'response' in error) {
       const axiosError = error as AxiosError;
       if (axiosError.response) {
-        return { 
-          status: 'ERROR', 
-          data: `HTTP ${axiosError.response.status}` 
+        return {
+          status: 'ERROR',
+          data: `HTTP ${axiosError.response.status}`,
         };
       } else {
-        return { 
-          status: 'ERROR', 
-          data: `Network error: ${axiosError.message || 'Failed to connect to OTP server'}` 
+        return {
+          status: 'ERROR',
+          data: `Network error: ${axiosError.message || 'Failed to connect to OTP server'}`,
         };
       }
     }
-    
+
     return { status: 'ERROR', data: error instanceof Error ? error.message : String(error) };
   }
 }
@@ -172,11 +181,15 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
   const targetTime = TIME_MAPPING[period] || '08:30:00';
   console.log(`\n--- Processing Period: ${period} (${targetTime}) ---`);
 
-  const pendingRoutes = db.prepare(`
+  const pendingRoutes = db
+    .prepare(
+      `
     SELECT from_id, to_id 
     FROM routes 
     WHERE status = 'PENDING' AND time_period = ?
-  `).all(period) as { from_id: string; to_id: string }[];
+  `
+    )
+    .all(period) as { from_id: string; to_id: string }[];
 
   console.log(`Pending routes for ${period}: ${pendingRoutes.length}`);
 
@@ -215,7 +228,7 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
     }
 
     if (!IS_LOCAL && RATE_LIMIT_DELAY > 0) {
-      await new Promise(r => setTimeout(r, Math.random() * RATE_LIMIT_DELAY));
+      await new Promise((r) => setTimeout(r, Math.random() * RATE_LIMIT_DELAY));
     }
 
     const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime);
@@ -238,8 +251,17 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
       } else if (result.status === 'NO_ROUTE') {
         console.warn(`No route found [${task.from_id} -> ${task.to_id} (${period})]`);
       }
-      
-      updateStmt.run(null, null, null, result.data || null, result.status, task.from_id, task.to_id, period);
+
+      updateStmt.run(
+        null,
+        null,
+        null,
+        result.data || null,
+        result.status,
+        task.from_id,
+        task.to_id,
+        period
+      );
     }
 
     completed++;
@@ -247,67 +269,108 @@ async function runPeriod(period: string, placeMap: Map<string, { lat: number; lo
 
     // Occasional metadata update
     if (completed % 10 === 0 || completed === tasks.length) {
-      db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)')
-        .run(`progress_${period}`, JSON.stringify({
+      db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
+        `progress_${period}`,
+        JSON.stringify({
           completed,
           total: tasks.length,
-          lastUpdate: new Date().toISOString()
-        }));
+          lastUpdate: new Date().toISOString(),
+        })
+      );
     }
   };
 
-  await Promise.all(tasks.map(t => limit(() => runTask(t))));
-  
+  await Promise.all(tasks.map((t) => limit(() => runTask(t))));
+
   progressBar.stop();
-  
+
   // Print summary statistics
-  const summary = db.prepare(`
+  const summary = db
+    .prepare(
+      `
     SELECT status, COUNT(*) as count 
     FROM routes 
     WHERE time_period = ?
     GROUP BY status
-  `).all(period) as { status: string; count: number }[];
-  
+  `
+    )
+    .all(period) as { status: string; count: number }[];
+
   console.log(`\nSummary for ${period}:`);
-  summary.forEach(s => {
+  summary.forEach((s) => {
     console.log(`  ${s.status}: ${s.count} routes`);
   });
-  
+
   console.log(`Batch for ${period} complete!`);
 }
 
 async function main() {
-  const places = db.prepare('SELECT id, lat, lon FROM places').all() as { id: string; lat: number; lon: number }[];
+  // Use routing_lat/routing_lon if available (address-based), otherwise fall back to lat/lon (geometric centroid)
+  const places = db
+    .prepare(
+      `
+    SELECT
+      id,
+      COALESCE(routing_lat, lat) as lat,
+      COALESCE(routing_lon, lon) as lon,
+      routing_source
+    FROM places
+  `
+    )
+    .all() as { id: string; lat: number; lon: number; routing_source?: string }[];
+
   console.log(`Loaded ${places.length} places.`);
-  const placeMap = new Map(places.map(p => [p.id, p]));
+
+  const geocoded = places.filter(
+    (p) => p.routing_source && p.routing_source.startsWith('geocoded:')
+  ).length;
+  const fallback = places.filter((p) => p.routing_source === 'fallback:geometric').length;
+  const notGeocoded = places.filter((p) => !p.routing_source).length;
+
+  if (geocoded > 0 || fallback > 0 || notGeocoded > 0) {
+    console.log('Routing point sources:');
+    if (geocoded > 0) console.log(`  - Geocoded (address-based): ${geocoded}`);
+    if (fallback > 0) console.log(`  - Fallback (geometric centroid): ${fallback}`);
+    if (notGeocoded > 0)
+      console.log(`  - Not geocoded yet (using geometric centroid): ${notGeocoded}`);
+    console.log('');
+  }
+
+  const placeMap = new Map(places.map((p) => [p.id, p]));
 
   for (const period of PERIODS_TO_RUN) {
     await runPeriod(period, placeMap);
   }
 
-  console.log("\nAll requested periods complete!");
-  
+  console.log('\nAll requested periods complete!');
+
   // Print overall statistics
-  const overallSummary = db.prepare(`
+  const overallSummary = db
+    .prepare(
+      `
     SELECT status, COUNT(*) as count 
     FROM routes 
     GROUP BY status
-  `).all() as { status: string; count: number }[];
-  
-  console.log("\nOverall Summary:");
-  overallSummary.forEach(s => {
+  `
+    )
+    .all() as { status: string; count: number }[];
+
+  console.log('\nOverall Summary:');
+  overallSummary.forEach((s) => {
     console.log(`  ${s.status}: ${s.count} routes`);
   });
-  
+
   // Check if we have any successful routes before calculating deciles
-  const successfulRoutes = db.prepare('SELECT COUNT(*) as count FROM routes WHERE status = \'OK\'').get() as { count: number };
-  
+  const successfulRoutes = db
+    .prepare("SELECT COUNT(*) as count FROM routes WHERE status = 'OK'")
+    .get() as { count: number };
+
   if (successfulRoutes.count === 0) {
-    console.log("\n⚠️  Warning: No successful routes found. Deciles cannot be calculated.");
-    console.log("   Check the OTP server connection and try again.");
+    console.log('\n⚠️  Warning: No successful routes found. Deciles cannot be calculated.');
+    console.log('   Check the OTP server connection and try again.');
   } else {
     // Automatically calculate deciles after route calculation
-    console.log("\nCalculating deciles for heatmap...");
+    console.log('\nCalculating deciles for heatmap...');
     calculateDeciles(db, true); // Force recalculation to ensure fresh data
   }
 }

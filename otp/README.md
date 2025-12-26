@@ -11,6 +11,7 @@ This sub-project handles fetching HSL routing data and running a local instance 
 ## Setup
 
 1.  Ensure you have a `.env` file in the monorepo root (or `varikko/` or `data/otp/`) with your Digitransit subscription key:
+
     ```env
     DIGITRANSIT_SUBSCRIPTION_KEY=your_key_here
     ```
@@ -23,19 +24,25 @@ This sub-project handles fetching HSL routing data and running a local instance 
 ## Commands
 
 ### Fetch latest data
+
 Downloads the latest HSL graph data and extracts it to the `hsl/` directory.
+
 ```bash
 pnpm run fetch
 ```
 
 ### Validate data
+
 Checks if the `hsl/` directory exists.
+
 ```bash
 pnpm run validate
 ```
 
 ### Clean data
+
 Deletes the `hsl/` directory.
+
 ```bash
 pnpm run clean
 ```

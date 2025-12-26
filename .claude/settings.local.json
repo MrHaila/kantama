@@ -6,7 +6,8 @@
       "Bash(git commit:*)",
       "Bash(find:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(pnpm --filter varikko exec tsx:*)"
     ],
     "deny": [],
     "ask": []
