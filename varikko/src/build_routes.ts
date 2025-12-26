@@ -55,7 +55,7 @@ if (!IS_LOCAL && !API_KEY) {
   process.exit(1);
 }
 
-const CONCURRENCY = IS_LOCAL ? 4 : 1;
+const CONCURRENCY = IS_LOCAL ? 10 : 1;
 const RATE_LIMIT_DELAY = IS_LOCAL ? 0 : 200;
 
 console.log(`Using API: ${HSL_API_URL} (Local: ${IS_LOCAL})`);
