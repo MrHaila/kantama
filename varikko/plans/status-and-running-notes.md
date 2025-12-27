@@ -396,5 +396,44 @@ chalk, eventemitter3 (utilities)
 
 ---
 
+## Post-Phase 03 Refactor: Schema Initialization Separation
+
+**Date:** 2025-12-27
+
+### Motivation
+
+After completing Phase 03, refactored to improve separation of concerns and safety:
+
+- Schema initialization was being called automatically in `fetchZones()`
+- This meant every fetch would destructively drop and recreate tables
+- Made it unsafe to re-run fetch without losing data
+- Made implementing clear/reset workflows harder
+
+### Changes Made
+
+**New Functions:**
+- `validateSchema(db)`: Returns true if all 4 required tables exist
+- `varikko init` CLI command: Explicit schema setup with --force flag
+
+**Modified Behavior:**
+- `fetchZones()` now validates schema first
+- Throws helpful error if schema not initialized
+- Users must run `varikko init --force` before first fetch
+
+**Test Updates:**
+- Added 3 tests for `validateSchema()`
+- Updated integration tests to call `initializeSchema()` explicitly
+- Added test for fetchZones failure when schema missing
+- All 25 tests passing (20 zones + 5 existing)
+
+### Benefits
+
+✅ **Safety:** No accidental data wipes
+✅ **Clarity:** Explicit intent with init command
+✅ **Better UX:** Clear error messages guide users
+✅ **Easier future work:** Clear/reset workflows will be simpler to implement
+
+---
+
 **Last Updated:** 2025-12-27
 **Phase 03 Complete** ✅
