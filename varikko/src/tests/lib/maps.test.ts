@@ -28,11 +28,8 @@ vi.mock('mapshaper', () => ({
 }));
 
 // Import after mocks are set up
-// eslint-disable-next-line import/order
 import { processMap, generateSVG, processMaps } from '../../lib/maps';
-// eslint-disable-next-line import/order
 import fs from 'fs';
-// eslint-disable-next-line import/order
 import mapshaper from 'mapshaper';
 
 const mockFs = vi.mocked(fs);

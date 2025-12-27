@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDB } from '../helpers/db.js';
 import { clearData, getCounts } from '../../lib/clearing.js';
 import { initializeSchema } from '../../lib/zones.js';
