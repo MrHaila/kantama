@@ -1,4 +1,7 @@
 import { Command } from 'commander';
+import { openDB } from './lib/db';
+import { fetchZones, initializeSchema } from './lib/zones';
+import { createProgressEmitter } from './lib/events';
 
 export interface CLIOptions {
   interactive: boolean;
@@ -26,13 +29,69 @@ export function parseCLI(): CLICommand | null {
   });
 
   // Subcommands (non-interactive mode)
-  // Note: Actual implementations will be added in later phases
+
+  // Schema initialization command
+  program
+    .command('init')
+    .description('Initialize database schema (DESTRUCTIVE - drops existing data)')
+    .option('-f, --force', 'Skip confirmation prompt')
+    .action((options) => {
+      const db = openDB();
+
+      try {
+        if (!options.force) {
+          console.log('⚠️  WARNING: This will DROP all existing data in the database!');
+          console.log('Run with --force flag to confirm: varikko init --force');
+          process.exit(0);
+        }
+
+        console.log('Initializing database schema...');
+        initializeSchema(db);
+        console.log('✓ Database schema initialized successfully');
+        console.log('\nYou can now run workflows like:');
+        console.log('  varikko fetch --test');
+        console.log('  varikko geocode');
+      } catch (error) {
+        console.error('Error initializing schema:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
+    });
+
   program
     .command('fetch')
     .description('Fetch postal code zones from WFS')
     .option('-t, --test', 'Test mode (5 zones only)')
-    .action((_options) => {
-      // Will be implemented in Phase 03
+    .action(async (options) => {
+      const db = openDB();
+      const emitter = createProgressEmitter();
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start' || event.type === 'progress') {
+          console.log(event.message || '');
+        } else if (event.type === 'complete') {
+          console.log('✓', event.message || 'Complete');
+        } else if (event.type === 'error') {
+          console.error('✗', event.message || 'Error', event.error);
+        }
+      });
+
+      try {
+        const result = await fetchZones(db, {
+          testMode: options.test,
+          testLimit: 5,
+          emitter,
+        });
+
+        console.log(`\nZones: ${result.zoneCount}`);
+        console.log(`Routes: ${result.routeCount}`);
+      } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
     });
 
   program
