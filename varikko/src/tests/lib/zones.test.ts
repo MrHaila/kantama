@@ -6,6 +6,7 @@ import {
   downloadZonesFromWFS,
   processZones,
   initializeSchema,
+  validateSchema,
   insertZones,
   type ZoneData,
 } from '../../lib/zones';
@@ -206,6 +207,52 @@ describe('zones - processZones', () => {
   });
 });
 
+describe('zones - validateSchema', () => {
+  let testDB: ReturnType<typeof createTestDB>;
+
+  beforeEach(() => {
+    testDB = createTestDB();
+  });
+
+  afterEach(() => {
+    testDB.cleanup();
+  });
+
+  it('should return true when schema is initialized', () => {
+    initializeSchema(testDB.db);
+    expect(validateSchema(testDB.db)).toBe(true);
+  });
+
+  it('should return false when schema is not initialized', () => {
+    // Create empty database
+    const emptyDB = createTestDB(':memory:');
+    // Drop all tables created by createTestDB
+    emptyDB.db.exec('DROP TABLE IF EXISTS places');
+    emptyDB.db.exec('DROP TABLE IF EXISTS routes');
+    emptyDB.db.exec('DROP TABLE IF EXISTS metadata');
+    emptyDB.db.exec('DROP TABLE IF EXISTS deciles');
+
+    expect(validateSchema(emptyDB.db)).toBe(false);
+    emptyDB.cleanup();
+  });
+
+  it('should return false when only some tables exist', () => {
+    const partialDB = createTestDB(':memory:');
+    // Drop all tables created by createTestDB
+    partialDB.db.exec('DROP TABLE IF EXISTS places');
+    partialDB.db.exec('DROP TABLE IF EXISTS routes');
+    partialDB.db.exec('DROP TABLE IF EXISTS metadata');
+    partialDB.db.exec('DROP TABLE IF EXISTS deciles');
+
+    // Create only some tables
+    partialDB.db.exec('CREATE TABLE places (id TEXT)');
+    partialDB.db.exec('CREATE TABLE routes (id TEXT)');
+
+    expect(validateSchema(partialDB.db)).toBe(false);
+    partialDB.cleanup();
+  });
+});
+
 describe('zones - initializeSchema', () => {
   let testDB: ReturnType<typeof createTestDB>;
 
@@ -403,6 +450,9 @@ describe('zones - fetchZones (integration)', () => {
 
   beforeEach(() => {
     testDB = createTestDB();
+    // Initialize schema before fetching
+    initializeSchema(testDB.db);
+
     vi.mocked(axios.get).mockResolvedValue({
       data: {
         type: 'FeatureCollection',
@@ -454,5 +504,21 @@ describe('zones - fetchZones (integration)', () => {
     expect(parsed.date).toBeTruthy();
     expect(parsed.zoneCount).toBeGreaterThan(0);
     expect(parsed.isTest).toBe(true);
+  });
+
+  it('should fail if schema not initialized', async () => {
+    // Create a new DB without schema
+    const uninitializedDB = createTestDB(':memory:');
+    // Drop all tables to simulate uninitialized state
+    uninitializedDB.db.exec('DROP TABLE IF EXISTS places');
+    uninitializedDB.db.exec('DROP TABLE IF EXISTS routes');
+    uninitializedDB.db.exec('DROP TABLE IF EXISTS metadata');
+    uninitializedDB.db.exec('DROP TABLE IF EXISTS deciles');
+
+    await expect(fetchZones(uninitializedDB.db, { testMode: true })).rejects.toThrow(
+      'Database schema not initialized'
+    );
+
+    uninitializedDB.cleanup();
   });
 });
