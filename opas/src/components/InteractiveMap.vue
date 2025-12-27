@@ -7,25 +7,28 @@ import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
 import { decodePolyline } from '../utils/polyline'
 import { modeColors } from '../utils/transportColors'
+import { layerService } from '../services/LayerService'
+
+interface Props {
+  showRoads?: boolean
+  roadColor?: string
+  roadWidth?: number
+}
+
+const { showRoads = true, roadColor, roadWidth } = defineProps<Props>()
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
 
-// Road paths loaded from background SVG
+// Road paths loaded from layer service
 const roadPaths = ref<string[]>([])
 
-// Load road paths from background_map.svg
+// Load road paths from layer service
 async function loadRoadPaths() {
+  if (!showRoads) return
+
   try {
-    const response = await fetch('/background_map.svg')
-    const svgContent = await response.text()
-    const parser = new DOMParser()
-    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
-    const roadLayer = svgDoc.querySelector('.road-layer')
-    if (roadLayer) {
-      const paths = roadLayer.querySelectorAll('path')
-      roadPaths.value = Array.from(paths).map((p) => p.getAttribute('d') || '')
-    }
+    roadPaths.value = await layerService.getRoadPaths()
   } catch (error) {
     console.error('Failed to load road paths:', error)
   }
@@ -170,14 +173,15 @@ onUnmounted(() => {
           />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
-        <g class="road-layer pointer-events-none">
+        <g v-if="showRoads" class="road-layer pointer-events-none">
           <path
             v-for="(d, index) in roadPaths"
             :key="`road-${index}`"
             :d="d"
             fill="none"
-            class="stroke-current text-vintage-dark/50"
-            stroke-width="0.5"
+            :class="roadColor ? '' : 'stroke-current text-vintage-dark/50'"
+            :stroke="roadColor"
+            :stroke-width="roadWidth || 0.5"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
