@@ -4,7 +4,7 @@ import '../styles/background-map.css'
 
 // Props for configuration
 interface Props {
-  theme?: 'vintage' | 'modern' | 'dark' | 'contrast'
+  theme?: 'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'
 }
 
 const { theme = 'vintage' } = defineProps<Props>()

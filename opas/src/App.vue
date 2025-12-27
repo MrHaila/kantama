@@ -8,9 +8,9 @@ import { useAppState } from './composables/useAppState'
 const { currentState, error, initialize } = useAppState()
 
 // Theme management
-const currentTheme = ref<'vintage' | 'modern' | 'dark' | 'contrast'>('vintage')
+const currentTheme = ref<'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'>('vintage')
 
-const themes: Array<'vintage' | 'modern' | 'dark' | 'contrast'> = ['vintage', 'modern', 'dark', 'contrast']
+const themes: Array<'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'> = ['vintage', 'modern', 'dark', 'contrast', 'yle']
 
 function cycleTheme(): void {
   const currentIndex = themes.indexOf(currentTheme.value!)

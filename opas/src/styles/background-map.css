@@ -31,6 +31,14 @@
   --road-width: 1;
 }
 
+/* YLE weather map theme (Finnish broadcasting) */
+.background-map-container.theme-yle {
+  --water-color: #6b9bc3;
+  --road-color: #3d5a50;
+  --bg-color: #6b9b8a;
+  --road-width: 0.6;
+}
+
 /* Ensure the SVG fills the container properly */
 .background-map-container svg {
   width: 100%;
