@@ -267,6 +267,21 @@ export function processZones(
 }
 
 /**
+ * Check if database schema is initialized
+ */
+export function validateSchema(db: Database.Database): boolean {
+  try {
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'deciles')")
+      .all() as Array<{ name: string }>;
+
+    return tables.length === 4;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Initialize database schema (DESTRUCTIVE - drops existing tables)
  */
 export function initializeSchema(db: Database.Database): void {
@@ -384,6 +399,13 @@ export async function fetchZones(
 ): Promise<{ zoneCount: number; routeCount: number }> {
   const emitter = options.emitter;
 
+  // Validate schema exists
+  if (!validateSchema(db)) {
+    throw new Error(
+      'Database schema not initialized. Run "varikko init" first to set up the database.'
+    );
+  }
+
   emitter?.emitStart('fetch_zones', undefined, 'Downloading zones from WFS...');
 
   // Download from WFS
@@ -401,9 +423,6 @@ export async function fetchZones(
     testMode: options.testMode,
     testLimit: options.testLimit || 5,
   });
-
-  // Initialize schema
-  initializeSchema(db);
 
   // Insert zones
   insertZones(db, zones, emitter);
