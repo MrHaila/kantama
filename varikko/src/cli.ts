@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { openDB } from './lib/db';
 import { fetchZones, initializeSchema } from './lib/zones';
+import { geocodeZones } from './lib/geocoding';
 import { createProgressEmitter } from './lib/events';
 
 export interface CLIOptions {
@@ -98,8 +99,50 @@ export function parseCLI(): CLICommand | null {
     .command('geocode')
     .description('Geocode zones to routing addresses')
     .option('-t, --test', 'Test mode (5 zones only)')
-    .action((_options) => {
-      // Will be implemented in Phase 04
+    .action(async (options) => {
+      const db = openDB();
+      const emitter = createProgressEmitter();
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start' || event.type === 'progress') {
+          console.log(event.message || '');
+        } else if (event.type === 'complete') {
+          console.log('✓', event.message || 'Complete');
+        } else if (event.type === 'error') {
+          console.error('✗', event.message || 'Error', event.error);
+        }
+      });
+
+      try {
+        const apiKey = process.env.DIGITRANSIT_API_KEY || process.env.HSL_API_KEY;
+
+        if (!apiKey) {
+          console.log('⚠️  No API key configured (set DIGITRANSIT_API_KEY or HSL_API_KEY)');
+          console.log('   Geocoding may fail without authentication\n');
+        }
+
+        const result = await geocodeZones(db, {
+          testMode: options.test,
+          testLimit: 5,
+          apiKey,
+          emitter,
+        });
+
+        console.log(`\nSuccessfully geocoded: ${result.success} zones`);
+        console.log(`Failed (fallback to geometric): ${result.failed} zones`);
+
+        if (result.errors.length > 0) {
+          console.log('\nSample errors (first 3):');
+          result.errors.slice(0, 3).forEach((err) => {
+            console.log(`  • ${err.id}: ${err.error}`);
+          });
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
     });
 
   program
