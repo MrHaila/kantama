@@ -556,7 +556,7 @@ export async function fetchZonesMultiCity(
       zoneCount: zones.length,
       isTest: options.testMode || false,
       multiCity: true,
-      cities: ['Helsinki', 'Vantaa', 'Espoo'],
+      cities: ['Helsinki', 'Vantaa', 'Espoo', 'Kauniainen'],
       filteringStats: stats
     })
   );

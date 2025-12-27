@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Read(//Users/teemu/Documents/Kantama/**)"
+      "Read(//Users/teemu/Documents/Kantama/**)",
+      "WebFetch(domain:geo.stat.fi)",
+      "WebFetch(domain:kartat.espoo.fi)"
     ],
     "deny": [],
     "ask": []

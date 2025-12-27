@@ -105,25 +105,48 @@ export class EspooFetcher implements CityFetcher {
   }
 }
 
-// Future: Kauniainen fetcher can be added here
-// export class KauniainenFetcher implements CityFetcher {
-//   cityCode: CityCode = 'KAU';
-//   cityName = 'Kauniainen';
-//   
-//   async fetchFeatures(): Promise<Feature[]> {
-//     // Implementation needed
-//   }
-//   
-//   parseFeature(feature: Feature): StandardZone {
-//     // Implementation needed
-//   }
-// }
+export class KauniainenFetcher implements CityFetcher {
+  cityCode: CityCode = 'KAU';
+  cityName = 'Kauniainen';
+
+  async fetchFeatures(): Promise<Feature[]> {
+    // Kauniainen is small (10km²) - fetch entire municipality boundary
+    // Using Statistics Finland's municipality layer, filtered for Kauniainen (code 235)
+    const url = 'https://geo.stat.fi/geoserver/wfs?' +
+      'service=WFS&version=2.0.0&request=GetFeature&' +
+      'typeName=tilastointialueet:kunta1000k_2024&' +
+      'outputFormat=application/json&srsName=EPSG:4326&' +
+      'CQL_FILTER=kunta=\'235\'';
+
+    const response = await axios.get(url);
+    return response.data.features;
+  }
+
+  parseFeature(feature: Feature): StandardZone {
+    const props = feature.properties as any;
+    // Single zone covering entire city
+    return {
+      originalId: '001',
+      cityCode: this.cityCode,
+      city: this.cityName,
+      name: props.nimi || 'Kauniainen',
+      nameSe: props.namn || 'Grankulla',
+      adminLevel: 'kunta',
+      geometry: feature.geometry,
+      metadata: {
+        area: props.pinta_ala,
+        kunta: props.kunta,
+        sourceLayer: 'tilastointialueet:kunta1000k_2024'
+      }
+    };
+  }
+}
 
 export const ALL_FETCHERS: CityFetcher[] = [
   new HelsinkiFetcher(),
   new VantaaFetcher(),
   new EspooFetcher(),
-  // new KauniainenFetcher(), // Add when implemented
+  new KauniainenFetcher(),
 ];
 
 export function generateZoneId(cityCode: CityCode, originalId: string): string {
