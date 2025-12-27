@@ -1432,3 +1432,195 @@ Must match opas BackgroundMap.vue exactly:
 
 **Last Updated:** 2025-12-27
 **Phase 08 Complete** ✅
+
+---
+
+# Phase 09: Export Routes Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/export.ts (business logic, 149 lines)
+  - exportRoutes(): Export routes to JSON with nested format
+  - getExportStats(): Get export statistics without exporting
+  - Nested format: { from_id: { to_id: duration, ... }, ... }
+  - Optional period filtering (MORNING, EVENING, MIDNIGHT)
+  - Custom output path support
+
+✓ src/tui/screens/export.tsx (TUI screen)
+  - Real-time progress display with ProgressBar/Spinner
+  - Preview stats before export (route count, origin count)
+  - File size display after completion
+  - Error handling with user-friendly messages
+
+✓ src/tests/lib/export.test.ts (comprehensive test suite, 12 tests)
+  - getExportStats tests (3 tests)
+  - exportRoutes tests (9 tests)
+  - All scenarios covered: nested format, period filtering, custom paths
+  - All tests passing ✓
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented export command action)
+  - Non-interactive CLI support
+  - Period filtering with --period flag
+  - Custom output path with --output flag
+  - Preview stats before export
+  - Progress event handling with console output
+  - Summary display (routes, origins, file size)
+```
+
+### Technology Integration
+
+- **better-sqlite3**: SQLite database operations (query only routes)
+- **fs**: File system operations (writeFileSync, statSync)
+- **eventemitter3**: Progress tracking via ProgressEmitter
+- **vitest**: Comprehensive test coverage with fs mocking
+
+---
+
+## Testing Results
+
+- All 12 unit tests passing (100%)
+- Nested export format validated
+- Period filtering tested (MORNING, EVENING, MIDNIGHT, ALL)
+- Only OK routes exported (PENDING, ERROR, NO_ROUTE excluded)
+- Custom output path support tested
+- Default output path tested (routes_export.json)
+- Progress events emitted correctly
+- File size reporting tested
+- Empty export handling (no OK routes)
+- Build compiles without TypeScript errors
+- Full test suite: 119 tests passing
+
+---
+
+## Key Design Decisions
+
+### Export Format
+
+- **Nested structure**: `{ from_id: { to_id: duration, ... }, ... }`
+- Optimized for fast lookups in opas frontend
+- Only includes successful routes (status='OK')
+- Duration values in seconds
+
+### Period Filtering
+
+- **Default**: Exports all periods (MORNING, EVENING, MIDNIGHT)
+- **--period flag**: Filters to single period
+- Useful for generating period-specific datasets
+
+### Output Path
+
+- **Default**: `routes_export.json` in current directory
+- **Custom path**: Via --output flag
+- Supports absolute and relative paths
+
+### Statistics Preview
+
+- Shows route count and origin count before export
+- Helps users understand what will be exported
+- Provided by getExportStats() helper function
+
+---
+
+## What Went Well
+
+- All 12 tests passing on first attempt after fixes
+- Business logic cleanly extracted from export_routes.ts
+- TDD approach validated implementation
+- Event emitter integration worked seamlessly
+- Progress tracking provides real-time feedback
+- Export format matches opas requirements exactly
+- Build compiles successfully with no type errors
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### Test Database Schema
+
+- Test schema uses `lat`/`lon` instead of `latitude`/`longitude`
+- Required adding `geometry` and `svg_path` columns to test fixtures
+- All places insertions needed these required columns
+
+### Vitest Module Mocking
+
+- Cannot use `vi.importActual` for fs module when mocking writeFileSync
+- Must mock both default and named exports
+- Import order matters: mock before importing module under test
+- Use `const mockFs = vi.mocked(fs)` for typed mock access
+
+### WorkflowStage Type
+
+- Events use 'export_routes' not 'export'
+- Must match predefined WorkflowStage union type
+- Ensures type safety across all workflow stages
+
+---
+
+## Manual Verification
+
+✅ `pnpm test export` - all 12 tests pass
+✅ `pnpm test` - all 119 tests pass (no regressions)
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows patterns from previous phases
+✅ TypeScript strict mode compliance
+
+---
+
+## Migration Notes
+
+### Files to Delete (After Full Validation)
+
+- `src/export_routes.ts` can be removed after full validation
+- No package.json scripts to remove (none existed for export)
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+### Bug Fixed
+
+- Old implementation had incorrect DB_PATH (`../varikko.db`)
+- New implementation uses correct DB_PATH pattern from openDB()
+
+---
+
+## Next Phase - Phase 10 Dashboard
+
+**Prerequisites:** All workflow phases (03-09)
+**Estimated Effort:** 3-4 days
+
+### Key Tasks
+
+1. Implement main dashboard TUI screen
+2. Create workflow menu with keyboard navigation
+3. Add status display for all workflows
+4. Implement help screen
+5. Wire up all workflow screens to main app
+
+### Hand-off Notes
+
+- Export workflow fully tested and working
+- All 8 workflows now implemented (fetch, geocode, routes, clear, deciles, export, maps)
+- Progress event pattern established and reusable
+- TUI screen pattern proven across all workflows
+- CLI integration pattern proven
+- Ready to implement dashboard that ties everything together
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 09 Complete** ✅

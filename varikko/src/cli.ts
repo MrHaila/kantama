@@ -6,6 +6,7 @@ import { buildRoutes, getOTPConfig } from './lib/routing';
 import { clearData, getCounts } from './lib/clearing';
 import { calculateDeciles } from './lib/deciles';
 import { processMaps } from './lib/maps';
+import { exportRoutes, getExportStats } from './lib/export';
 import { createProgressEmitter } from './lib/events';
 import readline from 'readline';
 
@@ -390,8 +391,64 @@ export function parseCLI(): CLICommand | null {
     .command('export')
     .description('Export routes to JSON')
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
-    .action((_options) => {
-      // Will be implemented in Phase 09
+    .option('-o, --output <path>', 'Output file path (default: routes_export.json)')
+    .action((options) => {
+      const db = openDB();
+
+      try {
+        // Validate period if specified
+        const validPeriods = ['MORNING', 'EVENING', 'MIDNIGHT'];
+        if (options.period && !validPeriods.includes(options.period.toUpperCase())) {
+          console.error(`Invalid period: ${options.period}`);
+          console.error(`Valid periods: ${validPeriods.join(', ')}`);
+          process.exit(1);
+        }
+
+        const period = options.period
+          ? (options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT')
+          : undefined;
+
+        // Show preview stats
+        const stats = getExportStats(db, period);
+        console.log(`Exporting ${stats.routeCount} routes from ${stats.originCount} origins`);
+        if (period) {
+          console.log(`Period: ${period}`);
+        } else {
+          console.log('Period: ALL');
+        }
+        console.log();
+
+        const emitter = createProgressEmitter();
+
+        emitter.on('progress', (event) => {
+          if (event.type === 'start') {
+            console.log('Starting export...');
+          } else if (event.type === 'progress') {
+            console.log(event.message || '');
+          } else if (event.type === 'complete') {
+            console.log('✓', event.message || 'Complete');
+          } else if (event.type === 'error') {
+            console.error('✗', event.message || 'Error', event.error);
+          }
+        });
+
+        const result = exportRoutes(db, {
+          period,
+          outputPath: options.output,
+          emitter,
+        });
+
+        console.log('\n=== Export Summary ===');
+        console.log(`Routes: ${result.routeCount.toLocaleString()}`);
+        console.log(`Origins: ${result.originCount.toLocaleString()}`);
+        console.log(`Output: ${result.outputPath}`);
+        console.log(`File size: ${(result.fileSize / 1024).toFixed(1)} KB`);
+      } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
     });
 
   program
