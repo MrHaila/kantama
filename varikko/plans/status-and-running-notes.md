@@ -135,13 +135,28 @@ Removed from codebase. Feature deemed unnecessary.
 
 ---
 
-# Phase 10: Dashboard/TUI
+# Phase 10: Dashboard/TUI ✅
 
-## Hand-off Notes
+## Learnings
 
-- All core workflows complete: Fetch, Geocode, Routes, Clear, Deciles, Maps
-- TUI framework and patterns proven
-- Progress event system working across all workflows
+- **Screen navigation**: React state + switch statement works well for routing between screens
+- **Test mode**: Global state in App.tsx propagated to all workflow screens
+- **useInput callbacks**: Must add to screens to handle Enter/Esc for onComplete/onCancel navigation
+- **Ink Text limitations**: Text component doesn't support marginTop; wrap in Box instead
+
+## Key Design Decisions
+
+- **Dashboard**: Keyboard-driven menu with number keys (1-6) and arrow navigation
+- **Help screen**: Comprehensive guide to all workflows and keyboard shortcuts
+- **Global test mode**: Toggle with 't' key, persists across all screens
+- **Return to dashboard**: All workflow screens call onComplete/onExit when done
+
+## Implementation Notes
+
+- Exported DBStats type from lib/db.ts for type safety
+- Added useInput handlers to FetchZonesScreen and GeocodeScreen for navigation
+- Dashboard shows live database stats with refresh on 'r' key
+- All 6 workflow screens integrated: fetch-zones, geocode, routes, clear, deciles, maps
 
 ---
 
