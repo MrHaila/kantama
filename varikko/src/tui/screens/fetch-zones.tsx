@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useApp } from 'ink';
+import { Box, Text, useApp, useInput } from 'ink';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { ProgressBar } from '../components/ProgressBar';
@@ -21,6 +21,16 @@ export function FetchZonesScreen({ testMode, onComplete, onCancel }: FetchZonesS
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const [result, setResult] = useState<{ zoneCount: number; routeCount: number } | null>(null);
   const [error, setError] = useState<Error | null>(null);
+
+  useInput((input, key) => {
+    if (status === 'complete' || status === 'error') {
+      if (key.return) {
+        onComplete();
+      } else if (key.escape) {
+        onCancel();
+      }
+    }
+  });
 
   useEffect(() => {
     if (status !== 'idle') return;
