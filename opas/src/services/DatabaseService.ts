@@ -3,6 +3,7 @@ import initSqlJs, { type Database } from 'sql.js'
 export interface Place {
   id: string
   name: string
+  city?: string // Municipality name (Helsinki, Vantaa, Espoo)
   lat: number // Geometric centroid (for visualization)
   lon: number // Geometric centroid (for visualization)
   svgPath: string
@@ -78,7 +79,7 @@ class DatabaseService {
 
     const stmt = this.db.prepare(`
       SELECT
-        id, name, lat, lon, svg_path,
+        id, name, city, lat, lon, svg_path,
         routing_lat, routing_lon, routing_source
       FROM places
     `)
@@ -91,6 +92,7 @@ class DatabaseService {
       places.push({
         id: row.id as string,
         name: row.name as string,
+        city: row.city !== null ? (row.city as string) : undefined,
         lat: row.lat as number,
         lon: row.lon as number,
         svgPath: row.svg_path as string,

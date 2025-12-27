@@ -31,7 +31,7 @@ interface Stage {
 }
 
 const stages: Stage[] = [
-  { key: '1', label: 'Fetch Zones', description: 'Fetch postal code polygons', screen: 'fetch-zones' },
+  { key: '1', label: 'Fetch Zones', description: 'Fetch multi-city administrative zones', screen: 'fetch-zones' },
   { key: '2', label: 'Geocode Zones', description: 'Resolve routing addresses', screen: 'geocode' },
   { key: '3', label: 'Build Routes', description: 'Calculate transit routes', screen: 'routes' },
   { key: '4', label: 'Clear Data', description: 'Reset or clear database', screen: 'clear' },
