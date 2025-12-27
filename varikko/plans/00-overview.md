@@ -27,10 +27,9 @@ Transform Varikko from a collection of CLI scripts into a unified TUI applicatio
 3. `build_routes.ts` - Calculate transit routes via OTP for 3 time periods
 4. `clear_routes.ts` - Reset or clear data
 5. `calculate_deciles.ts` - Generate heatmap color distribution
-6. `export_routes.ts` - Export routes to JSON
-7. `process_map.ts` - Convert shapefiles to TopoJSON
-8. `generate_svg.ts` - Render SVG from TopoJSON
-9. `status.ts` - Display current state
+6. `process_map.ts` - Convert shapefiles to TopoJSON
+7. `generate_svg.ts` - Render SVG from TopoJSON
+8. `status.ts` - Display current state
 
 **Technology Stack:**
 - TypeScript + Node.js
@@ -232,9 +231,6 @@ calculate_deciles
 [Parallel workflows]
 process_map + generate_svg
   └─> background_map.json + background_map.svg
-
-export_routes
-  └─> routes_export.json
 ```
 
 ### Progress Events

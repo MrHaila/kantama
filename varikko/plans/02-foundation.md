@@ -122,7 +122,6 @@ export type WorkflowStage =
   | 'build_routes'
   | 'clear_data'
   | 'calculate_deciles'
-  | 'export_routes'
   | 'process_map'
   | 'generate_svg';
 

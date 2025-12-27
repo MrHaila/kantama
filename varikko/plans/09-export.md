@@ -1,58 +1,35 @@
-# Phase 09: Export Routes Workflow
+# Phase 09: Export Routes - DEPRECATED
 
-**Status:** Ready for implementation
-**Dependencies:** Phase 05 (Build Routes)
-**Estimated Effort:** 0.5 days
-**Priority:** LOW (simple export utility)
+**Status:** Deprecated - Remove functionality
+**Dependencies:** None
+**Estimated Effort:** 0.1 days
+**Priority:** LOW (cleanup task)
 
 ---
 
 ## Overview
 
-Export calculated routes to JSON file in nested format for external use.
+Remove export routes functionality - no longer needed.
 
-**What it does:**
-1. Query routes with status='OK' for specified period
-2. Build nested object: `{ from_id: { to_id: duration, ... }, ... }`
-3. Write to `routes_export.json`
+**Tasks:**
 
-**Current Implementation:** `src/export_routes.ts:1-41`
+1. Delete `src/export_routes.ts`
+2. Delete `src/tests/lib/export.test.ts`
+3. Remove `export:routes` script from `package.json:22`
+4. Remove `export` CLI command from `src/cli.ts:390-395`
+5. Remove `export_routes` event type from `src/lib/events.ts:9`
+6. Update references in plan files:
+   - `plans/02-foundation.md:125` (event type)
+   - `plans/README.md:162, 212` (file list, CLI command)
+   - `plans/00-overview.md:30, 236` (overview)
+7. Update `AGENTS.md:30, 45, 58` (documentation)
 
----
-
-## Target Architecture
-
-**File:** `src/lib/export.ts`
-
-```typescript
-export interface ExportOptions {
-  period?: string;
-  outputPath?: string;
-}
-
-export function exportRoutes(
-  db: Database.Database,
-  options: ExportOptions
-): { routeCount: number; outputPath: string };
-```
+**Files to Remove:**
+- `src/export_routes.ts:1-41`
+- `src/tests/lib/export.test.ts`
 
 ---
 
-## Testing Strategy
+## Rationale
 
-- ✅ Correct nested format
-- ✅ Period filtering
-- ✅ Only OK routes exported
-- ✅ File written successfully
-
----
-
-## Bug to Fix
-
-Current implementation has incorrect DB_PATH (`../varikko.db` instead of `../opas/public/varikko.db`). Fix in refactor.
-
----
-
-## References
-
-- **Current Implementation:** `src/export_routes.ts:1-41`
+Export functionality is deprecated and should be removed from codebase.

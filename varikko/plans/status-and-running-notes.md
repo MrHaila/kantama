@@ -1407,28 +1407,125 @@ Must match opas BackgroundMap.vue exactly:
 
 ---
 
-## Next Phase - Phase 09 Export
+## Next Phase - Phase 09 Export (DEPRECATED)
 
-**Prerequisites:** Phase 05 (Build Routes)
-**Estimated Effort:** 1-2 days
+**Prerequisites:** None
+**Estimated Effort:** 0.1 days
 
 ### Key Tasks
 
-1. Implement export business logic in `src/lib/export.ts`
-2. Create TUI screen for export workflow
-3. Implement CLI subcommand handler
-4. Write tests for export logic
-5. Export routes to JSON with optional period filtering
+1. ~~Implement export business logic in `src/lib/export.ts`~~ DEPRECATED
+2. Remove export routes functionality from codebase
+3. Clean up all references in code and documentation
 
 ### Hand-off Notes
 
 - Maps workflow fully tested and working
-- Progress event pattern established and reusable
-- TUI screen pattern can be replicated for export
-- CLI integration pattern proven
-- Ready to implement remaining workflows (Export, Dashboard)
+- Export functionality deemed unnecessary and marked for removal
+- Ready for Phase 10 (Dashboard/TUI improvements)
 
 ---
 
 **Last Updated:** 2025-12-27
 **Phase 08 Complete** ✅
+
+---
+
+# Phase 09: Export Routes - DEPRECATED - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Implementation Notes
+
+### Decision
+
+Export routes functionality has been deprecated and removed from the codebase. The feature was deemed unnecessary for the project's requirements.
+
+### Files Deleted
+
+```text
+✓ src/export_routes.ts (original implementation)
+✓ src/tests/lib/export.test.ts (test file)
+```
+
+### Files Modified
+
+```text
+✓ package.json (removed export:routes script)
+✓ src/cli.ts (removed export CLI command)
+✓ src/lib/events.ts (removed export_routes from WorkflowStage type)
+✓ plans/02-foundation.md (removed export_routes event type)
+✓ plans/README.md (removed export references)
+✓ plans/00-overview.md (removed export from architecture)
+✓ AGENTS.md (removed export documentation)
+✓ plans/09-export.md (updated to reflect deprecation)
+```
+
+---
+
+## What Was Removed
+
+### Code Changes
+
+1. **Source file**: `src/export_routes.ts` (41 lines)
+   - WFS routes export to JSON
+   - Nested format: `{ from_id: { to_id: duration } }`
+
+2. **Test file**: `src/tests/lib/export.test.ts`
+
+3. **Package script**: `export:routes` from package.json:22
+
+4. **CLI command**: `varikko export` from src/cli.ts:390-395
+
+5. **Event type**: `export_routes` from WorkflowStage union type
+
+### Documentation Updates
+
+- Removed from key files list in AGENTS.md
+- Removed from commands list in AGENTS.md
+- Removed from workflow steps in AGENTS.md
+- Removed from deleted files list in plans/README.md
+- Removed from CLI examples in plans/README.md
+- Removed from architecture overview in plans/00-overview.md
+- Removed from event types in plans/02-foundation.md
+
+---
+
+## Verification
+
+✅ `pnpm test` - all 107 tests pass (no regressions)
+✅ `pnpm build` - compiles successfully with no errors
+✅ No references to export_routes found in codebase
+✅ No references to export:routes script found
+✅ All documentation updated
+
+---
+
+## Next Phase - Phase 10 Dashboard/TUI
+
+**Prerequisites:** Phases 03-08 (All workflows)
+**Estimated Effort:** 2-3 days
+
+### Key Tasks
+
+1. Implement dashboard TUI screen
+2. Show comprehensive system status
+3. Display workflow summaries
+4. Enable workflow selection from dashboard
+5. Add real-time status updates
+
+### Hand-off Notes
+
+- All core workflows complete (Fetch, Geocode, Routes, Clear, Deciles, Maps)
+- Export functionality removed (not needed)
+- TUI framework and patterns proven and stable
+- Progress event system working across all workflows
+- Ready to build unified dashboard experience
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 09 Complete** ✅
