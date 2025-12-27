@@ -4,7 +4,7 @@ This document describes the external data sources used for zone fetching and how
 
 ## Overview
 
-Zones are fetched from three city WFS endpoints, transformed to a common format, and stored in SQLite.
+Zones are fetched from four city WFS endpoints, transformed to a common format, and stored in SQLite.
 
 ```
 WFS Endpoints → City Fetchers → StandardZone → Processing → Database
@@ -72,9 +72,28 @@ WFS Endpoints → City Fetchers → StandardZone → Processing → Database
 
 See `gml-parser.ts` for implementation details.
 
+### Kauniainen
+
+| Property | Value |
+|----------|-------|
+| **Endpoint** | `https://geo.stat.fi/geoserver/wfs` |
+| **Layer** | `tilastointialueet:kunta1000k_2024` |
+| **Format** | GeoJSON |
+| **CRS** | EPSG:4326 (native) |
+| **Admin Level** | kunta (municipality) |
+| **Expected Count** | 1 zone |
+
+**Key Properties:**
+- `kunta` → Municipality code ("235")
+- `nimi` → Finnish name ("Kauniainen")
+- `namn` → Swedish name ("Grankulla")
+- `pinta_ala` → Area in km²
+
+**Implementation Note:** Kauniainen is a small city (~10 km²) with no publicly available district subdivision data. A single zone (`KAU-001`) covers the entire municipality, fetched from Statistics Finland using municipality boundary layer with CQL filter `kunta='235'`.
+
 ## Coordinate Transformation
 
-- **Helsinki/Vantaa:** Already in EPSG:4326 (WGS84)
+- **Helsinki/Vantaa/Kauniainen:** Already in EPSG:4326 (WGS84)
 - **Espoo:** EPSG:3879 (ETRS-GK25) → EPSG:4326 via proj4
 
 ```typescript
@@ -91,6 +110,7 @@ All zones get a prefixed ID: `{CITY_CODE}-{ORIGINAL_ID}`
 - Helsinki: `HEL-101`, `HEL-102`
 - Vantaa: `VAN-Tikkurila`, `VAN-Myyrmäki` (name-based)
 - Espoo: `ESP-635`, `ESP-713`
+- Kauniainen: `KAU-001` (single zone)
 
 ## File Structure
 
@@ -121,9 +141,3 @@ If Espoo zones fail to parse:
 1. Check if GML structure changed (new geometry types)
 2. Verify `tyyppi` values haven't changed
 3. Test with: `curl -s "ESPOO_URL" | grep -o '<kanta:tyyppi>[^<]*'`
-
-## Last Verified
-
-- **Helsinki:** December 2024
-- **Vantaa:** December 2024
-- **Espoo:** December 2024
