@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
+import { exportLayers } from './exportLayers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -319,10 +320,16 @@ export async function processMaps(options: ProcessMapOptions = {}): Promise<void
   // Step 1: Process shapefiles to TopoJSON
   await processMap(options);
 
-  // Step 2: Generate SVG from TopoJSON
+  // Step 2: Generate combined SVG from TopoJSON (legacy)
   await generateSVG({
     topoJsonPath: outputPath,
     outputPath: svgPath,
+    emitter: options.emitter,
+  });
+
+  // Step 3: Export individual layer files
+  await exportLayers({
+    topoJsonPath: outputPath,
     emitter: options.emitter,
   });
 }

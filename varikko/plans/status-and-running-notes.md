@@ -204,4 +204,49 @@ Removed from codebase. Feature deemed unnecessary.
 
 ---
 
+# Phase 12: Layered SVG Export ✅
+
+## Learnings
+
+- **Separate layer files**: Cleaner architecture for frontend - water.svg, roads.svg, manifest.json
+- **Theme data in manifest**: CSS theming moved from embedded styles to manifest themes
+- **Three-stage workflow**: processMap → generateSVG (legacy) → exportLayers
+- **No backward compatibility needed**: Legacy background_map.svg still generated for safety
+
+## Key Design Decisions
+
+- **Output structure**: opas/public/layers/ directory with water.svg, roads.svg, manifest.json
+- **Minimal SVG files**: No embedded styles, just geometry with id groups
+- **Manifest format**: viewBox, layer definitions (id, file, description, zIndex), themes (vintage, yle)
+- **Theme styles**: fill, stroke, strokeWidth properties per layer per theme
+- **Projection consistency**: Same D3 Mercator projection as existing maps (center [24.93, 60.17], scale 120000)
+
+## Implementation Notes
+
+- Created exportLayers.ts with exportWaterLayer(), exportRoadsLayer(), generateManifest()
+- Added 'export_layers' to WorkflowStage type in events.ts
+- Updated processMaps() to call exportLayers() after generateSVG()
+- CLI now shows all 5 output files (TopoJSON, legacy SVG, 3 layer files)
+- TUI maps screen tracks all 3 workflow stages with progress indicators
+- 32 tests passing (existing maps tests + 10 new exportLayers tests)
+
+## Testing Coverage
+
+- ✅ Separate water/roads SVG file generation
+- ✅ Manifest.json generation with correct structure
+- ✅ Theme definitions (vintage, yle) in manifest
+- ✅ Error handling for missing layers
+- ✅ Directory creation
+- ✅ Progress event emission
+
+## Migration Path for Opas
+
+Future work (not in Varikko scope):
+1. Create LayerService to load manifest and individual layers
+2. Refactor BackgroundMap.vue to use layered approach
+3. Remove runtime SVG parsing hacks
+4. Eventually deprecate background_map.svg when Opas migration complete
+
+---
+
 **Last Updated:** 2025-12-27

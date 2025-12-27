@@ -41,8 +41,8 @@ export const MapsScreen: React.FC<MapsScreenProps> = ({ onExit }) => {
         if (event.metadata) {
           setMetadata((prev) => ({ ...prev, ...event.metadata }));
         }
-        // Check if both stages are complete
-        if (event.stage === 'generate_svg') {
+        // Check if all stages are complete
+        if (event.stage === 'export_layers') {
           setStatus('complete');
         }
       } else if (event.type === 'error') {
@@ -112,7 +112,11 @@ export const MapsScreen: React.FC<MapsScreenProps> = ({ onExit }) => {
             </Text>
             <Text>
               {currentStage === 'generate_svg' ? '▶ ' : metadata.sizeKB ? '✓ ' : '  '}
-              Generate SVG from TopoJSON
+              Generate combined SVG (legacy)
+            </Text>
+            <Text>
+              {currentStage === 'export_layers' ? '▶ ' : metadata.waterSizeKB ? '✓ ' : '  '}
+              Export layered SVG files
             </Text>
           </Box>
         </Box>
@@ -129,8 +133,14 @@ export const MapsScreen: React.FC<MapsScreenProps> = ({ onExit }) => {
               )}
               {!!metadata.sizeKB && !!metadata.outputPath && (
                 <Text color="gray">
-                  SVG: {String(metadata.outputPath).replace('.json', '.svg')} (
+                  SVG (legacy): {String(metadata.outputPath).replace('.json', '.svg')} (
                   {String(metadata.sizeKB || 'unknown')} KB)
+                </Text>
+              )}
+              {!!metadata.waterSizeKB && (
+                <Text color="gray">
+                  Layers: water.svg ({String(metadata.waterSizeKB)} KB), roads.svg (
+                  {String(metadata.roadSizeKB)} KB), manifest.json
                 </Text>
               )}
             </Box>
