@@ -6,10 +6,6 @@ import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
 
-// Default paths
-const DEFAULT_TOPOJSON_PATH = path.join(__dirname, '../../opas/public/background_map.json');
-const DEFAULT_LAYERS_DIR = path.join(__dirname, '../../opas/public/layers');
-
 // SVG projection parameters - must match opas MAP_CONFIG
 const ZOOM_LEVEL = 1.2; // 20% zoom out
 const BASE_WIDTH = 800;
@@ -38,8 +34,8 @@ export interface LayerManifest {
 }
 
 export interface ExportLayersOptions {
-  topoJsonPath?: string;
-  outputDir?: string;
+  topoJsonPath: string;
+  outputDir: string;
   emitter?: ProgressEmitter;
 }
 
@@ -157,12 +153,8 @@ async function exportRoadsLayer(
  *
  * @param options Configuration options
  */
-export async function exportLayers(options: ExportLayersOptions = {}): Promise<void> {
-  const {
-    topoJsonPath = DEFAULT_TOPOJSON_PATH,
-    outputDir = DEFAULT_LAYERS_DIR,
-    emitter,
-  } = options;
+export async function exportLayers(options: ExportLayersOptions): Promise<void> {
+  const { topoJsonPath, outputDir, emitter } = options;
 
   emitter?.emitStart('export_layers', 4, 'Exporting layered SVG files...');
 

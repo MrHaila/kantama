@@ -330,6 +330,7 @@ export async function processMaps(options: ProcessMapOptions = {}): Promise<void
   // Step 3: Export individual layer files
   await exportLayers({
     topoJsonPath: outputPath,
+    outputDir: path.join(path.dirname(outputPath), 'layers'),
     emitter: options.emitter,
   });
 }

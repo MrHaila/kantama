@@ -21,7 +21,7 @@ export interface CLICommand {
   options: CLIOptions;
 }
 
-export function parseCLI(): CLICommand | null {
+export async function parseCLI(): Promise<CLICommand | null> {
   const program = new Command();
 
   program
@@ -427,7 +427,7 @@ export function parseCLI(): CLICommand | null {
       // Will be implemented in Phase 10
     });
 
-  program.parse();
+  await program.parseAsync();
 
   // Return parsed command (null = interactive mode)
   const options = program.opts();
