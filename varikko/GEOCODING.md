@@ -2,43 +2,63 @@
 
 ## Overview
 
-This document explains how to set up and use address-based routing points for zones, which improves routing accuracy by ensuring coordinates fall on valid addresses instead of arbitrary geometric centroids.
+This document explains the two-layer coordinate system used for zones:
+1. **Inside points** (pole of inaccessibility) - guaranteed to be inside polygons, used for visualization
+2. **Routing points** (address-based) - refined via geocoding, used for routing calculations
+
+This approach ensures both visual accuracy and routing validity.
 
 ## The Problem
 
-Zones in this system are based on Finnish postal code polygons. Previously, we calculated the **geometric centroid** of each polygon and used it for routing. However, geometric centroids can fall in invalid locations:
+Zones in this system are based on Finnish postal code polygons and statistical areas. While zone boundaries are well-defined, determining the best reference point within each zone is critical for:
 
-- Water bodies (harbors, sea)
-- Parks and forests
-- Industrial areas without addresses
-- Other non-routeable locations
+- Accurate routing calculations
+- Realistic travel time estimates
+- Valid geocoding lookups
 
-This can lead to:
+The reference point must:
+- Be inside the zone's polygon (not outside)
+- Be visually centered (representing the zone's "middle")
+- Fall on or near routeable addresses
 
-- Inaccurate routing results
-- Failed route calculations
-- Routes that don't represent realistic travel times
+## The Solution: Two-Layer Coordinate System
 
-## The Solution
+We use a two-layer approach to ensure both visual accuracy and routing validity:
 
-The geocoding script (`geocode_zones.ts`) resolves zone postal codes and names into **address-based coordinates** using the Digitransit geocoding API. These coordinates are guaranteed to:
+### Layer 1: Inside Point (Base Reference)
 
-- Fall on valid street addresses
-- Be routeable by the OTP routing engine
-- Represent realistic departure/arrival points
+The **pole of inaccessibility** algorithm calculates the most distant internal point from the polygon's edges. This point is:
+
+- **Guaranteed to be inside the polygon** (never outside, even for complex shapes)
+- **Visually centered** (appears at the "center of mass")
+- **Handles multi-polygons** (uses the largest polygon for zones with islands)
+
+This inside point is stored in `lat`/`lon` columns and used for:
+- Map visualization (markers, labels)
+- Base reference for reverse geocoding
+
+### Layer 2: Routing Point (Address Refinement)
+
+The geocoding script (`geocode_zones.ts`) refines the inside point by reverse geocoding it to find the **nearest valid street address** using the Digitransit API. This address-based coordinate is:
+
+- **Routeable** by the OTP routing engine
+- **On a valid street** (guaranteed by geocoding API)
+- **Close to the visual center** (based on inside point)
+
+This routing point is stored in `routing_lat`/`routing_lon` columns.
 
 ## Terminology
 
-To avoid confusion, we now distinguish between two types of coordinates:
+To avoid confusion, we distinguish between two types of coordinates:
 
-1. **Geometric Centroid** (`lat`, `lon` columns)
-   - Calculated from the zone polygon geometry
-   - Used for **visualization** in the UI
-   - May fall in invalid locations
+1. **Inside Point** (`lat`, `lon` columns)
+   - Calculated using pole of inaccessibility algorithm
+   - Guaranteed to be inside the polygon
+   - Used for **visualization** and as base for geocoding
    - Always present
 
 2. **Routing Point** (`routing_lat`, `routing_lon` columns)
-   - Resolved from postal code/zone name via geocoding API
+   - Refined from inside point via reverse geocoding API
    - Used for **routing calculations**
    - Guaranteed to be on valid addresses
    - Optional (requires running geocoding script)

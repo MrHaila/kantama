@@ -9,7 +9,9 @@
       "Bash(git merge:*)",
       "Bash(pnpm --filter varikko exec tsx:*)",
       "Bash(pnpm test:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm exec vitest:*)"
     ],
     "deny": [],
     "ask": []

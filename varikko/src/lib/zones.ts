@@ -6,6 +6,7 @@ import type { Geometry, Position, Polygon, MultiPolygon, Feature } from 'geojson
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
 import type { StandardZone, ZoneData } from './types';
+import polylabel from 'polylabel';
 import {
   WIDTH,
   HEIGHT,
@@ -32,6 +33,48 @@ export interface FetchZonesOptions {
   testMode?: boolean;
   testLimit?: number;
   emitter?: ProgressEmitter;
+}
+
+/**
+ * Calculate pole of inaccessibility - the most distant internal point from polygon edges.
+ * Guaranteed to be inside the polygon and visually centered.
+ * For multi-polygons, uses the largest polygon by area.
+ */
+function calculateInsidePoint(geometry: Geometry): [number, number] | null {
+  try {
+    // For MultiPolygon, find the largest polygon by area
+    if (geometry.type === 'MultiPolygon') {
+      const multiPoly = geometry as MultiPolygon;
+      let largestPolygon: Polygon | null = null;
+      let maxArea = 0;
+
+      for (const coords of multiPoly.coordinates) {
+        const polygon: Polygon = { type: 'Polygon', coordinates: coords };
+        const area = turf.area(polygon);
+        if (area > maxArea) {
+          maxArea = area;
+          largestPolygon = polygon;
+        }
+      }
+
+      if (!largestPolygon) return null;
+      geometry = largestPolygon;
+    }
+
+    // For Polygon, calculate pole of inaccessibility
+    if (geometry.type === 'Polygon') {
+      const poly = geometry as Polygon;
+      // polylabel expects array of rings: [[lon, lat], [lon, lat], ...]
+      // Precision: 0.0001 degrees ≈ 11 meters (good balance for postal zones)
+      const point = polylabel(poly.coordinates, 0.0001);
+      return [point[0], point[1]]; // [lon, lat]
+    }
+
+    return null;
+  } catch (error) {
+    // If polylabel fails, return null (geometry is likely invalid)
+    return null;
+  }
 }
 
 function createProjection() {
@@ -212,18 +255,13 @@ export function processZones(
       // Filter to Helsinki postal codes
       if (!code || !code.match(/^(00|01|02)/)) return null;
 
-      // Calculate geometric centroid
-      let centroid: [number, number] | null = null;
-      try {
-        const center = turf.centroid(feature);
-        centroid = center.geometry.coordinates as [number, number];
-      } catch {
-        return null;
-      }
-
-      // Clean geometry
+      // Clean geometry first (needed for inside point calculation)
       const cleanedGeometry = cleanGeometry(feature.geometry);
       if (!cleanedGeometry) return null;
+
+      // Calculate pole of inaccessibility (guaranteed inside point)
+      const insidePoint = calculateInsidePoint(cleanedGeometry);
+      if (!insidePoint) return null;
 
       // Filter to visible area
       if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
@@ -237,8 +275,8 @@ export function processZones(
       return {
         id: code,
         name: name || '',
-        lat: centroid[1],
-        lon: centroid[0],
+        lat: insidePoint[1],
+        lon: insidePoint[0],
         geometry: JSON.stringify(cleanedGeometry),
         svg_path: svgPath,
       };
@@ -338,8 +376,15 @@ export function insertZones(
   emitter?.emitStart('fetch_zones', zones.length, 'Inserting zones...');
 
   const insertPlace = db.prepare(`
-    INSERT OR REPLACE INTO places (id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer)
-    VALUES (@id, @name, @city, @name_se, @admin_level, @lat, @lon, @geometry, @svg_path, @source_layer)
+    INSERT OR REPLACE INTO places (
+      id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer,
+      routing_lat, routing_lon, routing_source, geocoding_error
+    )
+    VALUES (
+      @id, @name, COALESCE(@city, NULL), COALESCE(@name_se, NULL), COALESCE(@admin_level, NULL),
+      @lat, @lon, @geometry, @svg_path, COALESCE(@source_layer, NULL),
+      NULL, NULL, NULL, NULL
+    )
   `);
 
   const insertRoute = db.prepare(`
@@ -350,7 +395,15 @@ export function insertZones(
   const transaction = db.transaction(() => {
     // Insert zones
     for (const zone of zones) {
-      insertPlace.run(zone);
+      // Ensure all properties exist (for compatibility with old postal code format)
+      const normalizedZone = {
+        ...zone,
+        city: zone.city || null,
+        name_se: zone.name_se || null,
+        admin_level: zone.admin_level || null,
+        source_layer: zone.source_layer || null,
+      };
+      insertPlace.run(normalizedZone);
     }
 
     // Pre-fill routes Cartesian product
@@ -417,7 +470,7 @@ export async function downloadZonesMultiCity(
 
 export interface ProcessingStats {
   total: number;
-  centroidFailed: number;
+  insidePointFailed: number;
   geometryInvalid: number;
   outsideVisibleArea: number;
   svgPathFailed: number;
@@ -436,7 +489,7 @@ export function processZonesMultiCity(
 
   const stats: ProcessingStats = {
     total: standardZones.length,
-    centroidFailed: 0,
+    insidePointFailed: 0,
     geometryInvalid: 0,
     outsideVisibleArea: 0,
     svgPathFailed: 0,
@@ -448,24 +501,17 @@ export function processZonesMultiCity(
       // Generate zone ID with city prefix
       const id = generateZoneId(zone.cityCode, zone.originalId);
 
-      // Calculate centroid
-      let centroid: [number, number] | null = null;
-      try {
-        const center = turf.centroid({
-          type: 'Feature',
-          geometry: zone.geometry,
-          properties: {}
-        });
-        centroid = center.geometry.coordinates as [number, number];
-      } catch {
-        stats.centroidFailed++;
-        return null;
-      }
-
-      // Clean geometry
+      // Clean geometry first (needed for inside point calculation)
       const cleanedGeometry = cleanGeometry(zone.geometry);
       if (!cleanedGeometry) {
         stats.geometryInvalid++;
+        return null;
+      }
+
+      // Calculate pole of inaccessibility (guaranteed inside point)
+      const insidePoint = calculateInsidePoint(cleanedGeometry);
+      if (!insidePoint) {
+        stats.insidePointFailed++;
         return null;
       }
 
@@ -486,8 +532,8 @@ export function processZonesMultiCity(
       return {
         id,
         name: zone.name,
-        lat: centroid[1],
-        lon: centroid[0],
+        lat: insidePoint[1],
+        lon: insidePoint[0],
         geometry: JSON.stringify(cleanedGeometry),
         svg_path: svgPath,
         city: zone.city,
@@ -537,7 +583,7 @@ export async function fetchZonesMultiCity(
   console.log(`Total fetched:        ${stats.total}`);
   console.log(`Outside visible area: ${stats.outsideVisibleArea} (filtered out)`);
   console.log(`Invalid geometry:     ${stats.geometryInvalid} (filtered out)`);
-  console.log(`Centroid failed:      ${stats.centroidFailed} (filtered out)`);
+  console.log(`Inside point failed:  ${stats.insidePointFailed} (filtered out)`);
   console.log(`SVG path failed:      ${stats.svgPathFailed} (filtered out)`);
   console.log(`Passed filtering:     ${stats.passed}`);
   console.log('------------------------------\n');
