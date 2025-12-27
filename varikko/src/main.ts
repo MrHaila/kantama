@@ -38,18 +38,14 @@ process.on('unhandledRejection', (reason) => {
 });
 
 async function main() {
-  const command = parseCLI();
+  const command = await parseCLI();
 
   if (!command) {
     // Interactive mode - launch TUI
     process.env.TUI_MODE = 'true';
     render(React.createElement(App));
-  } else {
-    // Non-interactive mode - execute command
-    console.log(`Non-interactive mode not yet implemented: ${command.command}`);
-    console.log('Use interactive mode by running "varikko" with no arguments.');
-    process.exit(1);
   }
+  // CLI commands execute during parseCLI() via Commander actions
 }
 
 main().catch((error) => {
