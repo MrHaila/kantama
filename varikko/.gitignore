@@ -40,3 +40,8 @@ coverage/
 *.db-journal
 *.db-shm
 *.db-wal
+
+# Generated export files
+routes_export.json
+background_map.json
+background_map.svg
