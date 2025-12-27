@@ -1,28 +1,15 @@
 {
   "name": "varikko",
   "version": "2.0.0",
-  "description": "Chrono-Map Data Pipeline",
-  "main": "dist/index.js",
-  "bin": {
-    "varikko": "./dist/main.js"
-  },
+  "description": "Varikko Data Pipeline - TUI for transit route calculation",
   "scripts": {
-    "build": "tsc",
     "dev": "tsx src/main.ts",
+    "build": "tsc",
     "test": "vitest run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "start": "tsx src/index.ts",
-    "fetch:zones": "tsx src/fetch_zones.ts",
-    "geocode:zones": "tsx src/geocode_zones.ts",
-    "geocode:test": "tsx src/geocode_zones.ts --test",
-    "build:routes": "tsx src/build_routes.ts",
-    "clear:routes": "tsx src/clear_routes.ts",
-    "test:routes": "tsx src/build_routes.ts --test",
-    "calculate:deciles": "tsx src/calculate_deciles.ts",
-    "status": "tsx src/status.ts",
-    "process:map": "tsx src/process_map.ts",
-    "generate:svg": "tsx src/generate_svg.ts"
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@turf/turf": "^7.3.1",
