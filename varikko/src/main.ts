@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-import React from 'react';
-import { render } from 'ink';
-import { App } from './tui/app';
 import { parseCLI } from './cli';
 
 // Graceful shutdown on Ctrl+C
@@ -43,6 +40,12 @@ async function main() {
   if (!command) {
     // Interactive mode - launch TUI
     process.env.TUI_MODE = 'true';
+    
+    // Import TUI components only when needed
+    const { render } = await import('ink');
+    const React = await import('react');
+    const { App } = await import('./tui/app');
+    
     render(React.createElement(App));
   }
   // CLI commands execute during parseCLI() via Commander actions

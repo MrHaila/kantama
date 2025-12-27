@@ -131,16 +131,12 @@ export const MapsScreen: React.FC<MapsScreenProps> = ({ onExit }) => {
                   TopoJSON: {String(metadata.outputPath)} ({String(metadata.sizeMB || 'unknown')} MB)
                 </Text>
               )}
-              {!!metadata.sizeKB && !!metadata.outputPath && (
-                <Text color="gray">
-                  SVG (legacy): {String(metadata.outputPath).replace('.json', '.svg')} (
-                  {String(metadata.sizeKB || 'unknown')} KB)
-                </Text>
-              )}
-              {!!metadata.waterSizeKB && (
+                            {!!metadata.waterSizeKB && (
                 <Text color="gray">
                   Layers: water.svg ({String(metadata.waterSizeKB)} KB), roads.svg (
-                  {String(metadata.roadSizeKB)} KB), manifest.json
+                  {String(metadata.roadSizeKB)} KB), railways.svg (
+                  {String(metadata.railwaySizeKB)} KB), ferries.svg (
+                  {String(metadata.ferrySizeKB)} KB), manifest.json
                 </Text>
               )}
             </Box>

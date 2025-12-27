@@ -70,6 +70,18 @@ function generateManifest(): LayerManifest {
         description: 'Road network',
         zIndex: 10,
       },
+      {
+        id: 'railways',
+        file: 'railways.svg',
+        description: 'Railway network',
+        zIndex: 20,
+      },
+      {
+        id: 'ferries',
+        file: 'ferries.svg',
+        description: 'Ferry routes',
+        zIndex: 30,
+      },
     ],
   };
 }
@@ -130,13 +142,79 @@ async function exportRoadsLayer(
   roadGeoJson.features.forEach((feature) => {
     const path = pathGenerator(feature as Feature);
     if (path) {
-      svg += `    <path d="${path}"/>\n`;
+      svg += `    <path d="${path}" fill="none"/>\n`;
     }
   });
 
   svg += `  </g>\n</svg>`;
 
   const outputPath = path.join(outputDir, 'roads.svg');
+  fs.writeFileSync(outputPath, svg, 'utf-8');
+}
+
+/**
+ * Export railways layer as separate SVG file
+ */
+async function exportRailwaysLayer(
+  topology: Topology,
+  outputDir: string,
+  projection: d3.GeoProjection
+): Promise<void> {
+  if (!topology.objects.railways) {
+    throw new Error('Railways layer not found in TopoJSON');
+  }
+
+  const pathGenerator = d3.geoPath().projection(projection);
+  const railwayGeoJson = topojson.feature(topology, topology.objects.railways) as {
+    features: unknown[];
+  };
+
+  let svg = `<svg viewBox="${VIEWBOX_X} ${VIEWBOX_Y} ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">\n`;
+  svg += `  <g id="railways">\n`;
+
+  railwayGeoJson.features.forEach((feature) => {
+    const path = pathGenerator(feature as Feature);
+    if (path) {
+      svg += `    <path d="${path}" fill="none"/>\n`;
+    }
+  });
+
+  svg += `  </g>\n</svg>`;
+
+  const outputPath = path.join(outputDir, 'railways.svg');
+  fs.writeFileSync(outputPath, svg, 'utf-8');
+}
+
+/**
+ * Export ferries layer as separate SVG file
+ */
+async function exportFerriesLayer(
+  topology: Topology,
+  outputDir: string,
+  projection: d3.GeoProjection
+): Promise<void> {
+  if (!topology.objects.ferries) {
+    throw new Error('Ferries layer not found in TopoJSON');
+  }
+
+  const pathGenerator = d3.geoPath().projection(projection);
+  const ferryGeoJson = topojson.feature(topology, topology.objects.ferries) as {
+    features: unknown[];
+  };
+
+  let svg = `<svg viewBox="${VIEWBOX_X} ${VIEWBOX_Y} ${WIDTH} ${HEIGHT}" xmlns="http://www.w3.org/2000/svg">\n`;
+  svg += `  <g id="ferries">\n`;
+
+  ferryGeoJson.features.forEach((feature) => {
+    const path = pathGenerator(feature as Feature);
+    if (path) {
+      svg += `    <path d="${path}" fill="none"/>\n`;
+    }
+  });
+
+  svg += `  </g>\n</svg>`;
+
+  const outputPath = path.join(outputDir, 'ferries.svg');
   fs.writeFileSync(outputPath, svg, 'utf-8');
 }
 
@@ -156,7 +234,7 @@ async function exportRoadsLayer(
 export async function exportLayers(options: ExportLayersOptions): Promise<void> {
   const { topoJsonPath, outputDir, emitter } = options;
 
-  emitter?.emitStart('export_layers', 4, 'Exporting layered SVG files...');
+  emitter?.emitStart('export_layers', 6, 'Exporting layered SVG files...');
 
   try {
     // Ensure output directory exists
@@ -165,7 +243,7 @@ export async function exportLayers(options: ExportLayersOptions): Promise<void> 
     }
 
     // Step 1: Load TopoJSON
-    emitter?.emitProgress('export_layers', 1, 4, 'Loading TopoJSON...');
+    emitter?.emitProgress('export_layers', 1, 6, 'Loading TopoJSON...');
 
     if (!fs.existsSync(topoJsonPath)) {
       throw new Error(`TopoJSON file not found: ${topoJsonPath}`);
@@ -175,21 +253,35 @@ export async function exportLayers(options: ExportLayersOptions): Promise<void> 
     const projection = createProjection();
 
     // Step 2: Export water layer
-    emitter?.emitProgress('export_layers', 2, 4, 'Exporting water layer...');
+    emitter?.emitProgress('export_layers', 2, 6, 'Exporting water layer...');
     await exportWaterLayer(topology, outputDir, projection);
 
     const waterStats = fs.statSync(path.join(outputDir, 'water.svg'));
     const waterSizeKB = (waterStats.size / 1024).toFixed(2);
 
     // Step 3: Export roads layer
-    emitter?.emitProgress('export_layers', 3, 4, 'Exporting roads layer...');
+    emitter?.emitProgress('export_layers', 3, 6, 'Exporting roads layer...');
     await exportRoadsLayer(topology, outputDir, projection);
 
     const roadStats = fs.statSync(path.join(outputDir, 'roads.svg'));
     const roadSizeKB = (roadStats.size / 1024).toFixed(2);
 
-    // Step 4: Generate and save manifest
-    emitter?.emitProgress('export_layers', 4, 4, 'Generating manifest...');
+    // Step 4: Export railways layer
+    emitter?.emitProgress('export_layers', 4, 6, 'Exporting railways layer...');
+    await exportRailwaysLayer(topology, outputDir, projection);
+
+    const railwayStats = fs.statSync(path.join(outputDir, 'railways.svg'));
+    const railwaySizeKB = (railwayStats.size / 1024).toFixed(2);
+
+    // Step 5: Export ferries layer
+    emitter?.emitProgress('export_layers', 5, 6, 'Exporting ferries layer...');
+    await exportFerriesLayer(topology, outputDir, projection);
+
+    const ferryStats = fs.statSync(path.join(outputDir, 'ferries.svg'));
+    const ferrySizeKB = (ferryStats.size / 1024).toFixed(2);
+
+    // Step 6: Generate and save manifest
+    emitter?.emitProgress('export_layers', 6, 6, 'Generating manifest...');
 
     const manifest = generateManifest();
     const manifestPath = path.join(outputDir, 'manifest.json');
@@ -197,11 +289,13 @@ export async function exportLayers(options: ExportLayersOptions): Promise<void> 
 
     emitter?.emitComplete(
       'export_layers',
-      `Layers exported (water: ${waterSizeKB} KB, roads: ${roadSizeKB} KB)`,
+      `Layers exported (water: ${waterSizeKB} KB, roads: ${roadSizeKB} KB, railways: ${railwaySizeKB} KB, ferries: ${ferrySizeKB} KB)`,
       {
         outputDir,
         waterSizeKB,
         roadSizeKB,
+        railwaySizeKB,
+        ferrySizeKB,
       }
     );
   } catch (error) {
