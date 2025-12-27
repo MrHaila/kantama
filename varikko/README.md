@@ -1,6 +1,6 @@
 # Varikko
 
-> A unified TUI for transit route data pipeline
+> Transit route data pipeline with interactive TUI
 
 Varikko is a terminal-based data pipeline tool for the Chrono-Map project. It fetches geospatial zone data, calculates transit routes via OpenTripPlanner, and manages a SQLite database with route metadata.
 
@@ -8,34 +8,18 @@ Varikko is a terminal-based data pipeline tool for the Chrono-Map project. It fe
 
 - **Interactive TUI**: Keyboard-driven interface with real-time progress
 - **6 Workflows**: Fetch zones, geocode, build routes, clear data, calculate deciles, process maps
-- **Automation-Ready**: Full CLI support for non-interactive execution
 - **Test Mode**: Quick validation with subset of data
 - **Event-Driven**: Real-time progress visualization for long-running operations
 - **Type-Safe**: Full TypeScript implementation with comprehensive test coverage
 
-## Installation
+## Quick Start
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Build
-pnpm build
-
-# Run in dev mode
+# Run interactive TUI
 pnpm dev
-
-# Or install globally (optional)
-npm link
-varikko
-```
-
-## Quick Start
-
-### Interactive Mode
-
-```bash
-varikko
 ```
 
 Navigate with keyboard:
@@ -46,51 +30,17 @@ Navigate with keyboard:
 - **?**: Help screen
 - **q**: Quit
 
-### Non-Interactive Mode
-
-```bash
-# Initialize database schema
-varikko init --force
-
-# Fetch postal code zones
-varikko fetch --test
-
-# Geocode zones (optional, improves routing)
-varikko geocode
-
-# Build transit routes for morning period
-varikko routes --period=MORNING
-
-# Calculate heatmap color distribution
-varikko deciles
-
-# Process background maps
-varikko maps
-
-# Clear data
-varikko clear --routes --force
-```
-
 ## Workflows
 
 ### 1. Fetch Zones
 
 Fetches postal code polygons from WFS service, calculates centroids, pre-renders SVG paths, and pre-fills routes table.
 
-```bash
-varikko fetch [--test]
-```
-
-Options:
-- `--test`: Fetch only 5 zones for quick testing
+Test mode fetches only 5 zones for quick validation.
 
 ### 2. Geocode Zones
 
 Resolves street addresses for better routing points using Digitransit API. Falls back to geometric centroids if geocoding fails.
-
-```bash
-varikko geocode [--test]
-```
 
 Requires: `DIGITRANSIT_API_KEY` or `HSL_API_KEY` (optional)
 
@@ -98,57 +48,32 @@ Requires: `DIGITRANSIT_API_KEY` or `HSL_API_KEY` (optional)
 
 Calculates transit routes via OTP for all zone pairs.
 
-```bash
-varikko routes [--period=MORNING|EVENING|MIDNIGHT] [--test]
-```
-
 Time periods:
-- `MORNING`: 08:30 on next Tuesday
-- `EVENING`: 17:30 on next Tuesday
-- `MIDNIGHT`: 23:30 on next Tuesday
+- **MORNING**: 08:30 on next Tuesday
+- **EVENING**: 17:30 on next Tuesday
+- **MIDNIGHT**: 23:30 on next Tuesday
 
-Options:
-- `--test`: Process only 10 random routes
-- `--period`: Time period (default: MORNING)
+Test mode processes only 10 random routes for quick validation.
 
 ### 4. Clear Data
 
-Selectively clear database tables.
+Selectively clear database tables:
+- Routes (reset to PENDING status)
+- Places (cascades to routes)
+- Metadata
+- Deciles
 
-```bash
-varikko clear [--routes] [--places] [--metadata] [--deciles] [--force]
-```
-
-Options:
-- `--routes`: Reset routes to PENDING status
-- `--places`: Delete all places (cascades to routes)
-- `--metadata`: Clear metadata table
-- `--deciles`: Clear decile calculations
-- `--force`: Skip confirmation prompt
+Includes confirmation prompt for safety.
 
 ### 5. Calculate Deciles
 
 Generates heatmap color distribution for visualization.
 
-```bash
-varikko deciles [--force]
-```
-
 Creates 10 equal quantiles with vintage color palette (#E76F51 to #355C7D).
-
-Options:
-- `--force`: Overwrite existing deciles
 
 ### 6. Process Maps
 
-Converts ESRI shapefiles to TopoJSON and generates pre-rendered SVG.
-
-```bash
-varikko maps [--svg-only]
-```
-
-Options:
-- `--svg-only`: Skip TopoJSON processing, regenerate SVG only
+Converts ESRI shapefiles to TopoJSON and generates pre-rendered SVG for background visualization.
 
 ## Configuration
 
@@ -172,7 +97,6 @@ SVG_OUTPUT=../opas/public/background_map.svg
 
 ### `places` Table
 
-Stores zone metadata:
 - `id`: Postal code (e.g., "00100")
 - `name`: Area name
 - `lat`, `lon`: Geometric centroid
@@ -182,7 +106,6 @@ Stores zone metadata:
 
 ### `routes` Table
 
-Stores pre-calculated transit routes:
 - `from_id`, `to_id`, `time_period`: Route identifier
 - `duration`: Travel time in seconds
 - `numberOfTransfers`: Transit transfers
@@ -192,7 +115,6 @@ Stores pre-calculated transit routes:
 
 ### `deciles` Table
 
-Heatmap color distribution:
 - `time_period`: MORNING | EVENING | MIDNIGHT
 - `decile_number`: 0-9
 - `min_duration`, `max_duration`: Duration range in minutes
@@ -206,6 +128,12 @@ Key-value store for progress tracking and timestamps.
 ## Development
 
 ```bash
+# Run in dev mode
+pnpm dev
+
+# Build
+pnpm build
+
 # Run tests
 pnpm test
 
@@ -284,11 +212,11 @@ Or set `DIGITRANSIT_API_KEY` for remote API.
 
 ### Geocoding Timeout
 
-Rate limiting (100ms delay) prevents API throttling. For faster geocoding, use local Pelias instance.
+Rate limiting (100ms delay) prevents API throttling.
 
 ### Terminal Too Small
 
-TUI requires minimum 80x24. Resize terminal or use non-interactive mode.
+TUI requires minimum 80x24. Resize terminal.
 
 ## Contributing
 
@@ -296,10 +224,6 @@ TUI requires minimum 80x24. Resize terminal or use non-interactive mode.
 2. Write tests for new features (Vitest)
 3. Follow existing code patterns (TypeScript strict mode)
 4. Run `pnpm test` and `pnpm lint` before committing
-
-## License
-
-MIT
 
 ## Related Projects
 
