@@ -1,9 +1,17 @@
 {
   "name": "varikko",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Chrono-Map Data Pipeline",
   "main": "dist/index.js",
+  "bin": {
+    "varikko": "./dist/main.js"
+  },
   "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "start": "tsx src/index.ts",
     "fetch:zones": "tsx src/fetch_zones.ts",
     "geocode:zones": "tsx src/geocode_zones.ts",
@@ -15,8 +23,7 @@
     "calculate:deciles": "tsx src/calculate_deciles.ts",
     "status": "tsx src/status.ts",
     "process:map": "tsx src/process_map.ts",
-    "generate:svg": "tsx src/generate_svg.ts",
-    "test": "vitest run"
+    "generate:svg": "tsx src/generate_svg.ts"
   },
   "dependencies": {
     "@turf/turf": "^7.3.1",
