@@ -51,6 +51,11 @@ async function loadLayers() {
           if (themeStyles.strokeWidth !== undefined) {
             layerGroup.setAttribute('stroke-width', themeStyles.strokeWidth.toString())
           }
+          // Special handling for ferry routes - use dashed lines
+          if (layerId === 'ferries') {
+            layerGroup.setAttribute('stroke-dasharray', '5,3')
+            layerGroup.setAttribute('stroke-linecap', 'round')
+          }
         }
 
         // Import and append to main SVG

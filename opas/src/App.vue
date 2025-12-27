@@ -73,9 +73,9 @@ onMounted(() => {
       <!-- Ready State - Show Map -->
       <div v-else class="grow relative bg-[#A8B5B9] flex items-center justify-center p-6">
         <div class="w-full max-w-5xl aspect-square relative shadow-2xl border-8 border-white bg-white p-2">
-          <!-- Background Map Layer (water only, roads rendered in InteractiveMap) -->
+          <!-- Background Map Layer (water, roads, railways, ferries) -->
           <div class="absolute inset-0">
-            <BackgroundMap :theme="currentTheme" :layers="['water']" />
+            <BackgroundMap :theme="currentTheme" :layers="['water', 'roads', 'railways', 'ferries']" />
           </div>
           <!-- Interactive Map Layer -->
           <div class="absolute inset-0">

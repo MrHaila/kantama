@@ -12,6 +12,18 @@
       "file": "roads.svg",
       "description": "Road network",
       "zIndex": 10
+    },
+    {
+      "id": "railways",
+      "file": "railways.svg",
+      "description": "Railway network",
+      "zIndex": 20
+    },
+    {
+      "id": "ferries",
+      "file": "ferries.svg",
+      "description": "Ferry routes",
+      "zIndex": 30
     }
   ]
 }
