@@ -22,9 +22,28 @@ export function openDB(dbPath?: string): Database.Database {
 }
 
 /**
+ * Database statistics type
+ */
+export interface DBStats {
+  zones: number;
+  routes: {
+    total: number;
+    ok: number;
+    pending: number;
+    no_route: number;
+    error: number;
+  };
+  deciles: {
+    calculated: boolean;
+    count: number;
+  };
+  lastRun: any;
+}
+
+/**
  * Get database statistics (for status displays)
  */
-export function getDBStats(db: Database.Database) {
+export function getDBStats(db: Database.Database): DBStats {
   const placeCount = db.prepare('SELECT COUNT(*) as count FROM places').get() as { count: number };
 
   const routeCounts = db.prepare(`
