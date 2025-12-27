@@ -7,7 +7,8 @@ export type WorkflowStage =
   | 'clear_data'
   | 'calculate_deciles'
   | 'process_map'
-  | 'generate_svg';
+  | 'generate_svg'
+  | 'export_layers';
 
 export interface ProgressEvent {
   stage: WorkflowStage;

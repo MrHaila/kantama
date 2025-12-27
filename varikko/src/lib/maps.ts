@@ -6,6 +6,7 @@ import path from 'path';
 import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
+import { exportLayers } from './exportLayers';
 
 // Default paths (can be overridden via options)
 const DEFAULT_DATA_DIR = path.join(__dirname, '../data/maastokartta_esri');
@@ -315,10 +316,16 @@ export async function processMaps(options: ProcessMapOptions = {}): Promise<void
   // Step 1: Process shapefiles to TopoJSON
   await processMap(options);
 
-  // Step 2: Generate SVG from TopoJSON
+  // Step 2: Generate combined SVG from TopoJSON (legacy)
   await generateSVG({
     topoJsonPath: outputPath,
     outputPath: svgPath,
+    emitter: options.emitter,
+  });
+
+  // Step 3: Export individual layer files
+  await exportLayers({
+    topoJsonPath: outputPath,
     emitter: options.emitter,
   });
 }

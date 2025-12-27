@@ -409,7 +409,10 @@ export function parseCLI(): CLICommand | null {
         console.log('\nMap processing complete!');
         console.log('Files created:');
         console.log('  • background_map.json (TopoJSON)');
-        console.log('  • background_map.svg (SVG)');
+        console.log('  • background_map.svg (SVG - legacy)');
+        console.log('  • layers/water.svg');
+        console.log('  • layers/roads.svg');
+        console.log('  • layers/manifest.json');
       } catch (error) {
         console.error('Error:', error);
         console.error('\nMake sure shapefile data exists in data/maastokartta_esri/');
