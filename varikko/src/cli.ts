@@ -5,6 +5,7 @@ import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
 import { clearData, getCounts } from './lib/clearing';
 import { calculateDeciles } from './lib/deciles';
+import { processMaps } from './lib/maps';
 import { createProgressEmitter } from './lib/events';
 import readline from 'readline';
 
@@ -396,8 +397,32 @@ export function parseCLI(): CLICommand | null {
   program
     .command('map')
     .description('Process shapefiles and generate SVG')
-    .action((_options) => {
-      // Will be implemented in Phase 08
+    .action(async () => {
+      const emitter = createProgressEmitter();
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start') {
+          console.log('Starting map processing...');
+        } else if (event.type === 'progress') {
+          console.log(event.message || '');
+        } else if (event.type === 'complete') {
+          console.log('✓', event.message || 'Complete');
+        } else if (event.type === 'error') {
+          console.error('✗', event.message || 'Error', event.error);
+        }
+      });
+
+      try {
+        await processMaps({ emitter });
+        console.log('\nMap processing complete!');
+        console.log('Files created:');
+        console.log('  • background_map.json (TopoJSON)');
+        console.log('  • background_map.svg (SVG)');
+      } catch (error) {
+        console.error('Error:', error);
+        console.error('\nMake sure shapefile data exists in data/maastokartta_esri/');
+        process.exit(1);
+      }
     });
 
   program
