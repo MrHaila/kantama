@@ -742,7 +742,6 @@ describe('maps', () => {
 
       expect(manifestObj).toHaveProperty('viewBox');
       expect(manifestObj).toHaveProperty('layers');
-      expect(manifestObj).toHaveProperty('themes');
       expect(manifestObj.layers).toHaveLength(2);
       expect(manifestObj.layers[0]).toMatchObject({
         id: 'water',
@@ -758,25 +757,6 @@ describe('maps', () => {
       });
     });
 
-    it('should include theme definitions in manifest', async () => {
-      await exportLayers({
-        topoJsonPath: testTopoJsonPath,
-        outputDir: testLayersDir,
-      });
-
-      const manifest = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
-        (call) => call[0].endsWith('manifest.json')
-      )?.[1];
-
-      const manifestObj = JSON.parse(manifest);
-
-      expect(manifestObj.themes).toHaveProperty('vintage');
-      expect(manifestObj.themes).toHaveProperty('yle');
-      expect(manifestObj.themes.vintage).toHaveProperty('water');
-      expect(manifestObj.themes.vintage).toHaveProperty('roads');
-      expect(manifestObj.themes.vintage.water).toHaveProperty('fill');
-      expect(manifestObj.themes.vintage.roads).toHaveProperty('stroke');
-    });
 
     it('should throw error if TopoJSON file does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);

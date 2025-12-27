@@ -35,7 +35,6 @@ export interface ThemeStyles {
 export interface LayerManifest {
   viewBox: string;
   layers: LayerDefinition[];
-  themes: Record<string, Record<string, ThemeStyles>>;
 }
 
 export interface ExportLayersOptions {
@@ -56,7 +55,8 @@ function createProjection() {
 }
 
 /**
- * Generate layer manifest with metadata and theme definitions
+ * Generate layer manifest with layer metadata
+ * Note: Themes are defined in Opas frontend, not here
  */
 function generateManifest(): LayerManifest {
   return {
@@ -75,16 +75,6 @@ function generateManifest(): LayerManifest {
         zIndex: 10,
       },
     ],
-    themes: {
-      vintage: {
-        water: { fill: '#2a4d69' },
-        roads: { stroke: '#8b7355', strokeWidth: 0.5 },
-      },
-      yle: {
-        water: { fill: '#6b9bc3' },
-        roads: { stroke: '#3d5a50', strokeWidth: 0.6 },
-      },
-    },
   };
 }
 
