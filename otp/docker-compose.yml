@@ -6,7 +6,7 @@ services:
     environment:
       # Guide suggests 10G, but 4G-8G is often sufficient for dev.
       # Setting to 8G to be safe on typical dev machines, but close to guide.
-      - JAVA_OPTS=-Xmx12g
+      - JAVA_OPTS=-Xmx16g
     volumes:
       # Mount the local hsl directory (containing obj.dat, etc.) to the container's run dir
       - ./hsl:/var/opentripplanner
@@ -17,4 +17,4 @@ services:
     deploy:
       resources:
         limits:
-          memory: 12G
+          memory: 16G

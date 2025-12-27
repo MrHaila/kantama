@@ -5,7 +5,7 @@ import { Footer } from '../components/Footer';
 import { ProgressBar } from '../components/ProgressBar';
 import { Spinner } from '../components/Spinner';
 import { openDB } from '../../lib/db';
-import { fetchZones } from '../../lib/zones';
+import { fetchZonesMultiCity } from '../../lib/zones';
 import { createProgressEmitter, type ProgressEvent } from '../../lib/events';
 import { symbols } from '../theme';
 
@@ -46,7 +46,7 @@ export function FetchZonesScreen({ testMode, onComplete, onCancel }: FetchZonesS
       });
 
       try {
-        const result = await fetchZones(db, {
+        const result = await fetchZonesMultiCity(db, {
           testMode,
           testLimit: 5,
           emitter,
@@ -84,7 +84,7 @@ export function FetchZonesScreen({ testMode, onComplete, onCancel }: FetchZonesS
                   </Box>
                 )}
 
-                {progress.type === 'progress' && progress.current && progress.total && (
+                {progress.type === 'progress' && progress.current !== undefined && progress.total !== undefined && (
                   <ProgressBar
                     current={progress.current}
                     total={progress.total}
@@ -103,12 +103,17 @@ export function FetchZonesScreen({ testMode, onComplete, onCancel }: FetchZonesS
             </Text>
             <Box marginTop={1}>
               <Text>Zones: </Text>
-              <Text color="cyan">{result.zoneCount}</Text>
+              <Text color="cyan">{result.zoneCount || 0}</Text>
             </Box>
             <Box>
               <Text>Routes: </Text>
-              <Text color="cyan">{result.routeCount.toLocaleString()}</Text>
+              <Text color="cyan">{(result.routeCount || 0).toLocaleString()}</Text>
               <Text color="gray"> (Cartesian product pre-filled)</Text>
+            </Box>
+            <Box>
+              <Text color="gray">
+                Helsinki (osa-alue), Vantaa (kaupunginosa), Espoo (statistical areas)
+              </Text>
             </Box>
           </Box>
         )}

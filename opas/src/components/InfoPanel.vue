@@ -53,7 +53,7 @@ function deselectZone() {
 
     <div v-if="zoneDetails" class="pr-8">
       <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
-      <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">POSTAL CODE {{ activeZoneId }}</p>
+      <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">{{ zoneDetails.city || 'Helsinki' }}</p>
 
       <div v-if="reachabilityStats" class="space-y-2">
         <div class="flex items-baseline space-x-1.5">

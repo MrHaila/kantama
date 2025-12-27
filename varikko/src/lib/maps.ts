@@ -8,6 +8,15 @@ import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
 import { exportLayers } from './exportLayers';
+import {
+  WIDTH,
+  HEIGHT,
+  VIEWBOX_X,
+  VIEWBOX_Y,
+  MAP_CENTER,
+  MAP_SCALE,
+  CLIP_BBOX,
+} from './mapConfig';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,18 +36,6 @@ const LAYERS = [
 // Coordinate systems
 const TARGET_CRS = 'EPSG:4326'; // WGS84 for web use
 
-// Helsinki bounding box (minx, miny, maxx, maxy)
-const CLIP_BBOX_COORDS = [24.5, 60.0, 25.3, 60.5];
-
-// SVG projection parameters - must match opas MAP_CONFIG
-const ZOOM_LEVEL = 1.2; // 20% zoom out
-const BASE_WIDTH = 800;
-const BASE_HEIGHT = 800;
-const WIDTH = BASE_WIDTH * ZOOM_LEVEL;
-const HEIGHT = BASE_HEIGHT * ZOOM_LEVEL;
-const VIEWBOX_X = -(WIDTH - BASE_WIDTH) / 2 + 60; // Center horizontally, then move 60px right
-const VIEWBOX_Y = -120 - (HEIGHT - BASE_HEIGHT); // Keep bottom fixed
-
 export interface ProcessMapOptions {
   shapefileDir?: string;
   outputPath?: string;
@@ -57,8 +54,8 @@ export interface GenerateSVGOptions {
 function createProjection() {
   return d3
     .geoMercator()
-    .center([24.93, 60.17]) // Helsinki center
-    .scale(120000)
+    .center(MAP_CENTER)
+    .scale(MAP_SCALE)
     .translate([WIDTH / 2, HEIGHT / 2]);
 }
 
@@ -99,7 +96,7 @@ export async function processMap(options: ProcessMapOptions = {}): Promise<void>
     emitter?.emitProgress('process_map', 1, LAYERS.length + 2, 'Creating clipping mask...');
 
     await mapshaper.runCommands(
-      `-rectangle bbox=${CLIP_BBOX_COORDS.join(',')} name=clip_mask -proj init=${TARGET_CRS} -o ${clipMaskFile}`
+      `-rectangle bbox=${CLIP_BBOX.join(',')} name=clip_mask -proj init=${TARGET_CRS} -o ${clipMaskFile}`
     );
 
     // Step 2: Process each layer

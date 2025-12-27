@@ -111,10 +111,6 @@ export const MapsScreen: React.FC<MapsScreenProps> = ({ onExit }) => {
               Process shapefiles to TopoJSON
             </Text>
             <Text>
-              {currentStage === 'generate_svg' ? '▶ ' : metadata.sizeKB ? '✓ ' : '  '}
-              Generate combined SVG (legacy)
-            </Text>
-            <Text>
               {currentStage === 'export_layers' ? '▶ ' : metadata.waterSizeKB ? '✓ ' : '  '}
               Export layered SVG files
             </Text>

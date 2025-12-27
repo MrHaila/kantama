@@ -5,15 +5,18 @@ import path from 'path';
 import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
+import {
+  WIDTH,
+  HEIGHT,
+  VIEWBOX_X,
+  VIEWBOX_Y,
+  VIEWBOX,
+  MAP_CENTER,
+  MAP_SCALE,
+} from './mapConfig';
 
-// SVG projection parameters - must match opas MAP_CONFIG
-const ZOOM_LEVEL = 1.2; // 20% zoom out
-const BASE_WIDTH = 800;
-const BASE_HEIGHT = 800;
-const WIDTH = BASE_WIDTH * ZOOM_LEVEL;
-const HEIGHT = BASE_HEIGHT * ZOOM_LEVEL;
-const VIEWBOX_X = -(WIDTH - BASE_WIDTH) / 2 + 60; // Center horizontally, then move 60px right
-const VIEWBOX_Y = -120 - (HEIGHT - BASE_HEIGHT); // Keep bottom fixed
+// Re-export for use in SVG generation
+export { VIEWBOX_X, VIEWBOX_Y, WIDTH, HEIGHT };
 
 export interface LayerDefinition {
   id: string;
@@ -45,8 +48,8 @@ export interface ExportLayersOptions {
 function createProjection() {
   return d3
     .geoMercator()
-    .center([24.93, 60.17]) // Helsinki center
-    .scale(120000)
+    .center(MAP_CENTER)
+    .scale(MAP_SCALE)
     .translate([WIDTH / 2, HEIGHT / 2]);
 }
 
@@ -56,7 +59,7 @@ function createProjection() {
  */
 function generateManifest(): LayerManifest {
   return {
-    viewBox: `${VIEWBOX_X} ${VIEWBOX_Y} ${WIDTH} ${HEIGHT}`,
+    viewBox: VIEWBOX,
     layers: [
       {
         id: 'water',

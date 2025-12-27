@@ -4,28 +4,23 @@ import * as d3 from 'd3-geo';
 import type Database from 'better-sqlite3';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature } from 'geojson';
 import type { ProgressEmitter } from './events';
+import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
+import type { StandardZone, ZoneData } from './types';
+import {
+  WIDTH,
+  HEIGHT,
+  VIEWBOX_X,
+  VIEWBOX_Y,
+  MAP_CENTER,
+  MAP_SCALE,
+  METRO_AREA_BOUNDS,
+} from './mapConfig';
 
-// Constants (extracted from fetch_zones.ts)
+// Constants
 const WFS_URL =
   'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
 
 const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
-
-const HELSINKI_BOUNDS = {
-  minLon: 24.0,
-  maxLon: 25.5,
-  minLat: 59.9,
-  maxLat: 60.5,
-};
-
-// SVG projection parameters (must match MAP_CONFIG in opas)
-const ZOOM_LEVEL = 1.2;
-const BASE_WIDTH = 800;
-const BASE_HEIGHT = 800;
-const WIDTH = BASE_WIDTH * ZOOM_LEVEL;
-const HEIGHT = BASE_HEIGHT * ZOOM_LEVEL;
-const VIEW_BOX_X = -(WIDTH - BASE_WIDTH) / 2 + 60;
-const VIEW_BOX_Y = -120 - (HEIGHT - BASE_HEIGHT);
 
 interface FeatureProperties {
   postinumeroalue?: string;
@@ -39,20 +34,11 @@ export interface FetchZonesOptions {
   emitter?: ProgressEmitter;
 }
 
-export interface ZoneData {
-  id: string;
-  name: string;
-  lat: number;
-  lon: number;
-  geometry: string;
-  svg_path: string;
-}
-
 function createProjection() {
   return d3
     .geoMercator()
-    .center([24.93, 60.17])
-    .scale(120000)
+    .center(MAP_CENTER)
+    .scale(MAP_SCALE)
     .translate([WIDTH / 2, HEIGHT / 2]);
 }
 
@@ -100,10 +86,10 @@ function getVisibleAreaBounds(projection: d3.GeoProjection): {
   maxLat: number;
 } {
   // Get the four corners of the visible viewBox in SVG coordinates
-  const topLeft = [VIEW_BOX_X, VIEW_BOX_Y];
-  const topRight = [VIEW_BOX_X + WIDTH, VIEW_BOX_Y];
-  const bottomLeft = [VIEW_BOX_X, VIEW_BOX_Y + HEIGHT];
-  const bottomRight = [VIEW_BOX_X + WIDTH, VIEW_BOX_Y + HEIGHT];
+  const topLeft = [VIEWBOX_X, VIEWBOX_Y];
+  const topRight = [VIEWBOX_X + WIDTH, VIEWBOX_Y];
+  const bottomLeft = [VIEWBOX_X, VIEWBOX_Y + HEIGHT];
+  const bottomRight = [VIEWBOX_X + WIDTH, VIEWBOX_Y + HEIGHT];
 
   // Inverse project to get lat/lon coordinates
   const corners = [topLeft, topRight, bottomLeft, bottomRight]
@@ -156,16 +142,17 @@ function isGeometryInVisibleArea(
 }
 
 function isValidRing(ring: Position[]): boolean {
-  // Check if all coordinates in the ring are within reasonable WGS84 bounds
+  // Check if coordinates are valid WGS84 (basic sanity check)
+  // Geographic filtering is handled separately by isGeometryInVisibleArea
   return ring.every((coord) => {
     const lon = coord[0];
     const lat = coord[1];
     if (lon === undefined || lat === undefined) return false;
+    // Use metro area bounds for sanity check (catches projection errors)
     return (
-      lon >= HELSINKI_BOUNDS.minLon &&
-      lon <= HELSINKI_BOUNDS.maxLon &&
-      lat >= HELSINKI_BOUNDS.minLat &&
-      lat <= HELSINKI_BOUNDS.maxLat
+      lon >= METRO_AREA_BOUNDS.minLon && lon <= METRO_AREA_BOUNDS.maxLon &&
+      lat >= METRO_AREA_BOUNDS.minLat && lat <= METRO_AREA_BOUNDS.maxLat &&
+      !isNaN(lon) && !isNaN(lat)
     );
   });
 }
@@ -256,7 +243,7 @@ export function processZones(
         svg_path: svgPath,
       };
     })
-    .filter((z): z is ZoneData => z !== null);
+    .filter((z): z is NonNullable<typeof z> => z !== null);
 
   // Apply test mode limit
   if (options.testMode && options.testLimit) {
@@ -291,10 +278,14 @@ export function initializeSchema(db: Database.Database): void {
     CREATE TABLE places (
       id TEXT PRIMARY KEY,
       name TEXT,
+      city TEXT,
+      name_se TEXT,
+      admin_level TEXT,
       lat REAL,
       lon REAL,
       geometry TEXT,
       svg_path TEXT,
+      source_layer TEXT,
       routing_lat REAL,
       routing_lon REAL,
       routing_source TEXT,
@@ -347,8 +338,8 @@ export function insertZones(
   emitter?.emitStart('fetch_zones', zones.length, 'Inserting zones...');
 
   const insertPlace = db.prepare(`
-    INSERT OR REPLACE INTO places (id, name, lat, lon, geometry, svg_path)
-    VALUES (@id, @name, @lat, @lon, @geometry, @svg_path)
+    INSERT OR REPLACE INTO places (id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer)
+    VALUES (@id, @name, @city, @name_se, @admin_level, @lat, @lon, @geometry, @svg_path, @source_layer)
   `);
 
   const insertRoute = db.prepare(`
@@ -391,7 +382,192 @@ export function insertZones(
 }
 
 /**
- * Fetch zones from WFS and populate database
+ * Download zones from all cities
+ */
+export async function downloadZonesMultiCity(
+  emitter?: ProgressEmitter
+): Promise<StandardZone[]> {
+  emitter?.emitStart('fetch_zones', ALL_FETCHERS.length, 'Fetching from multiple cities...');
+
+  const allZones: StandardZone[] = [];
+  const totalCities = ALL_FETCHERS.length;
+
+  for (let i = 0; i < ALL_FETCHERS.length; i++) {
+    const fetcher = ALL_FETCHERS[i];
+    try {
+      emitter?.emitProgress('fetch_zones', i, totalCities, `Fetching ${fetcher.cityName}...`);
+
+      const features = await fetcher.fetchFeatures();
+      const zones = features.map(f => fetcher.parseFeature(f));
+
+      allZones.push(...zones);
+
+      emitter?.emitProgress('fetch_zones', i + 1, totalCities,
+        `Fetched ${zones.length} zones from ${fetcher.cityName}`);
+    } catch (error) {
+      console.error(`Failed to fetch ${fetcher.cityName}:`, error);
+      // Continue with other cities (partial success)
+      emitter?.emitProgress('fetch_zones', i + 1, totalCities,
+        `Failed to fetch ${fetcher.cityName}, continuing...`);
+    }
+  }
+
+  return allZones;
+}
+
+export interface ProcessingStats {
+  total: number;
+  centroidFailed: number;
+  geometryInvalid: number;
+  outsideVisibleArea: number;
+  svgPathFailed: number;
+  passed: number;
+}
+
+/**
+ * Process standard zones into ZoneData
+ */
+export function processZonesMultiCity(
+  standardZones: StandardZone[],
+  options: { testMode?: boolean; testLimit?: number } = {}
+): { zones: ZoneData[]; stats: ProcessingStats } {
+  const projection = createProjection();
+  const visibleBounds = getVisibleAreaBounds(projection);
+
+  const stats: ProcessingStats = {
+    total: standardZones.length,
+    centroidFailed: 0,
+    geometryInvalid: 0,
+    outsideVisibleArea: 0,
+    svgPathFailed: 0,
+    passed: 0
+  };
+
+  let processed = standardZones
+    .map((zone) => {
+      // Generate zone ID with city prefix
+      const id = generateZoneId(zone.cityCode, zone.originalId);
+
+      // Calculate centroid
+      let centroid: [number, number] | null = null;
+      try {
+        const center = turf.centroid({
+          type: 'Feature',
+          geometry: zone.geometry,
+          properties: {}
+        });
+        centroid = center.geometry.coordinates as [number, number];
+      } catch {
+        stats.centroidFailed++;
+        return null;
+      }
+
+      // Clean geometry
+      const cleanedGeometry = cleanGeometry(zone.geometry);
+      if (!cleanedGeometry) {
+        stats.geometryInvalid++;
+        return null;
+      }
+
+      // Filter to visible area
+      if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
+        stats.outsideVisibleArea++;
+        return null;
+      }
+
+      // Generate SVG path
+      const svgPath = generateSvgPath(cleanedGeometry, projection);
+      if (!svgPath) {
+        stats.svgPathFailed++;
+        return null;
+      }
+
+      stats.passed++;
+      return {
+        id,
+        name: zone.name,
+        lat: centroid[1],
+        lon: centroid[0],
+        geometry: JSON.stringify(cleanedGeometry),
+        svg_path: svgPath,
+        city: zone.city,
+        name_se: zone.nameSe,
+        admin_level: zone.adminLevel,
+        source_layer: zone.metadata?.sourceLayer
+      };
+    })
+    .filter((z): z is NonNullable<typeof z> => z !== null);
+
+  // Apply test mode limit
+  if (options.testMode && options.testLimit) {
+    processed = processed.slice(0, options.testLimit);
+  }
+
+  return { zones: processed, stats };
+}
+
+/**
+ * Fetch zones using multi-city approach
+ */
+export async function fetchZonesMultiCity(
+  db: Database.Database,
+  options: FetchZonesOptions = {}
+): Promise<{ zoneCount: number; routeCount: number; stats: ProcessingStats }> {
+  const emitter = options.emitter;
+
+  // Auto-initialize schema if needed
+  if (!validateSchema(db)) {
+    initializeSchema(db);
+  }
+
+  // Download from all cities
+  const standardZones = await downloadZonesMultiCity(emitter);
+
+  emitter?.emitProgress('fetch_zones', 3, 4,
+    `Downloaded ${standardZones.length} zones, processing...`);
+
+  // Process zones
+  const { zones, stats } = processZonesMultiCity(standardZones, {
+    testMode: options.testMode,
+    testLimit: options.testLimit || 5
+  });
+
+  // Log filtering summary
+  console.log('\n--- Zone Filtering Summary ---');
+  console.log(`Total fetched:        ${stats.total}`);
+  console.log(`Outside visible area: ${stats.outsideVisibleArea} (filtered out)`);
+  console.log(`Invalid geometry:     ${stats.geometryInvalid} (filtered out)`);
+  console.log(`Centroid failed:      ${stats.centroidFailed} (filtered out)`);
+  console.log(`SVG path failed:      ${stats.svgPathFailed} (filtered out)`);
+  console.log(`Passed filtering:     ${stats.passed}`);
+  console.log('------------------------------\n');
+
+  emitter?.emitProgress('fetch_zones', 4, 4,
+    `Processed ${zones.length} zones (${stats.outsideVisibleArea} filtered as outside visible area), inserting...`);
+
+  // Insert zones
+  insertZones(db, zones, emitter);
+
+  // Store metadata
+  db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
+    'last_fetch',
+    JSON.stringify({
+      date: new Date().toISOString(),
+      zoneCount: zones.length,
+      isTest: options.testMode || false,
+      multiCity: true,
+      cities: ['Helsinki', 'Vantaa', 'Espoo'],
+      filteringStats: stats
+    })
+  );
+
+  const routeCount = zones.length * (zones.length - 1) * TIME_PERIODS.length;
+
+  return { zoneCount: zones.length, routeCount, stats };
+}
+
+/**
+ * Fetch zones from WFS and populate database (original implementation)
  */
 export async function fetchZones(
   db: Database.Database,

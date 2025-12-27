@@ -1,6 +1,7 @@
 import type Database from 'better-sqlite3';
 import type { ProgressEmitter } from './events';
 import axios from 'axios';
+import { CITY_NAME_MAP } from './types';
 
 const GEOCODING_API = 'https://api.digitransit.fi/geocoding/v1/search';
 const RATE_LIMIT_DELAY = 100; // 100ms between requests = max 10 req/sec
@@ -52,6 +53,8 @@ interface Place {
   name: string;
   lat: number;
   lon: number;
+  city?: string;
+  name_se?: string;
 }
 
 /**
@@ -80,32 +83,53 @@ export function ensureGeocodingSchema(db: Database.Database): void {
 }
 
 /**
+ * Extract city from zone ID
+ */
+function getCityFromZoneId(zoneId: string): string | undefined {
+  const cityCode = zoneId.split('-')[0];
+  return CITY_NAME_MAP[cityCode];
+}
+
+/**
  * Geocode a single zone using multiple strategies
- * Tries: postal code → zone name → postal code + Helsinki
+ * Tries: zone name + city → Swedish name + city → zone name only
  */
 export async function geocodeZone(
   zoneId: string,
   zoneName: string,
+  zoneCity?: string,
+  zoneNameSe?: string,
   apiKey?: string
 ): Promise<GeocodeResult> {
   try {
+    // Get city from zone ID or provided city
+    const city = zoneCity || getCityFromZoneId(zoneId) || 'Helsinki';
+
     // Try multiple search strategies
     const searchStrategies = [
-      // Strategy 1: Postal code only
+      // Strategy 1: Zone name + city
       {
-        text: zoneId,
-        description: 'postal code',
-      },
-      // Strategy 2: Zone name
-      {
-        text: zoneName,
-        description: 'zone name',
+        text: `${zoneName}, ${city}`,
+        description: 'zone name + city',
         layers: 'neighbourhood,locality,address',
       },
-      // Strategy 3: Postal code + Helsinki
+      // Strategy 2: Swedish name + city (if available)
+      ...(zoneNameSe ? [{
+        text: `${zoneNameSe}, ${city}`,
+        description: 'Swedish name + city',
+        layers: 'neighbourhood,locality,address',
+      }] : []),
+      // Strategy 3: Zone name only (for well-known areas)
       {
-        text: `${zoneId} Helsinki`,
-        description: 'postal code + Helsinki',
+        text: zoneName,
+        description: 'zone name only',
+        layers: 'neighbourhood,locality,address',
+      },
+      // Strategy 4: City only (fallback for small zones)
+      {
+        text: city,
+        description: 'city only',
+        layers: 'locality',
       },
     ];
 
@@ -227,8 +251,8 @@ export async function geocodeZones(
   // Ensure schema has geocoding columns
   ensureGeocodingSchema(db);
 
-  // Get all zones
-  let zones = db.prepare('SELECT id, name, lat, lon FROM places ORDER BY id').all() as Place[];
+  // Get all zones including new city columns
+  let zones = db.prepare('SELECT id, name, lat, lon, city, name_se FROM places ORDER BY id').all() as Place[];
 
   if (testMode) {
     zones = zones.slice(0, testLimit);
@@ -245,7 +269,7 @@ export async function geocodeZones(
   for (let i = 0; i < zones.length; i++) {
     const zone = zones[i];
 
-    const result = await geocodeZone(zone.id, zone.name, apiKey);
+    const result = await geocodeZone(zone.id, zone.name, zone.city, zone.name_se, apiKey);
 
     updateZoneRouting(db, zone.id, result, zone.lat, zone.lon);
 
