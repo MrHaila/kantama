@@ -1,60 +1,128 @@
 import React, { useState } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
-import { Header } from './components/Header';
-import { Footer } from './components/Footer';
-import { StatusBox } from './components/StatusBox';
-import { openDB, getDBStats } from '../lib/db';
+import { useApp } from 'ink';
+import { Dashboard, type Screen } from './dashboard';
+import { FetchZonesScreen } from './screens/fetch-zones';
+import { GeocodeScreen } from './screens/geocode';
+import RoutesScreen from './screens/routes';
+import { ClearScreen } from './screens/clear';
+import DecilesScreen from './screens/deciles';
+import { MapsScreen } from './screens/maps';
+import { HelpScreen } from './screens/help';
+import { openDB, getDBPath } from '../lib/db';
+import type { ClearOptions } from '../lib/clearing';
 
 export function App() {
   const { exit } = useApp();
-  const [stats, setStats] = useState(() => {
-    const db = openDB();
-    const s = getDBStats(db);
-    db.close();
-    return s;
-  });
+  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
+  const [testMode, setTestMode] = useState(false);
 
-  useInput((input, key) => {
-    if (input === 'q' || key.escape) {
-      exit();
-    }
+  const handleNavigate = (screen: Screen) => {
+    setCurrentScreen(screen);
+  };
 
-    // Refresh stats on 'r'
-    if (input === 'r') {
+  const handleBackToDashboard = () => {
+    setCurrentScreen('dashboard');
+  };
+
+  const handleToggleTestMode = () => {
+    setTestMode((prev) => !prev);
+  };
+
+  const handleQuit = () => {
+    exit();
+  };
+
+  // Render current screen
+  switch (currentScreen) {
+    case 'dashboard':
+      return (
+        <Dashboard
+          onNavigate={handleNavigate}
+          onQuit={handleQuit}
+          testMode={testMode}
+          onToggleTestMode={handleToggleTestMode}
+        />
+      );
+
+    case 'fetch-zones':
+      return (
+        <FetchZonesScreen
+          testMode={testMode}
+          onComplete={handleBackToDashboard}
+          onCancel={handleBackToDashboard}
+        />
+      );
+
+    case 'geocode':
+      return (
+        <GeocodeScreen
+          testMode={testMode}
+          apiKey={process.env.DIGITRANSIT_API_KEY || process.env.HSL_API_KEY}
+          onComplete={handleBackToDashboard}
+          onCancel={handleBackToDashboard}
+        />
+      );
+
+    case 'routes': {
       const db = openDB();
-      setStats(getDBStats(db));
-      db.close();
+      return (
+        <RoutesScreen
+          db={db}
+          testMode={testMode}
+          onExit={() => {
+            db.close();
+            handleBackToDashboard();
+          }}
+        />
+      );
     }
-  });
 
-  return (
-    <Box flexDirection="column" padding={1}>
-      <Header title="VARIKKO DATA PIPELINE" width={80} />
+    case 'clear': {
+      const db = openDB();
+      // Default clear options - clear all
+      const clearOptions: ClearOptions = {
+        routes: false,
+        places: false,
+        metadata: false,
+        deciles: false,
+        force: true, // Skip confirmation in TUI (we'll add our own)
+      };
+      return (
+        <ClearScreen
+          db={db}
+          options={clearOptions}
+        />
+      );
+    }
 
-      <Box flexDirection="column" marginTop={1} marginBottom={1}>
-        <StatusBox stats={stats} />
-      </Box>
+    case 'deciles':
+      return (
+        <DecilesScreen
+          dbPath={getDBPath()}
+          force={false}
+          onExit={(error) => {
+            if (error) {
+              console.error('Deciles calculation failed:', error);
+            }
+            handleBackToDashboard();
+          }}
+        />
+      );
 
-      <Box flexDirection="column" marginTop={1}>
-        <Text color="yellow">
-          TUI Interface Coming Soon!
-        </Text>
-        <Box marginTop={1}>
-          <Text color="gray">
-            This is a placeholder. Full dashboard and workflow screens will be implemented in later phases.
-          </Text>
-        </Box>
-        <Text color="gray">
-          Press 'r' to refresh stats, or 'q' to quit.
-        </Text>
-      </Box>
+    case 'maps':
+      return <MapsScreen onExit={handleBackToDashboard} />;
 
-      <Footer
-        shortcuts={[
-          { key: 'r', label: 'Refresh' },
-          { key: 'q', label: 'Quit' },
-        ]}
-      />
-    </Box>
-  );
+    case 'help':
+      return <HelpScreen onBack={handleBackToDashboard} />;
+
+    default:
+      return (
+        <Dashboard
+          onNavigate={handleNavigate}
+          onQuit={handleQuit}
+          testMode={testMode}
+          onToggleTestMode={handleToggleTestMode}
+        />
+      );
+  }
 }
