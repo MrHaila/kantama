@@ -1,0 +1,192 @@
+import Database from 'better-sqlite3';
+import fs from 'fs';
+import { TEST_DB_PATH } from '../setup';
+
+export interface TestDB {
+  db: Database.Database;
+  cleanup: () => void;
+}
+
+/**
+ * Create a fresh test database with schema
+ */
+export function createTestDB(path: string = TEST_DB_PATH): TestDB {
+  const db = new Database(path);
+
+  // Enable WAL mode (same as production)
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+
+  // Create schema (extracted from fetch_zones.ts logic)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS places (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      lat REAL NOT NULL,
+      lon REAL NOT NULL,
+      geometry TEXT NOT NULL,
+      svg_path TEXT NOT NULL,
+      routing_lat REAL,
+      routing_lon REAL,
+      routing_source TEXT,
+      geocoding_error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS routes (
+      from_id TEXT NOT NULL,
+      to_id TEXT NOT NULL,
+      time_period TEXT NOT NULL,
+      duration INTEGER,
+      numberOfTransfers INTEGER,
+      walkDistance REAL,
+      legs TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      PRIMARY KEY (from_id, to_id, time_period),
+      FOREIGN KEY (from_id) REFERENCES places(id),
+      FOREIGN KEY (to_id) REFERENCES places(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_routes_to ON routes(to_id, time_period);
+    CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
+
+    CREATE TABLE IF NOT EXISTS deciles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      decile_number INTEGER UNIQUE NOT NULL,
+      min_duration INTEGER NOT NULL,
+      max_duration INTEGER NOT NULL,
+      color_hex TEXT NOT NULL,
+      label TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_deciles_number ON deciles(decile_number);
+
+    CREATE TABLE IF NOT EXISTS metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
+  return {
+    db,
+    cleanup: () => {
+      db.close();
+      if (path !== ':memory:' && fs.existsSync(path)) {
+        fs.unlinkSync(path);
+      }
+    },
+  };
+}
+
+/**
+ * Seed database with fixture data
+ */
+export function seedDB(db: Database.Database, fixtures: {
+  places?: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lon: number;
+    geometry: object;
+    svg_path: string;
+    routing_lat?: number | null;
+    routing_lon?: number | null;
+    routing_source?: string | null;
+  }>;
+  routes?: Array<{
+    from_id: string;
+    to_id: string;
+    time_period: string;
+    duration?: number | null;
+    numberOfTransfers?: number | null;
+    walkDistance?: number | null;
+    legs?: object | null;
+    status?: string;
+  }>;
+  deciles?: Array<{
+    decile_number: number;
+    min_duration: number;
+    max_duration: number;
+    color_hex: string;
+    label: string;
+  }>;
+  metadata?: Record<string, unknown>;
+}): void {
+  if (fixtures.places) {
+    const insertPlace = db.prepare(`
+      INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon, routing_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const place of fixtures.places) {
+      insertPlace.run(
+        place.id,
+        place.name,
+        place.lat,
+        place.lon,
+        JSON.stringify(place.geometry),
+        place.svg_path,
+        place.routing_lat || null,
+        place.routing_lon || null,
+        place.routing_source || null
+      );
+    }
+  }
+
+  if (fixtures.routes) {
+    const insertRoute = db.prepare(`
+      INSERT INTO routes (from_id, to_id, time_period, duration, numberOfTransfers, walkDistance, legs, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const route of fixtures.routes) {
+      insertRoute.run(
+        route.from_id,
+        route.to_id,
+        route.time_period,
+        route.duration || null,
+        route.numberOfTransfers || null,
+        route.walkDistance || null,
+        route.legs ? JSON.stringify(route.legs) : null,
+        route.status || 'PENDING'
+      );
+    }
+  }
+
+  if (fixtures.deciles) {
+    const insertDecile = db.prepare(`
+      INSERT INTO deciles (decile_number, min_duration, max_duration, color_hex, label)
+      VALUES (?, ?, ?, ?, ?)
+    `);
+
+    for (const decile of fixtures.deciles) {
+      insertDecile.run(
+        decile.decile_number,
+        decile.min_duration,
+        decile.max_duration,
+        decile.color_hex,
+        decile.label
+      );
+    }
+  }
+
+  if (fixtures.metadata) {
+    const insertMetadata = db.prepare('INSERT INTO metadata (key, value) VALUES (?, ?)');
+
+    for (const [key, value] of Object.entries(fixtures.metadata)) {
+      insertMetadata.run(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+  }
+}
+
+/**
+ * Get all data from database (for assertions)
+ */
+export function getDBSnapshot(db: Database.Database) {
+  return {
+    places: db.prepare('SELECT * FROM places ORDER BY id').all(),
+    routes: db.prepare('SELECT * FROM routes ORDER BY from_id, to_id, time_period').all(),
+    deciles: db.prepare('SELECT * FROM deciles ORDER BY decile_number').all(),
+    metadata: db.prepare('SELECT * FROM metadata ORDER BY key').all(),
+  };
+}

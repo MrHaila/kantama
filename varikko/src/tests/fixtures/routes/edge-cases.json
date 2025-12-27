@@ -1,0 +1,22 @@
+[
+  {
+    "from_id": "00100",
+    "to_id": "00150",
+    "time_period": "MIDNIGHT",
+    "duration": null,
+    "numberOfTransfers": null,
+    "walkDistance": null,
+    "status": "NO_ROUTE",
+    "legs": null
+  },
+  {
+    "from_id": "00120",
+    "to_id": "00140",
+    "time_period": "MORNING",
+    "duration": null,
+    "numberOfTransfers": null,
+    "walkDistance": null,
+    "status": "ERROR",
+    "legs": "{\"error\": \"OTP timeout\"}"
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "from_id": "00100",
+    "to_id": "00120",
+    "time_period": "MORNING",
+    "duration": 600,
+    "numberOfTransfers": 0,
+    "walkDistance": 800,
+    "status": "OK",
+    "legs": [
+      {
+        "from": {"name": "Kaartinkaupunki", "lat": 60.1653, "lon": 24.9497},
+        "to": {"name": "Punavuori", "lat": 60.1618, "lon": 24.9401},
+        "mode": "WALK",
+        "duration": 600,
+        "distance": 800
+      }
+    ]
+  },
+  {
+    "from_id": "00100",
+    "to_id": "00130",
+    "time_period": "MORNING",
+    "duration": 1200,
+    "numberOfTransfers": 1,
+    "walkDistance": 450,
+    "status": "OK",
+    "legs": [
+      {
+        "from": {"name": "Kaartinkaupunki", "lat": 60.1653, "lon": 24.9497},
+        "to": {"name": "Stop 1234", "lat": 60.164, "lon": 24.948},
+        "mode": "WALK",
+        "duration": 300,
+        "distance": 250
+      },
+      {
+        "from": {"name": "Stop 1234", "lat": 60.164, "lon": 24.948},
+        "to": {"name": "Stop 5678", "lat": 60.157, "lon": 24.950},
+        "mode": "BUS",
+        "duration": 720,
+        "distance": 1200,
+        "route": "23",
+        "headsign": "Kaivopuisto"
+      },
+      {
+        "from": {"name": "Stop 5678", "lat": 60.157, "lon": 24.950},
+        "to": {"name": "Kaivopuisto", "lat": 60.1555, "lon": 24.9520},
+        "mode": "WALK",
+        "duration": 180,
+        "distance": 200
+      }
+    ]
+  }
+]
