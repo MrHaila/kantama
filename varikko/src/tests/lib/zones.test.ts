@@ -12,6 +12,7 @@ import {
 } from '../../lib/zones';
 import { createProgressEmitter } from '../../lib/events';
 import axios from 'axios';
+import * as turf from '@turf/turf';
 
 // Mock axios for WFS requests
 vi.mock('axios');
@@ -101,7 +102,7 @@ describe('zones - processZones', () => {
     expect(zones[0].id).toBe('00100');
   });
 
-  it('should calculate geometric centroids', () => {
+  it('should calculate inside points (pole of inaccessibility)', () => {
     const features = [
       {
         type: 'Feature',
@@ -124,8 +125,69 @@ describe('zones - processZones', () => {
     const zones = processZones(features, {});
 
     expect(zones.length).toBeGreaterThan(0);
+    // Should be roughly centered
     expect(zones[0].lat).toBeCloseTo(60.17, 1);
     expect(zones[0].lon).toBeCloseTo(24.93, 1);
+  });
+
+  it('should guarantee points are inside their polygons', () => {
+    const features = [
+      {
+        type: 'Feature',
+        properties: { postinumeroalue: '00100', nimi: 'Simple' },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [24.92, 60.16],
+              [24.94, 60.16],
+              [24.94, 60.18],
+              [24.92, 60.18],
+              [24.92, 60.16],
+            ],
+          ],
+        },
+      },
+      {
+        type: 'Feature',
+        properties: { postinumeroalue: '00200', nimi: 'MultiPolygon' },
+        geometry: {
+          type: 'MultiPolygon',
+          coordinates: [
+            [
+              [
+                [24.80, 60.10],
+                [24.82, 60.10],
+                [24.82, 60.12],
+                [24.80, 60.12],
+                [24.80, 60.10],
+              ],
+            ],
+            [
+              [
+                [24.95, 60.20],
+                [24.99, 60.20],
+                [24.99, 60.24],
+                [24.95, 60.24],
+                [24.95, 60.20],
+              ],
+            ],
+          ],
+        },
+      },
+    ];
+
+    const zones = processZones(features, {});
+
+    // Verify all points are inside their polygons
+    zones.forEach((zone) => {
+      const geometry = JSON.parse(zone.geometry);
+      const point = turf.point([zone.lon, zone.lat]);
+      const polygon = turf.feature(geometry);
+
+      const isInside = turf.booleanPointInPolygon(point, polygon);
+      expect(isInside).toBe(true);
+    });
   });
 
   it('should generate SVG paths', () => {
