@@ -625,3 +625,203 @@ Falls back to geometric centroid if all strategies fail.
 
 **Last Updated:** 2025-12-27
 **Phase 04 Complete** ✅
+
+---
+
+# Phase 05: Build Routes Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/routing.ts (business logic, 462 lines)
+  - getNextTuesday(): Calculate next Tuesday for consistent schedules
+  - getOTPConfig(): Read OTP configuration from environment
+  - fetchRoute(): Single route calculation with OTP GraphQL API
+  - processPeriod(): Batch process routes for one time period
+  - buildRoutes(): Main workflow orchestration
+
+✓ src/tui/screens/routes.tsx (TUI screen)
+  - Real-time progress display with ProgressBar/Spinner
+  - Test mode support (5 routes)
+  - Error handling with user-friendly messages
+  - Status tracking and statistics display
+  - Period-specific processing support
+
+✓ src/tests/lib/routing.test.ts (comprehensive test suite, 24 tests)
+  - getNextTuesday tests (3 tests)
+  - getOTPConfig tests (5 tests)
+  - fetchRoute tests (9 tests)
+  - buildRoutes integration tests (7 tests)
+  - All tests passing ✓
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented routes command action)
+  - Non-interactive CLI support
+  - Period-specific processing (--period flag)
+  - Test mode support (--test flag)
+  - Progress event handling with console output
+  - Database connection management
+  - Error handling and exit codes
+
+✓ src/lib/events.ts (enhanced ProgressEmitter)
+  - Added metadata support to emitStart()
+  - Added metadata support to emitProgress()
+  - Allows passing real-time statistics with progress events
+```
+
+### Technology Integration
+
+- **axios**: OTP GraphQL API requests
+- **better-sqlite3**: SQLite database operations
+- **p-limit**: Concurrency control
+- **vitest**: Comprehensive test coverage with mocking
+
+---
+
+## Testing Results
+
+- All 24 routing tests passing (100%)
+- OTP GraphQL query generation validated
+- Route parsing with multiple itineraries tested
+- Error handling (timeout, network, GraphQL errors) verified
+- NO_ROUTE responses handled correctly
+- Concurrency control with p-limit working
+- Rate limiting enforced for remote API
+- Progress events emitted correctly
+- Metadata storage after completion verified
+- Build compiles without errors
+
+---
+
+## Key Design Decisions
+
+### OTP Configuration
+
+- **Local OTP**: Fast processing (10 concurrent requests, no rate limiting)
+- **Remote OTP**: Slow processing (1 concurrent request, 200ms rate limiting)
+- Configurable via USE_LOCAL_OTP environment variable
+- API key support via HSL_API_KEY or DIGITRANSIT_API_KEY
+
+### Time Periods
+
+- MORNING: 08:30:00
+- EVENING: 17:30:00
+- MIDNIGHT: 23:30:00
+- Target date: Next Tuesday (for consistent transit schedules)
+- All periods processed by default, or single period via --period flag
+
+### Route Processing Strategy
+
+- Cartesian product pre-filled during fetch (Phase 03)
+- Routes with status='PENDING' processed
+- Updates status to: OK, NO_ROUTE, or ERROR
+- Stores duration, transfers, walk distance, and detailed legs
+- Progress metadata updated every route
+- Batch metadata updated every 10 routes
+
+### Test Mode Behavior
+
+- Limits to 5 random routes per period
+- Uses same OTP data source (not mocked)
+- Identical code path ensures production parity
+
+---
+
+## What Went Well
+
+- All 24 tests passing on first attempt after fixes
+- Business logic cleanly extracted from build_routes.ts
+- TDD approach validated implementation
+- Event emitter integration worked seamlessly
+- Progress tracking provides real-time feedback
+- OTP GraphQL integration preserved correctly
+- Concurrency control prevents API overload
+- Rate limiting prevents throttling
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### ProgressEmitter Enhancements
+
+- Initially, emitProgress() and emitStart() didn't support metadata
+- Enhanced both methods to accept optional metadata parameter
+- Allows real-time statistics (ok/noRoute/errors counts) during processing
+- All event types now consistently support metadata
+
+### TUI Component Props
+
+- StatusBox component is specific to database stats, not general status
+- Ink Text component expects string colors, not Chalk instances
+- Footer component expects `shortcuts` prop, not `items`
+- Had to use plain Box/Text instead of StatusBox
+
+### Test Database Schema
+
+- createTestDB() returns {db, cleanup} object, not db directly
+- All tests need try/finally blocks to ensure cleanup
+- Required geometry and svg_path columns for places table
+- Routes table PRIMARY KEY prevents duplicate route entries
+
+---
+
+## Manual Verification
+
+✅ `pnpm test routing` - all 24 tests pass
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows existing patterns from build_routes.ts
+✅ TypeScript strict mode compliance
+✅ Lint passes with no errors
+
+---
+
+## Migration Notes
+
+### Files to Delete (After Validation)
+
+- `src/build_routes.ts` can be removed after full validation
+- `package.json` script `routes:build` can be replaced with `varikko routes`
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+---
+
+## Next Phase - Phase 06 Clear Data
+
+**Prerequisites:** Phase 02 (Foundation)
+**Estimated Effort:** 1 day
+
+### Key Tasks
+
+1. Implement data clearing business logic in `src/lib/clearing.ts`
+2. Create TUI screen for clear data workflow
+3. Implement CLI subcommand handler
+4. Write tests for clearing logic
+5. Support multiple clear operations (routes, places, metadata, all)
+
+### Hand-off Notes
+
+- Build routes workflow fully tested and working
+- Database operations proven (inserts, updates, queries)
+- Progress event pattern established and reusable
+- TUI screen pattern can be replicated for clearing
+- CLI integration pattern proven
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 05 Complete** ✅

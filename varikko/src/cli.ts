@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import { openDB } from './lib/db';
 import { fetchZones, initializeSchema } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
+import { buildRoutes, getOTPConfig } from './lib/routing';
 import { createProgressEmitter } from './lib/events';
 
 export interface CLIOptions {
@@ -150,8 +151,87 @@ export function parseCLI(): CLICommand | null {
     .description('Calculate transit routes')
     .option('-t, --test', 'Test mode (5 random routes per period)')
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
-    .action((_options) => {
-      // Will be implemented in Phase 05
+    .action(async (options) => {
+      const db = openDB();
+      const emitter = createProgressEmitter();
+
+      // Validate period if specified
+      const validPeriods = ['MORNING', 'EVENING', 'MIDNIGHT'];
+      if (options.period && !validPeriods.includes(options.period.toUpperCase())) {
+        console.error(`Invalid period: ${options.period}`);
+        console.error(`Valid periods: ${validPeriods.join(', ')}`);
+        process.exit(1);
+      }
+
+      const config = getOTPConfig();
+      console.log(`Using OTP: ${config.url} (${config.isLocal ? 'local' : 'remote'})`);
+      console.log(`Concurrency: ${config.concurrency} requests`);
+      if (options.period) {
+        console.log(`Period: ${options.period.toUpperCase()}`);
+      } else {
+        console.log('Processing all periods: MORNING, EVENING, MIDNIGHT');
+      }
+      if (options.test) {
+        console.log('⚠️  Test mode: 5 random routes per period\n');
+      }
+
+      if (!config.isLocal && !config.apiKey) {
+        console.error('Missing HSL_API_KEY or DIGITRANSIT_API_KEY environment variable');
+        console.error('Required for remote OTP API');
+        process.exit(1);
+      }
+
+      if (!config.isLocal) {
+        console.log('⚠️  Using remote API - this will be slow');
+        console.log('   Consider running local OTP for faster processing\n');
+      }
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start') {
+          console.log('Starting route calculation...');
+        } else if (event.type === 'progress') {
+          const current = event.current || 0;
+          const total = event.total || 0;
+          const pct = total ? Math.floor((current / total) * 100) : 0;
+          const metadata = event.metadata || {};
+          console.log(
+            `Progress: ${current}/${total} (${pct}%) - ` +
+            `OK: ${metadata.ok || 0}, No Route: ${metadata.noRoute || 0}, Errors: ${metadata.errors || 0}`
+          );
+        } else if (event.type === 'complete') {
+          console.log('✓', event.message || 'Complete');
+        } else if (event.type === 'error') {
+          console.error('✗', event.message || 'Error', event.error);
+        }
+      });
+
+      try {
+        const result = await buildRoutes(db, {
+          period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
+          testMode: options.test,
+          testLimit: 5,
+          emitter,
+        });
+
+        console.log('\n=== Route Calculation Summary ===');
+        console.log(`Total processed: ${result.processed}`);
+        console.log(`✓ Successful: ${result.ok}`);
+        console.log(`⊘ No route found: ${result.noRoute}`);
+        console.log(`✗ Errors: ${result.errors}`);
+
+        if (result.ok > 0) {
+          console.log('\nNext step: Run `varikko deciles` to calculate heatmap data');
+        } else {
+          console.log('\n⚠️  No successful routes calculated');
+          console.log('   Check that OTP server is running (if using local mode)');
+          console.log('   or verify API credentials (if using remote mode)');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
     });
 
   program
