@@ -5,9 +5,10 @@ import '../styles/background-map.css'
 // Props for configuration
 interface Props {
   theme?: 'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'
+  layers?: ('water' | 'roads')[]
 }
 
-const { theme = 'vintage' } = defineProps<Props>()
+const { theme = 'vintage', layers = [] } = defineProps<Props>()
 
 const containerRef = ref<HTMLElement | null>(null)
 
@@ -31,8 +32,24 @@ async function loadBackgroundMap() {
     // Add class for styling
     svgElement.setAttribute('class', 'w-full h-auto')
 
-    // The SVG already has the correct viewBox from the file
-    // No need to override it here
+    // Filter layers if specified
+    if (layers && layers.length > 0) {
+      // Hide background rect if only showing roads
+      if (!layers.includes('water')) {
+        const bgRect = svgElement.querySelector('.background-rect')
+        if (bgRect) bgRect.setAttribute('display', 'none')
+      }
+      // Hide water layer if not requested
+      if (!layers.includes('water')) {
+        const waterLayer = svgElement.querySelector('.water-layer')
+        if (waterLayer) waterLayer.setAttribute('display', 'none')
+      }
+      // Hide road layer if not requested
+      if (!layers.includes('roads')) {
+        const roadLayer = svgElement.querySelector('.road-layer')
+        if (roadLayer) roadLayer.setAttribute('display', 'none')
+      }
+    }
 
     containerRef.value.appendChild(svgElement)
 

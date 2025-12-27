@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue'
+import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
@@ -10,6 +10,26 @@ import { modeColors } from '../utils/transportColors'
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
+
+// Road paths loaded from background SVG
+const roadPaths = ref<string[]>([])
+
+// Load road paths from background_map.svg
+async function loadRoadPaths() {
+  try {
+    const response = await fetch('/background_map.svg')
+    const svgContent = await response.text()
+    const parser = new DOMParser()
+    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
+    const roadLayer = svgDoc.querySelector('.road-layer')
+    if (roadLayer) {
+      const paths = roadLayer.querySelectorAll('path')
+      roadPaths.value = Array.from(paths).map((p) => p.getAttribute('d') || '')
+    }
+  } catch (error) {
+    console.error('Failed to load road paths:', error)
+  }
+}
 
 // Create D3 projection to convert lat/lon to SVG coordinates
 // Must match the projection used in fetch_zones.ts
@@ -107,7 +127,7 @@ function handleMouseLeave() {
 
 // Load data on mount
 onMounted(async () => {
-  await store.loadData()
+  await Promise.all([store.loadData(), loadRoadPaths()])
 })
 
 // ESC key handler to deselect zone
@@ -147,6 +167,19 @@ onUnmounted(() => {
             @mouseenter="handleMouseEnter(zone.id)"
             @mouseleave="handleMouseLeave"
             @click="handleZoneClick(zone.id)"
+          />
+        </g>
+        <!-- Roads layer - on top of zones, under borders -->
+        <g class="road-layer pointer-events-none">
+          <path
+            v-for="(d, index) in roadPaths"
+            :key="`road-${index}`"
+            :d="d"
+            fill="none"
+            class="stroke-current text-vintage-dark/50"
+            stroke-width="0.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
         </g>
         <!-- Selected zone border on top -->
