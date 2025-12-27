@@ -387,14 +387,6 @@ export function parseCLI(): CLICommand | null {
     });
 
   program
-    .command('export')
-    .description('Export routes to JSON')
-    .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
-    .action((_options) => {
-      // Will be implemented in Phase 09
-    });
-
-  program
     .command('map')
     .description('Process shapefiles and generate SVG')
     .action(async () => {

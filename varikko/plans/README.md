@@ -159,7 +159,6 @@ src/
 - `src/build_routes.ts`
 - `src/clear_routes.ts`
 - `src/calculate_deciles.ts`
-- `src/export_routes.ts`
 - `src/process_map.ts`
 - `src/generate_svg.ts`
 - `src/status.ts`
@@ -209,7 +208,6 @@ varikko routes             # Calculate routes (all periods)
 varikko routes --period=MORNING --test
 varikko clear --force      # Clear all data
 varikko deciles            # Calculate deciles
-varikko export             # Export routes to JSON
 varikko map                # Process map
 varikko status             # Show status
 
