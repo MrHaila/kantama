@@ -3,9 +3,13 @@ import * as d3 from 'd3-geo';
 import * as topojson from 'topojson-client';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import type { Feature } from 'geojson';
 import type { Topology } from 'topojson-specification';
 import type { ProgressEmitter } from './events';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Default paths (can be overridden via options)
 const DEFAULT_DATA_DIR = path.join(__dirname, '../data/maastokartta_esri');

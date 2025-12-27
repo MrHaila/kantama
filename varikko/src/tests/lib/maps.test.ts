@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import type { ProgressEmitter } from '../../lib/events';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Mock fs before importing the module
 vi.mock('fs', () => ({

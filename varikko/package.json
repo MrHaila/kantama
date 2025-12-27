@@ -2,6 +2,7 @@
   "name": "varikko",
   "version": "2.0.0",
   "description": "Varikko Data Pipeline - TUI for transit route calculation",
+  "type": "module",
   "scripts": {
     "dev": "tsx src/main.ts",
     "build": "tsc",
