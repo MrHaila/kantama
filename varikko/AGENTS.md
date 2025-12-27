@@ -11,7 +11,7 @@ Varikko is built with a clean separation of concerns:
 ```
 varikko/
 ├── src/
-│   ├── main.ts              # Entry point (TUI + CLI)
+│   ├── main.ts              # Entry point (TUI)
 │   ├── cli.ts               # CLI parser (Commander)
 │   ├── lib/                 # Pure business logic
 │   │   ├── db.ts            # Database utilities
@@ -60,10 +60,10 @@ Everything is consolidated into a single SQLite database:
 
 ## Usage
 
-### Interactive Mode (Recommended)
+### Interactive Mode
 
 ```bash
-varikko
+pnpm dev
 ```
 
 Launches the TUI with keyboard-driven navigation:
@@ -73,33 +73,6 @@ Launches the TUI with keyboard-driven navigation:
 - **t**: Toggle test mode
 - **?**: Help screen
 - **q**: Quit
-
-### Non-Interactive Mode
-
-For automation and CI/CD:
-
-```bash
-# Initialize database
-varikko init --force
-
-# Fetch zones
-varikko fetch [--test]
-
-# Geocode zones (optional)
-varikko geocode [--test]
-
-# Build routes
-varikko routes [--period=MORNING|EVENING|MIDNIGHT] [--test]
-
-# Calculate deciles
-varikko deciles [--force]
-
-# Clear data
-varikko clear [--routes] [--places] [--metadata] [--deciles] [--force]
-
-# Process maps
-varikko maps [--svg-only]
-```
 
 ## Workflows
 
@@ -122,7 +95,7 @@ varikko maps [--svg-only]
 
 ### 4. Clear Data
 - Selective clearing: routes, places, metadata, deciles
-- Confirmation prompt unless --force
+- Confirmation prompt for safety
 - Non-destructive (never drops tables)
 
 ### 5. Calculate Deciles
@@ -178,7 +151,7 @@ pnpm clean
 ## Patterns
 
 1. **Event-Driven Progress**: Business logic emits events for real-time UI updates
-2. **Test Mode**: All workflows support --test flag for quick validation
+2. **Test Mode**: All workflows support test mode for quick validation
 3. **Idempotency**: Operations pick up where they left off (PENDING routes)
 4. **Type Safety**: Full TypeScript coverage with strict mode
 5. **Relational Consolidation**: Single SQLite database for all persistence
@@ -191,23 +164,3 @@ pnpm clean
 2. **API Keys**: Geocoding and remote OTP require API keys (optional)
 3. **Large Dataset**: Full route calculation (279 zones) takes several hours
 4. **Terminal Size**: TUI requires minimum 80x24 terminal
-
-## Migration from v1
-
-**Old commands:**
-```bash
-pnpm fetch:zones
-pnpm geocode:zones
-pnpm build:routes
-```
-
-**New commands:**
-```bash
-# Interactive (recommended)
-varikko
-
-# Non-interactive
-varikko fetch
-varikko geocode
-varikko routes
-```

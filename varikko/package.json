@@ -2,10 +2,6 @@
   "name": "varikko",
   "version": "2.0.0",
   "description": "Varikko Data Pipeline - TUI for transit route calculation",
-  "main": "dist/main.js",
-  "bin": {
-    "varikko": "./dist/main.js"
-  },
   "scripts": {
     "dev": "tsx src/main.ts",
     "build": "tsc",
@@ -47,10 +43,5 @@
     "mapshaper": "^0.6.113",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
-  },
-  "files": [
-    "dist",
-    "data",
-    "README.md"
-  ]
+  }
 }

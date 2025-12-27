@@ -164,43 +164,41 @@ Removed from codebase. Feature deemed unnecessary.
 
 ## Learnings
 
-- **Package.json files field**: Specify exactly what to ship in npm package (dist, data, README.md)
+- **Local development focus**: Varikko is for local use only, not npm distribution
 - **Error handling**: Distinguish between TUI and CLI modes - show clean messages in TUI, full stack traces in CLI
 - **Signal handling**: Add SIGINT handler for graceful Ctrl+C shutdown
-- **Build artifacts**: TypeScript preserves shebang in compiled output; make dist/main.js executable
+- **Build artifacts**: TypeScript preserves shebang in compiled output
 
 ## Key Design Decisions
 
 - **Legacy cleanup**: Deleted 8 old script files (fetch_zones.ts, geocode_zones.ts, build_routes.ts, etc.)
-- **Documentation**: Complete README.md with quick start, all workflows, configuration, and troubleshooting
+- **Simplified documentation**: Focused on local development, removed npm distribution references
 - **Error messages**: In TUI mode, show only error.message without stack traces for cleaner UX
-- **npm packaging**: Created .npmignore to exclude src/, tests/, plans/, and dev files
+- **Package.json**: Removed bin and files fields (not needed for local development)
 
 ## Implementation Notes
 
 - Updated package.json: removed all old pnpm scripts, kept only dev, build, test, lint, clean
 - Enhanced main.ts with process event handlers: SIGINT, uncaughtException, unhandledRejection
-- Created comprehensive README.md with installation, usage, workflows, and architecture
-- Updated AGENTS.md with new TUI-centric documentation and migration guide
+- Created comprehensive README.md focused on local development
+- Updated AGENTS.md with TUI-centric documentation
 - All tests passing (107 tests), lint warnings acceptable (mostly 'any' types in utilities)
+- Removed npm distribution code (.npmignore, bin, files field) - project is for local use only
 
-## Production Readiness Checklist
+## Readiness Checklist
 
 - ✅ All legacy scripts deleted
 - ✅ package.json cleaned up
-- ✅ .npmignore created
 - ✅ Build working (TypeScript compilation successful)
-- ✅ README.md complete
+- ✅ README.md complete (local development focused)
 - ✅ AGENTS.md updated
 - ✅ Error handling enhanced
 - ✅ All tests passing
 - ✅ Linting clean (no errors, only acceptable warnings)
-- ⏸️ Non-interactive CLI mode (not yet implemented, documented in README)
+- ✅ Removed npm distribution code
 
 ## Next Steps
 
-- Implement non-interactive CLI mode when needed
-- Consider adding CI/CD setup (GitHub Actions)
 - Monitor for issues and gather user feedback
 - Plan future enhancements (workflow presets, config file support)
 
