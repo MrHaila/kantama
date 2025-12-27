@@ -1,74 +1,84 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import '../styles/background-map.css'
+import { onMounted, ref, watch } from 'vue'
+import { layerService, type LayerId, type ThemeName } from '../services/LayerService'
 
-// Props for configuration
 interface Props {
-  theme?: 'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'
-  layers?: ('water' | 'roads')[]
+  theme?: ThemeName
+  layers?: LayerId[]
 }
 
-const { theme = 'vintage', layers = [] } = defineProps<Props>()
+const { theme = 'vintage', layers = ['water'] } = defineProps<Props>()
 
 const containerRef = ref<HTMLElement | null>(null)
+const viewBox = ref<string>('')
 
-// Load pre-generated SVG
-async function loadBackgroundMap() {
+/**
+ * Load and render requested layers
+ */
+async function loadLayers() {
   if (!containerRef.value) return
 
   try {
-    // Load the SVG file
-    const response = await fetch('/background_map.svg')
-    const svgContent = await response.text()
+    // Load manifest first
+    const manifest = await layerService.loadManifest()
+    viewBox.value = manifest.viewBox
 
     // Clear previous content
     containerRef.value.innerHTML = ''
 
-    // Parse and inject SVG
-    const parser = new DOMParser()
-    const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
-    const svgElement = svgDoc.documentElement
+    // Create SVG container
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('viewBox', viewBox.value)
+    svg.setAttribute('class', 'w-full h-auto')
 
-    // Add class for styling
-    svgElement.setAttribute('class', 'w-full h-auto')
+    // Load and append each requested layer in order
+    for (const layerId of layers) {
+      const layerSvg = await layerService.loadLayer(layerId)
+      const layerGroup = layerSvg.querySelector(`#${layerId}`)
 
-    // Filter layers if specified
-    if (layers && layers.length > 0) {
-      // Hide background rect if only showing roads
-      if (!layers.includes('water')) {
-        const bgRect = svgElement.querySelector('.background-rect')
-        if (bgRect) bgRect.setAttribute('display', 'none')
-      }
-      // Hide water layer if not requested
-      if (!layers.includes('water')) {
-        const waterLayer = svgElement.querySelector('.water-layer')
-        if (waterLayer) waterLayer.setAttribute('display', 'none')
-      }
-      // Hide road layer if not requested
-      if (!layers.includes('roads')) {
-        const roadLayer = svgElement.querySelector('.road-layer')
-        if (roadLayer) roadLayer.setAttribute('display', 'none')
+      if (layerGroup) {
+        // Get theme styles for this layer
+        const themeStyles = layerService.getThemeStyles(theme, layerId)
+
+        // Apply theme styles to the group
+        if (themeStyles) {
+          if (themeStyles.fill) {
+            layerGroup.setAttribute('fill', themeStyles.fill)
+          }
+          if (themeStyles.stroke) {
+            layerGroup.setAttribute('stroke', themeStyles.stroke)
+          }
+          if (themeStyles.strokeWidth !== undefined) {
+            layerGroup.setAttribute('stroke-width', themeStyles.strokeWidth.toString())
+          }
+        }
+
+        // Import and append to main SVG
+        const importedGroup = document.importNode(layerGroup, true)
+        svg.appendChild(importedGroup)
       }
     }
 
-    containerRef.value.appendChild(svgElement)
-
-    console.log('Background map loaded successfully')
+    containerRef.value.appendChild(svg)
+    console.log(`Loaded layers: ${layers.join(', ')}`)
   } catch (error) {
-    console.error('Failed to load background map:', error)
+    console.error('Failed to load background map layers:', error)
   }
 }
 
+// Load layers on mount
 onMounted(() => {
-  loadBackgroundMap()
+  loadLayers()
+})
+
+// Reload when theme or layers change
+watch([() => theme, () => layers], () => {
+  loadLayers()
 })
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    :class="['relative w-full aspect-square overflow-hidden', 'background-map-container', `theme-${theme}`]"
-  >
+  <div ref="containerRef" class="relative w-full aspect-square overflow-hidden">
     <!-- SVG loaded here -->
   </div>
 </template>
