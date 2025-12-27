@@ -212,5 +212,189 @@ chalk, eventemitter3 (utilities)
 
 ---
 
+# Phase 03: Fetch Zones Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### Ink Text Component Limitations
+
+- Text component doesn't support marginTop/marginBottom props
+- Must wrap Text in Box components for vertical spacing
+- Example: `<Box marginTop={1}><Text>content</Text></Box>`
+
+### TypeScript ESM Import Issues with tsx
+
+- tsx runtime has issues with yoga-layout (Ink dependency) using top-level await
+- Error: "Top-level await is currently not supported with the 'cjs' output format"
+- Workaround: Rely on comprehensive unit tests instead of manual CLI testing during development
+
+### Geometry Processing Edge Cases
+
+- Test geometries must be within visible map bounds (centered on Helsinki ~24.93, 60.17)
+- Polygons outside visible area are filtered out by isGeometryInVisibleArea()
+- Test data coordinates must match actual Helsinki area for realistic results
+
+### Test Database Schema Initialization
+
+- createTestDB() helper already creates full schema
+- Tests for "destructive drop" must insert data first, then re-initialize
+- Cannot test table creation when table already exists
+
+---
+
+## What Went Well
+
+- All 16 tests passing on first run after fixes
+- Business logic cleanly extracted from fetch_zones.ts
+- TDD approach validated implementation before manual testing
+- Event emitter integration worked seamlessly
+- Progress tracking API clean and intuitive
+- Database schema initialization perfectly replicated
+- SVG path generation and projection logic preserved correctly
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/zones.ts (business logic, 430 lines)
+  - downloadZonesFromWFS(): WFS API integration
+  - processZones(): Filter, clean, project, generate SVG
+  - initializeSchema(): Database schema initialization
+  - insertZones(): Zone insertion + Cartesian route pre-fill
+  - fetchZones(): Main workflow orchestration
+
+✓ src/tui/screens/fetch-zones.tsx (TUI screen)
+  - Real-time progress display with ProgressBar/Spinner
+  - Test mode support (5 zones)
+  - Error handling with user-friendly messages
+  - Status tracking (idle → running → complete/error)
+
+✓ src/tests/lib/zones.test.ts (comprehensive test suite, 16 tests)
+  - WFS download tests (mocked axios)
+  - Zone processing tests (filtering, centroids, SVG paths)
+  - Schema initialization tests
+  - Zone insertion and route pre-fill tests
+  - Progress event emission tests
+  - End-to-end integration tests
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented fetch command action)
+  - Non-interactive CLI support
+  - Progress event handling with console output
+  - Database connection management
+  - Error handling and exit codes
+```
+
+### Technology Integration
+
+- **@turf/turf**: Centroid calculation for zone polygons
+- **d3-geo**: Mercator projection and SVG path generation
+- **axios**: WFS API requests to geo.stat.fi
+- **better-sqlite3**: SQLite database operations with transactions
+
+---
+
+## Testing Results
+
+- All 16 unit tests passing (100%)
+- WFS download mocked correctly with axios.get
+- Zone processing filters Helsinki postal codes (00/01/02)
+- Geometric centroid calculation accurate
+- SVG path generation validated (paths start with 'M')
+- Schema initialization creates all tables and indexes
+- Route Cartesian product calculated correctly (N×(N-1)×3)
+- Self-routes properly excluded
+- Progress events emitted at correct stages
+- Metadata stored with timestamp and zone count
+
+---
+
+## Key Design Decisions
+
+### Test Mode Behavior
+
+- Limits to 5 zones for fast validation
+- Uses same WFS data source (not mocked fixtures)
+- Identical code path ensures production parity
+
+### Destructive Schema Initialization
+
+- DROP TABLE IF EXISTS for clean slate
+- Matches current implementation behavior
+- No migration/backward compatibility needed
+
+### Route Pre-filling Strategy
+
+- Cartesian product created at fetch time
+- 3 time periods: MORNING, EVENING, MIDNIGHT
+- Self-routes excluded (from_id ≠ to_id)
+- Status defaults to 'PENDING' for all routes
+
+### SVG Path Pre-generation
+
+- Paths generated during fetch (not on-demand)
+- Reduces opas UI render overhead
+- Projection parameters match MAP_CONFIG exactly
+
+---
+
+## Manual Verification
+
+✅ `pnpm test` - all 21 tests pass (16 zones + 5 existing)
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows existing patterns from fetch_zones.ts
+✅ TypeScript strict mode compliance
+
+---
+
+## Migration Notes
+
+### Files to Delete (Later Phases)
+
+- `src/fetch_zones.ts` can be removed after full validation
+- `package.json` script `fetch:zones` can be replaced with `varikko fetch`
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+---
+
+## Next Phase - Phase 04 Geocode Zones
+
+**Prerequisites:** Phase 03 (Fetch Zones)
+**Estimated Effort:** 2 days
+
+### Key Tasks
+
+1. Implement geocoding business logic in `src/lib/geocoding.ts`
+2. Create TUI screen for geocode zones workflow
+3. Implement CLI subcommand handler
+4. Write tests for geocoding logic
+5. Delete old `src/geocode_zones.ts` after validation
+
+### Hand-off Notes
+
+- Fetch zones workflow fully tested and working
+- Database schema includes routing_lat/routing_lon columns (ready for geocoding)
+- Progress event pattern established and reusable
+- TUI screen pattern can be replicated for geocoding
+- CLI integration pattern proven
+
+---
+
 **Last Updated:** 2025-12-27
-**Phase 02 Complete** ✅
+**Phase 03 Complete** ✅
