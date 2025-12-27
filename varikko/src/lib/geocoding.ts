@@ -2,8 +2,10 @@ import type Database from 'better-sqlite3';
 import type { ProgressEmitter } from './events';
 import axios from 'axios';
 import { CITY_NAME_MAP } from './types';
+import * as turf from '@turf/turf';
 
 const GEOCODING_API = 'https://api.digitransit.fi/geocoding/v1/search';
+const REVERSE_GEOCODING_API = 'https://api.digitransit.fi/geocoding/v1/reverse';
 const RATE_LIMIT_DELAY = 100; // 100ms between requests = max 10 req/sec
 
 // Helsinki area boundaries (same as in zones.ts)
@@ -46,6 +48,8 @@ export interface GeocodeResult {
   lon?: number;
   source?: string;
   error?: string;
+  distance?: number; // Distance from POI in meters
+  insideZone?: boolean; // Whether point is inside zone polygon
 }
 
 interface Place {
@@ -55,6 +59,7 @@ interface Place {
   lon: number;
   city?: string;
   name_se?: string;
+  geometry: string; // GeoJSON geometry as string
 }
 
 /**
@@ -91,61 +96,40 @@ function getCityFromZoneId(zoneId: string): string | undefined {
 }
 
 /**
- * Geocode a single zone using multiple strategies
- * Tries: zone name + city → Swedish name + city → zone name only
+ * Geocode a single zone using reverse geocoding from POI
+ * Progressive strategy:
+ * 1. Reverse geocode from POI with 500m radius
+ * 2. Expand to 1km radius
+ * 3. Expand to 2km radius
+ * 4. Try broader layer types (venue, locality)
+ * 5. Use POI as fallback if all fail
+ *
+ * Validates results are inside zone polygon
  */
 export async function geocodeZone(
-  zoneId: string,
-  zoneName: string,
-  zoneCity?: string,
-  zoneNameSe?: string,
+  poiLat: number,
+  poiLon: number,
+  geometry: any, // GeoJSON geometry
   apiKey?: string
 ): Promise<GeocodeResult> {
   try {
-    // Get city from zone ID or provided city
-    const city = zoneCity || getCityFromZoneId(zoneId) || 'Helsinki';
-
-    // Try multiple search strategies
-    const searchStrategies = [
-      // Strategy 1: Zone name + city
-      {
-        text: `${zoneName}, ${city}`,
-        description: 'zone name + city',
-        layers: 'neighbourhood,locality,address',
-      },
-      // Strategy 2: Swedish name + city (if available)
-      ...(zoneNameSe ? [{
-        text: `${zoneNameSe}, ${city}`,
-        description: 'Swedish name + city',
-        layers: 'neighbourhood,locality,address',
-      }] : []),
-      // Strategy 3: Zone name only (for well-known areas)
-      {
-        text: zoneName,
-        description: 'zone name only',
-        layers: 'neighbourhood,locality,address',
-      },
-      // Strategy 4: City only (fallback for small zones)
-      {
-        text: city,
-        description: 'city only',
-        layers: 'locality',
-      },
+    // Progressive radius expansion: 500m → 1km → 2km
+    const radiusStrategies = [
+      { radius: 0.5, layers: 'address,street', description: 'address 500m' },
+      { radius: 1.0, layers: 'address,street', description: 'address 1km' },
+      { radius: 2.0, layers: 'address,street', description: 'address 2km' },
+      { radius: 2.0, layers: 'address,street,venue', description: 'venue 2km' },
+      { radius: 2.0, layers: 'address,street,venue,locality', description: 'locality 2km' },
     ];
 
-    for (const strategy of searchStrategies) {
+    for (const strategy of radiusStrategies) {
       const params: Record<string, string> = {
-        text: strategy.text,
-        size: '1',
-        'boundary.rect.min_lat': BOUNDS.minLat.toString(),
-        'boundary.rect.max_lat': BOUNDS.maxLat.toString(),
-        'boundary.rect.min_lon': BOUNDS.minLon.toString(),
-        'boundary.rect.max_lon': BOUNDS.maxLon.toString(),
+        'point.lat': poiLat.toString(),
+        'point.lon': poiLon.toString(),
+        size: '5', // Get multiple results to find best one
+        layers: strategy.layers,
+        'boundary.circle.radius': strategy.radius.toString(),
       };
-
-      if (strategy.layers) {
-        params.layers = strategy.layers;
-      }
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -155,28 +139,62 @@ export async function geocodeZone(
         headers['digitransit-subscription-key'] = apiKey;
       }
 
-      const response = await axios.get<GeocodingResponse>(GEOCODING_API, {
+      const response = await axios.get<GeocodingResponse>(REVERSE_GEOCODING_API, {
         params,
         headers,
       });
 
       if (response.data.features && response.data.features.length > 0) {
+        // Try to find a result that's inside the zone polygon
+        for (const feature of response.data.features) {
+          const [lon, lat] = feature.geometry.coordinates;
+          const point = turf.point([lon, lat]);
+          const polygon = turf.feature(geometry);
+
+          const isInside = turf.booleanPointInPolygon(point, polygon);
+          const distance = turf.distance(
+            turf.point([poiLon, poiLat]),
+            point,
+            { units: 'meters' }
+          );
+
+          if (isInside) {
+            return {
+              success: true,
+              lat,
+              lon,
+              source: `reverse:${strategy.description}`,
+              distance: Math.round(distance),
+              insideZone: true,
+            };
+          }
+        }
+
+        // If no result is inside, use the closest one and mark as outside
         const feature = response.data.features[0];
         const [lon, lat] = feature.geometry.coordinates;
+        const point = turf.point([lon, lat]);
+        const distance = turf.distance(
+          turf.point([poiLon, poiLat]),
+          point,
+          { units: 'meters' }
+        );
 
         return {
           success: true,
           lat,
           lon,
-          source: `geocoded:${strategy.description}`,
+          source: `reverse:${strategy.description}:outside`,
+          distance: Math.round(distance),
+          insideZone: false,
         };
       }
     }
 
-    // No results from any strategy
+    // No results from any strategy - use POI as fallback
     return {
       success: false,
-      error: 'No geocoding results found',
+      error: 'No reverse geocoding results found',
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -196,7 +214,7 @@ export async function geocodeZone(
 
 /**
  * Update zone with geocoding results
- * Falls back to geometric centroid if geocoding failed
+ * Falls back to POI (inside point) if geocoding failed
  */
 export function updateZoneRouting(
   db: Database.Database,
@@ -215,13 +233,24 @@ export function updateZoneRouting(
   `);
 
   if (result.success && result.lat && result.lon) {
-    updatePlace.run(result.lat, result.lon, result.source, null, zoneId);
+    // Add metadata to source: distance and validation status
+    let source = result.source || 'reverse:unknown';
+    if (result.distance !== undefined) {
+      source += `:${result.distance}m`;
+    }
+    if (result.insideZone === false) {
+      // Already marked with :outside suffix, but add warning to error column
+      const warning = `Point outside zone (${result.distance}m from POI)`;
+      updatePlace.run(result.lat, result.lon, source, warning, zoneId);
+    } else {
+      updatePlace.run(result.lat, result.lon, source, null, zoneId);
+    }
   } else {
-    // Fallback to geometric centroid
+    // Fallback to POI (inside point)
     updatePlace.run(
       fallbackLat,
       fallbackLon,
-      'fallback:geometric',
+      'fallback:inside_point',
       result.error || null,
       zoneId
     );
@@ -244,6 +273,8 @@ export async function geocodeZones(
 ): Promise<{
   success: number;
   failed: number;
+  insideZone: number;
+  outsideZone: number;
   errors: Array<{ id: string; error: string }>;
 }> {
   const { testMode, testLimit = 5, emitter, apiKey } = options;
@@ -251,8 +282,20 @@ export async function geocodeZones(
   // Ensure schema has geocoding columns
   ensureGeocodingSchema(db);
 
-  // Get all zones including new city columns
-  let zones = db.prepare('SELECT id, name, lat, lon, city, name_se FROM places ORDER BY id').all() as Place[];
+  // Get all zones including geometry for validation
+  // Use COALESCE for optional columns that may not exist in all schemas
+  let zones = db.prepare(`
+    SELECT
+      id,
+      name,
+      lat,
+      lon,
+      geometry,
+      city,
+      name_se
+    FROM places
+    ORDER BY id
+  `).all() as Place[];
 
   if (testMode) {
     zones = zones.slice(0, testLimit);
@@ -261,20 +304,31 @@ export async function geocodeZones(
   const results = {
     success: 0,
     failed: 0,
+    insideZone: 0,
+    outsideZone: 0,
     errors: [] as Array<{ id: string; error: string }>,
   };
 
-  emitter?.emitStart('geocode_zones', zones.length, 'Starting geocoding...');
+  emitter?.emitStart('geocode_zones', zones.length, 'Starting reverse geocoding from POI...');
 
   for (let i = 0; i < zones.length; i++) {
     const zone = zones[i];
 
-    const result = await geocodeZone(zone.id, zone.name, zone.city, zone.name_se, apiKey);
+    // Parse geometry for validation
+    const geometry = JSON.parse(zone.geometry);
+
+    // Use reverse geocoding from POI (lat/lon are inside points)
+    const result = await geocodeZone(zone.lat, zone.lon, geometry, apiKey);
 
     updateZoneRouting(db, zone.id, result, zone.lat, zone.lon);
 
     if (result.success) {
       results.success++;
+      if (result.insideZone) {
+        results.insideZone++;
+      } else {
+        results.outsideZone++;
+      }
     } else {
       results.failed++;
       results.errors.push({
@@ -298,7 +352,7 @@ export async function geocodeZones(
 
   emitter?.emitComplete(
     'geocode_zones',
-    `Geocoded ${results.success}/${zones.length} zones (${results.failed} fallbacks)`
+    `Geocoded ${results.success}/${zones.length} zones (${results.insideZone} inside, ${results.outsideZone} outside, ${results.failed} fallbacks)`
   );
 
   return results;

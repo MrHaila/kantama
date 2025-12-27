@@ -175,20 +175,35 @@ The geocoding script adds these columns to the `places` table:
 
 ### Routing Source Values
 
-- `geocoded:postal code` - Resolved from postal code (e.g., "00100")
-- `geocoded:zone name` - Resolved from zone name (e.g., "Kaartinkaupunki")
-- `geocoded:postal code + Helsinki` - Resolved from postal code + city name
-- `fallback:geometric` - Geocoding failed, using geometric centroid
+The `routing_source` column contains detailed information about how the routing point was determined:
+
+- `reverse:address 500m:45m` - Found address within 500m radius, 45m from POI, inside zone
+- `reverse:address 1km:832m` - Found address within 1km radius, 832m from POI, inside zone
+- `reverse:venue 2km:1200m:outside` - Found venue within 2km, 1200m from POI, **outside zone** (warning in geocoding_error)
+- `fallback:inside_point` - Reverse geocoding failed, using POI as routing point
+
+The format is: `method:strategy:distance[:outside]`
+- **method**: `reverse` (reverse geocoding) or `fallback` (POI fallback)
+- **strategy**: radius and layer type (e.g., "address 500m", "venue 2km")
+- **distance**: distance from POI in meters (e.g., "45m", "832m")
+- **:outside**: suffix added if point is outside zone polygon
 
 ## How Geocoding Works
 
-The script tries multiple search strategies for each zone, in order:
+The script uses **reverse geocoding** from the POI (pole of inaccessibility) coordinates to find the nearest valid street address. It tries multiple strategies with progressive radius expansion:
 
-1. **Postal code only** (e.g., "00100")
-2. **Zone name** (e.g., "Kaartinkaupunki")
-3. **Postal code + Helsinki** (e.g., "00100 Helsinki")
+1. **500m radius** - Search for addresses/streets within 500m of POI
+2. **1km radius** - Expand search to 1km if no results
+3. **2km radius** - Expand search to 2km if still no results
+4. **Include venues** - Try venue layer if addresses not found
+5. **Include localities** - Try locality layer as last resort
 
-It returns the first successful result. If all strategies fail, it falls back to the geometric centroid.
+For each strategy, the script:
+- Requests up to 5 results from the API
+- **Validates each result** using polygon containment check
+- Returns the **first result that's inside the zone polygon**
+- If no result is inside, returns the closest result (marked as "outside")
+- Falls back to POI if all strategies fail
 
 ## Rate Limiting
 
@@ -211,7 +226,7 @@ For ~279 zones: `279 × 100ms = 27.9 seconds` (plus API response time)
 3. Try testing directly with curl:
    ```bash
    curl -H "digitransit-subscription-key: YOUR_KEY" \
-        "https://api.digitransit.fi/geocoding/v1/search?text=00100&size=1"
+        "https://api.digitransit.fi/geocoding/v1/reverse?point.lat=60.17&point.lon=24.94&size=1"
    ```
 
 ### No API Key Configured
@@ -308,23 +323,22 @@ The complete workflow is:
 
 ## API Reference
 
-### Digitransit Geocoding API
+### Digitransit Reverse Geocoding API
 
 **Endpoint:**
 
 ```
-https://api.digitransit.fi/geocoding/v1/search
+https://api.digitransit.fi/geocoding/v1/reverse
 ```
 
 **Parameters:**
 
-- `text` - Search query (postal code, address, place name)
-- `size` - Number of results (default: 10)
-- `boundary.rect.min_lat` - Minimum latitude for bounding box
-- `boundary.rect.max_lat` - Maximum latitude for bounding box
-- `boundary.rect.min_lon` - Minimum longitude for bounding box
-- `boundary.rect.max_lon` - Maximum longitude for bounding box
-- `layers` - Filter by place type (neighbourhood, locality, address, etc.)
+- `point.lat` - Latitude coordinate to reverse geocode
+- `point.lon` - Longitude coordinate to reverse geocode
+- `size` - Number of results (default: 10, max: 40)
+- `layers` - Filter by place type (address, street, venue, locality, etc.)
+- `boundary.circle.radius` - Search radius in kilometers
+- `lang` - Preferred language (fi, sv, en)
 
 **Headers:**
 

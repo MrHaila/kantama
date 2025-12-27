@@ -65,10 +65,7 @@ function deselectZone() {
     </div>
   </div>
 
-  <div
-    v-else
-    class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm"
-  >
+  <div v-else class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm">
     <h2 class="text-xl uppercase">Discover Helsinki</h2>
     <p class="text-sm mt-2">Select a zone on the map to visualize travel times.</p>
   </div>
