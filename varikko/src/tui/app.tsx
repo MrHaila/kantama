@@ -69,6 +69,7 @@ export function App() {
         <RoutesScreen
           db={db}
           testMode={testMode}
+          useZoneBased={true}
           onExit={() => {
             db.close();
             handleBackToDashboard();

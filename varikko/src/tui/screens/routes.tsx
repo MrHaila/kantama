@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import Database from 'better-sqlite3';
 import { buildRoutes, BuildRoutesOptions, getOTPConfig } from '../../lib/routing';
+import { buildRoutesByZone as buildRoutesZoned, resumeRoutesByZone as resumeRoutesZoned, type CityProgress } from '../../lib/routing-zoned';
 import { ProgressEmitter, type ProgressEvent } from '../../lib/events';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
@@ -13,11 +14,28 @@ interface RoutesScreenProps {
   period?: 'MORNING' | 'EVENING' | 'MIDNIGHT';
   testMode?: boolean;
   onExit: () => void;
+  useZoneBased?: boolean;
+  resume?: boolean;
 }
 
 type ScreenStatus = 'idle' | 'running' | 'complete' | 'error';
 
-export default function RoutesScreen({ db, period, testMode = false, onExit }: RoutesScreenProps) {
+interface ProgressState {
+  currentCity?: string;
+  currentPeriod?: string;
+  citiesCompleted: number;
+  totalCities: number;
+  elapsed: number;
+  eta?: number;
+  cityResults?: {
+    processed: number;
+    ok: number;
+    noRoute: number;
+    errors: number;
+  };
+}
+
+export default function RoutesScreen({ db, period, testMode = false, onExit, useZoneBased = true, resume = false }: RoutesScreenProps) {
   const [status, setStatus] = useState<ScreenStatus>('idle');
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(0);
@@ -25,6 +43,12 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
   const [stats, setStats] = useState({ ok: 0, noRoute: 0, errors: 0 });
   const [error, setError] = useState<string | null>(null);
   const [config, setConfig] = useState<{ isLocal: boolean; concurrency: number } | null>(null);
+  const [zoneProgress, setZoneProgress] = useState<ProgressState>({
+    citiesCompleted: 0,
+    totalCities: 0,
+    elapsed: 0,
+  });
+  const [startTime] = useState(Date.now());
 
   useEffect(() => {
     const emitter = new ProgressEmitter();
@@ -39,7 +63,22 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
       } else if (event.type === 'progress') {
         setProgress(event.current || 0);
         setTotal(event.total || 0);
+        
         if (event.metadata) {
+          // Zone-based progress
+          if (event.metadata.currentCity) {
+            setZoneProgress({
+              currentCity: event.metadata.currentCity,
+              currentPeriod: event.metadata.period,
+              citiesCompleted: event.current || 0,
+              totalCities: event.total || 0,
+              elapsed: event.metadata.elapsed || 0,
+              eta: event.metadata.eta,
+              cityResults: event.metadata.cityResults,
+            });
+          }
+          
+          // Legacy progress
           setCurrentPeriod(event.metadata.period || '');
           setStats({
             ok: event.metadata.ok || 0,
@@ -62,10 +101,27 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
       emitter,
     };
 
-    buildRoutes(db, options).catch((err) => {
-      setStatus('error');
-      setError(err.message);
-    });
+    // Choose routing method based on flag
+    if (useZoneBased) {
+      const routingFunction = resume ? resumeRoutesZoned : buildRoutesZoned;
+      routingFunction(db, {
+        period,
+        testMode,
+        testLimit: 5,
+        emitter,
+        onCityComplete: (city, results) => {
+          // City completed - could trigger deciles calculation for this city
+        },
+      }).catch((err) => {
+        setStatus('error');
+        setError(err.message);
+      });
+    } else {
+      buildRoutes(db, options).catch((err) => {
+        setStatus('error');
+        setError(err.message);
+      });
+    }
   }, [db, period, testMode]);
 
   const getStatusMessage = (): string => {
@@ -73,6 +129,10 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
       case 'idle':
         return 'Initializing...';
       case 'running':
+        if (useZoneBased && zoneProgress.currentCity) {
+          const prefix = resume ? 'Resuming ' : 'Processing ';
+          return `${prefix}${zoneProgress.currentCity}${zoneProgress.currentPeriod ? ` (${zoneProgress.currentPeriod})` : ''}...`;
+        }
         return `Building routes${currentPeriod ? ` (${currentPeriod})` : ''}...`;
       case 'complete':
         return 'Route calculation complete!';
@@ -110,6 +170,8 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
           <Text color="gray">Concurrency: {config.concurrency} requests</Text>
           {period && <Text color="gray">Period: {period}</Text>}
           {testMode && <Text color="yellow">⚠ Test mode: Processing 5 random routes</Text>}
+          {useZoneBased && <Text color="cyan">📍 Zone-based processing enabled</Text>}
+          {resume && <Text color="magenta">↺ Resume mode: Skipping completed routes</Text>}
         </Box>
       )}
 
@@ -123,15 +185,40 @@ export default function RoutesScreen({ db, period, testMode = false, onExit }: R
 
       {status === 'running' && (
         <Box marginTop={1} flexDirection="column">
-          <ProgressBar current={progress} total={total} />
-          <Box marginTop={1}>
-            <Spinner label="Processing routes..." />
-          </Box>
-          <Box marginTop={1} flexDirection="column">
-            <Text color="green">✓ OK: {stats.ok}</Text>
-            <Text color="yellow">⊘ No Route: {stats.noRoute}</Text>
-            <Text color="red">✗ Errors: {stats.errors}</Text>
-          </Box>
+          {useZoneBased && zoneProgress.totalCities > 0 ? (
+            // Zone-based progress display
+            <>
+              <ProgressBar current={zoneProgress.citiesCompleted} total={zoneProgress.totalCities} />
+              <Box marginTop={1}>
+                <Text color="gray">
+                  City {zoneProgress.citiesCompleted}/{zoneProgress.totalCities} completed
+                  {zoneProgress.elapsed > 0 && ` (${Math.round(zoneProgress.elapsed / 1000)}s elapsed`}
+                  {zoneProgress.eta && `, ETA: ${Math.round(zoneProgress.eta / 1000)}s`}
+                </Text>
+              </Box>
+              {zoneProgress.cityResults && (
+                <Box marginTop={1} flexDirection="column">
+                  <Text color="green">✓ Processed: {zoneProgress.cityResults.processed}</Text>
+                  <Text color="green">  ✓ OK: {zoneProgress.cityResults.ok}</Text>
+                  <Text color="yellow">  ⊘ No Route: {zoneProgress.cityResults.noRoute}</Text>
+                  <Text color="red">  ✗ Errors: {zoneProgress.cityResults.errors}</Text>
+                </Box>
+              )}
+            </>
+          ) : (
+            // Legacy progress display
+            <>
+              <ProgressBar current={progress} total={total} />
+              <Box marginTop={1}>
+                <Spinner label="Processing routes..." />
+              </Box>
+              <Box marginTop={1} flexDirection="column">
+                <Text color="green">✓ OK: {stats.ok}</Text>
+                <Text color="yellow">⊘ No Route: {stats.noRoute}</Text>
+                <Text color="red">✗ Errors: {stats.errors}</Text>
+              </Box>
+            </>
+          )}
         </Box>
       )}
 
