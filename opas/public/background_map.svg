@@ -2,13 +2,13 @@
   <defs>
     <style>
       .background-rect { fill: var(--bg-color, #FDFBF7); }
-      .water-layer { 
-        fill: var(--water-color, #2A4D69); 
+      .water-layer {
+        fill: var(--water-color, #2A4D69);
         stroke: none;
       }
-      .road-layer { 
+      .road-layer {
         fill: none;
-        stroke: var(--road-color, #8B7355); 
+        stroke: var(--road-color, #8B7355);
         stroke-width: var(--road-width, 0.5);
         stroke-linecap: round;
         stroke-linejoin: round;

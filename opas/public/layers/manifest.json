@@ -1,0 +1,17 @@
+{
+  "viewBox": "-20 -280 960 960",
+  "layers": [
+    {
+      "id": "water",
+      "file": "water.svg",
+      "description": "Water bodies (sea, lakes)",
+      "zIndex": 0
+    },
+    {
+      "id": "roads",
+      "file": "roads.svg",
+      "description": "Road network",
+      "zIndex": 10
+    }
+  ]
+}
