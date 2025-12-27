@@ -13,8 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Default paths (can be overridden via options)
-const DEFAULT_DATA_DIR = path.join(__dirname, '../data/maastokartta_esri');
-const DEFAULT_OUTPUT_DIR = path.join(__dirname, '../../opas/public');
+const DEFAULT_DATA_DIR = path.join(__dirname, '../../data/maastokartta_esri');
+const DEFAULT_OUTPUT_DIR = path.join(__dirname, '../../../opas/public');
 
 // Map layers to process
 const LAYERS = [
