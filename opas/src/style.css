@@ -7,6 +7,10 @@
   --color-vintage-orange: #e76f51;
   --color-vintage-dark: #264653;
   --color-vintage-beige: #e9c46a;
+  --color-yle-water: #6b9bc3;
+  --color-yle-land: #6b9b8a;
+  --color-yle-border: #3d5a50;
+  --color-yle-highlight: #ffffff;
   --font-sans: 'Oswald', sans-serif;
   --background-image-paper-texture: url('/noise.svg');
 }

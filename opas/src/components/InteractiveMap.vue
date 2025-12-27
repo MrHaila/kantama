@@ -141,7 +141,7 @@ onUnmounted(() => {
             v-for="zone in zones"
             :key="zone.id"
             :d="zone.svgPath"
-            class="cursor-pointer transition-colors duration-300 stroke-vintage-dark stroke-2 hover:stroke-vintage-orange"
+            class="cursor-pointer transition-colors duration-300 stroke-vintage-dark stroke-2"
             :fill="store.getZoneColor(zone.id)"
             :fill-opacity="store.activeZoneId === zone.id ? 0 : 1"
             @mouseenter="handleMouseEnter(zone.id)"
@@ -159,6 +159,19 @@ onUnmounted(() => {
             class="pointer-events-none stroke-vintage-orange"
             fill="none"
             stroke-width="3"
+          />
+        </g>
+        <!-- Hovered zone border on top -->
+        <g v-if="store.hoveredZoneId && store.hoveredZoneId !== store.activeZoneId">
+          <path
+            v-for="zone in zones"
+            v-show="zone.id === store.hoveredZoneId"
+            :key="`hovered-${zone.id}`"
+            :d="zone.svgPath"
+            class="pointer-events-none stroke-vintage-orange"
+            fill="none"
+            stroke-width="3"
+            opacity="0.7"
           />
         </g>
         <!-- Routing reference points for each zone (always visible) -->
