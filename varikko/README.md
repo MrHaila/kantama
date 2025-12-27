@@ -2,7 +2,7 @@
 
 > Transit route data pipeline with interactive TUI
 
-Varikko is a terminal-based data pipeline tool for the Chrono-Map project. It fetches geospatial zone data, calculates transit routes via OpenTripPlanner, and manages a SQLite database with route metadata.
+Varikko is a terminal-based data pipeline tool for Kantama. It fetches geospatial zone data, calculates transit routes via OpenTripPlanner, and manages a SQLite database with route metadata.
 
 ## Features
 
@@ -227,6 +227,6 @@ TUI requires minimum 80x24. Resize terminal.
 
 ## Related Projects
 
-- [Chrono-Map](../opas) - Web visualization frontend
+- [Opas](../opas) - Web visualization frontend
 - [OpenTripPlanner](https://www.opentripplanner.org/) - Transit routing engine
 - [Digitransit](https://digitransit.fi/) - HSL transit data platform

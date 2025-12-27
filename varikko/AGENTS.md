@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This module serves as the **Data Pipeline** for the Chrono-Map project. It provides a unified TUI (Terminal User Interface) for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and managing the local SQLite database (`varikko.db`) that stores all project data.
+This module serves as the **Data Pipeline** for Kantama. It provides a unified TUI (Terminal User Interface) for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and managing the local SQLite database (`varikko.db`) that stores all project data.
 
 ## Architecture
 
