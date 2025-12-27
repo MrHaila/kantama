@@ -4,6 +4,7 @@ import { fetchZones, initializeSchema } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
 import { clearData, getCounts } from './lib/clearing';
+import { calculateDeciles } from './lib/deciles';
 import { createProgressEmitter } from './lib/events';
 import readline from 'readline';
 
@@ -343,8 +344,45 @@ export function parseCLI(): CLICommand | null {
     .command('deciles')
     .description('Calculate heatmap deciles')
     .option('-f, --force', 'Force recalculation even if already calculated')
-    .action((_options) => {
-      // Will be implemented in Phase 07
+    .action((options) => {
+      const db = openDB();
+      const emitter = createProgressEmitter();
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start') {
+          console.log('Calculating deciles...');
+        } else if (event.type === 'progress') {
+          console.log(event.message || '');
+        } else if (event.type === 'complete') {
+          console.log('✓', event.message || 'Complete');
+        } else if (event.type === 'error') {
+          console.error('✗', event.message || 'Error', event.error);
+        }
+      });
+
+      try {
+        const result = calculateDeciles(db, {
+          force: options.force,
+          emitter,
+        });
+
+        console.log('\n=== Decile Distribution ===');
+        result.deciles.forEach((decile) => {
+          console.log(`Decile ${decile.number}: ${decile.label} (${decile.color})`);
+        });
+
+        console.log('\nDeciles stored in database and ready for heatmap visualization.');
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('already exist')) {
+          console.log('\n' + error.message);
+          process.exit(0);
+        } else {
+          console.error('Error:', error);
+          process.exit(1);
+        }
+      } finally {
+        db.close();
+      }
     });
 
   program
