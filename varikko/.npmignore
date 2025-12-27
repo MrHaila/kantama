@@ -1,0 +1,36 @@
+# Source files (only ship compiled dist)
+src/
+
+# Tests
+*.test.ts
+*.spec.ts
+coverage/
+vitest.config.ts
+
+# Plans and documentation (not needed in package)
+plans/
+
+# Development files
+.env
+.env.example
+tsconfig.json
+eslint.config.mjs
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Git
+.git/
+.gitignore
+
+# pnpm
+pnpm-lock.yaml

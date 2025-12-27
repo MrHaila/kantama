@@ -160,4 +160,50 @@ Removed from codebase. Feature deemed unnecessary.
 
 ---
 
+# Phase 11: Integration & Polish ✅
+
+## Learnings
+
+- **Package.json files field**: Specify exactly what to ship in npm package (dist, data, README.md)
+- **Error handling**: Distinguish between TUI and CLI modes - show clean messages in TUI, full stack traces in CLI
+- **Signal handling**: Add SIGINT handler for graceful Ctrl+C shutdown
+- **Build artifacts**: TypeScript preserves shebang in compiled output; make dist/main.js executable
+
+## Key Design Decisions
+
+- **Legacy cleanup**: Deleted 8 old script files (fetch_zones.ts, geocode_zones.ts, build_routes.ts, etc.)
+- **Documentation**: Complete README.md with quick start, all workflows, configuration, and troubleshooting
+- **Error messages**: In TUI mode, show only error.message without stack traces for cleaner UX
+- **npm packaging**: Created .npmignore to exclude src/, tests/, plans/, and dev files
+
+## Implementation Notes
+
+- Updated package.json: removed all old pnpm scripts, kept only dev, build, test, lint, clean
+- Enhanced main.ts with process event handlers: SIGINT, uncaughtException, unhandledRejection
+- Created comprehensive README.md with installation, usage, workflows, and architecture
+- Updated AGENTS.md with new TUI-centric documentation and migration guide
+- All tests passing (107 tests), lint warnings acceptable (mostly 'any' types in utilities)
+
+## Production Readiness Checklist
+
+- ✅ All legacy scripts deleted
+- ✅ package.json cleaned up
+- ✅ .npmignore created
+- ✅ Build working (TypeScript compilation successful)
+- ✅ README.md complete
+- ✅ AGENTS.md updated
+- ✅ Error handling enhanced
+- ✅ All tests passing
+- ✅ Linting clean (no errors, only acceptable warnings)
+- ⏸️ Non-interactive CLI mode (not yet implemented, documented in README)
+
+## Next Steps
+
+- Implement non-interactive CLI mode when needed
+- Consider adding CI/CD setup (GitHub Actions)
+- Monitor for issues and gather user feedback
+- Plan future enhancements (workflow presets, config file support)
+
+---
+
 **Last Updated:** 2025-12-27

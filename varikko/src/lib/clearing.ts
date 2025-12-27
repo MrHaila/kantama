@@ -169,7 +169,7 @@ export function getCounts(db: Database.Database): {
       metadata: metadataCount.count,
       deciles: decilesCount.count,
     };
-  } catch (error) {
+  } catch (_error) {
     // If tables don't exist, return 0
     return {
       routes: 0,
