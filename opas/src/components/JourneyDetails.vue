@@ -39,7 +39,7 @@ const getTransportIcon = (mode: string): string => {
       return '🚌'
     case 'tram':
       return '🚊'
-    case 'metro':
+    case 'subway':
       return '🚇'
     case 'ferry':
       return '⛴️'
@@ -58,7 +58,7 @@ const getModeLabel = (mode: string): string => {
       return 'Bus'
     case 'tram':
       return 'Tram'
-    case 'metro':
+    case 'subway':
       return 'Metro'
     case 'ferry':
       return 'Ferry'

@@ -5,7 +5,7 @@ export const modeColors: Record<string, string> = {
   WALK: '#8B7355',
   BUS: '#007AC9',
   TRAM: '#00985F',
-  METRO: '#FF6319',
+  SUBWAY: '#FF4200',
   FERRY: '#00B9E4',
   RAIL: '#8C4799',
 }
@@ -14,5 +14,12 @@ export const modeColors: Record<string, string> = {
  * Get color for a transport mode
  */
 export function getModeColor(mode: string): string {
-  return modeColors[mode.toUpperCase()] || modeColors[mode.toLowerCase()] || '#666666'
+  // Log a warning if an unknown mode is used
+  if (!modeColors[mode.toUpperCase()]) {
+    console.warn(`Unknown transport mode: ${mode}`)
+
+    return '#666666'
+  }
+
+  return modeColors[mode.toUpperCase()] || '#666666'
 }
