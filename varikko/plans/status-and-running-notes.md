@@ -1016,3 +1016,204 @@ Falls back to geometric centroid if all strategies fail.
 
 **Last Updated:** 2025-12-27
 **Phase 06 Complete** ✅
+
+---
+
+# Phase 07: Calculate Deciles Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/deciles.ts (business logic, 213 lines)
+  - calculateDeciles(): Calculate 10-quantile distribution from route durations
+  - secondsToMinutes(): Convert seconds to rounded minutes
+  - formatDecileLabel(): Generate human-readable labels
+  - DECILE_COLORS: Vintage color palette (10 colors)
+
+✓ src/tui/screens/deciles.tsx (TUI screen)
+  - Real-time progress display with ProgressBar/Spinner
+  - Display calculated deciles with colors
+  - Error handling with user-friendly messages
+
+✓ src/tests/lib/deciles.test.ts (comprehensive test suite, 14 tests)
+  - Basic functionality tests (3 tests)
+  - Edge case tests (6 tests)
+  - Force recalculation tests (2 tests)
+  - Progress event tests (2 tests)
+  - Decile continuity tests (2 tests)
+  - All tests passing ✓
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented deciles command)
+  - Non-interactive CLI support
+  - Force recalculation with --force flag
+  - Progress event handling with console output
+  - Display decile distribution summary
+  - Error handling for duplicate calculations
+```
+
+### Technology Integration
+
+- **better-sqlite3**: SQLite database operations
+- **eventemitter3**: Progress tracking via ProgressEmitter
+- **vitest**: Comprehensive test coverage
+
+---
+
+## Testing Results
+
+- All 14 unit tests passing (100%)
+- Decile calculation algorithm validated:
+  - Correct 10-quantile distribution
+  - Edge case: < 10 routes (handled with empty deciles)
+  - Edge case: exactly 10 routes (1 per decile)
+  - Edge case: uneven distribution (97 routes)
+- Color assignment verified (vintage palette)
+- Label generation validated (e.g., "8-15 min", ">60 min")
+- Decile ranges continuous (no gaps)
+- Last decile open-ended (max = -1)
+- Progress events emitted correctly
+- Build compiles without TypeScript errors
+
+---
+
+## Key Design Decisions
+
+### Vintage Color Palette
+
+10 colors from fastest (warm) to slowest (cool):
+1. `#E76F51` - Deep Orange (fastest)
+2. `#F4A261` - Light Orange
+3. `#F9C74F` - Yellow
+4. `#90BE6D` - Light Green
+5. `#43AA8B` - Teal
+6. `#277DA1` - Blue
+7. `#4D5061` - Dark Blue-Gray
+8. `#6C5B7B` - Purple
+9. `#8B5A8C` - Dark Purple
+10. `#355C7D` - Very Dark Blue (slowest)
+
+### Decile Distribution Algorithm
+
+- Divides successful routes into 10 equal quantiles
+- Handles uneven distributions by distributing remainder
+- Edge case: < 10 routes creates empty deciles at the end
+- Last decile is always open-ended (max = -1)
+- Label format: "8-15 min", "15 min", or ">60 min"
+
+### Force Recalculation
+
+- Default: Throws error if deciles already exist
+- --force flag: Clears existing deciles and recalculates
+- Prevents accidental overwriting of calculations
+
+### Metadata Storage
+
+- Stores calculation timestamp: `deciles_calculated_at`
+- Allows tracking when deciles were last updated
+
+---
+
+## What Went Well
+
+- All 14 tests passing on first attempt after fixes
+- Business logic cleanly extracted from calculate_deciles.ts
+- TDD approach validated implementation
+- Event emitter integration worked seamlessly
+- Progress tracking provides real-time feedback
+- Decile algorithm handles all edge cases correctly
+- Build compiles successfully with no type errors
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### Test Database Schema
+
+- Test schema doesn't include postal_code column
+- Had to adjust test fixtures to match test schema
+- Learned to verify schema compatibility before writing tests
+
+### Unique Route Constraints
+
+- Routes table has PRIMARY KEY on (from_id, to_id, time_period)
+- Cannot insert duplicate routes with different durations
+- Had to create enough places and vary periods to avoid conflicts
+
+### Edge Case Handling
+
+- Algorithm must handle < 10 routes gracefully
+- Empty deciles use previous decile's max as min/max
+- All deciles marked as open-ended when empty
+
+### TUI Component Patterns
+
+- Named imports required for Header, Footer, ProgressBar
+- Color values must be strings ("green"), not Chalk instances
+- symbols.block doesn't exist in theme (removed from display)
+- Spinner component is a named export
+
+---
+
+## Manual Verification
+
+✅ `pnpm test deciles` - all 14 tests pass
+✅ `pnpm test` - all 86 tests pass (no regressions)
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows patterns from previous phases
+✅ TypeScript strict mode compliance
+
+---
+
+## Migration Notes
+
+### Files to Delete (After Full Validation)
+
+- `src/calculate_deciles.ts` can be removed after full validation
+- `package.json` scripts `deciles:calculate` can be replaced with `varikko deciles`
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+---
+
+## Next Phase - Phase 08 Maps
+
+**Prerequisites:** Phase 02 (Foundation)
+**Estimated Effort:** 2-3 days
+
+### Key Tasks
+
+1. Implement map processing business logic in `src/lib/maps.ts`
+2. Create TUI screen for map processing workflow
+3. Implement CLI subcommand handler
+4. Write tests for map processing logic
+5. Convert shapefiles to TopoJSON
+6. Generate SVG from TopoJSON
+
+### Hand-off Notes
+
+- Calculate deciles workflow fully tested and working
+- Database operations proven (SELECT, INSERT, DELETE)
+- Progress event pattern established and reusable
+- TUI screen pattern can be replicated for maps
+- CLI integration pattern proven
+- Ready to implement remaining workflows (Maps, Export)
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 07 Complete** ✅
