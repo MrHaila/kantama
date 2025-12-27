@@ -29,6 +29,7 @@ vi.mock('mapshaper', () => ({
 
 // Import after mocks are set up
 import { processMap, generateSVG, processMaps } from '../../lib/maps';
+import { exportLayers } from '../../lib/exportLayers';
 import fs from 'fs';
 import mapshaper from 'mapshaper';
 
@@ -530,6 +531,324 @@ describe('maps', () => {
         testSvgPath,
         expect.any(String),
         'utf-8'
+      );
+    });
+
+    it('should export layered SVG files', async () => {
+      const mockEmitter = {
+        emitStart: vi.fn(),
+        emitProgress: vi.fn(),
+        emitComplete: vi.fn(),
+        emitError: vi.fn(),
+      } as unknown as ProgressEmitter;
+
+      await processMaps({
+        shapefileDir: testOutputDir,
+        outputPath: testTopoJsonPath,
+        emitter: mockEmitter,
+      });
+
+      // Should complete all three stages
+      expect(mockEmitter.emitComplete).toHaveBeenCalledWith(
+        'process_map',
+        expect.any(String),
+        expect.any(Object)
+      );
+      expect(mockEmitter.emitComplete).toHaveBeenCalledWith(
+        'generate_svg',
+        expect.any(String),
+        expect.any(Object)
+      );
+      expect(mockEmitter.emitComplete).toHaveBeenCalledWith(
+        'export_layers',
+        expect.any(String),
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('exportLayers', () => {
+    const mockTopoJson = {
+      type: 'Topology',
+      objects: {
+        water: {
+          type: 'GeometryCollection',
+          geometries: [
+            {
+              type: 'Polygon',
+              arcs: [[0, 1, 2, 3, -1]],
+            },
+          ],
+        },
+        roads: {
+          type: 'GeometryCollection',
+          geometries: [
+            {
+              type: 'LineString',
+              arcs: [4, 5, 6],
+            },
+          ],
+        },
+      },
+      arcs: [
+        [
+          [24.9, 60.15],
+          [24.91, 60.16],
+        ],
+        [
+          [24.91, 60.16],
+          [24.92, 60.17],
+        ],
+        [
+          [24.92, 60.17],
+          [24.93, 60.18],
+        ],
+        [
+          [24.93, 60.18],
+          [24.9, 60.15],
+        ],
+        [
+          [24.8, 60.1],
+          [24.85, 60.12],
+        ],
+        [
+          [24.85, 60.12],
+          [24.9, 60.14],
+        ],
+        [
+          [24.9, 60.14],
+          [24.95, 60.16],
+        ],
+      ],
+    };
+
+    const testLayersDir = path.join(testOutputDir, 'layers');
+
+    beforeEach(() => {
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(mockTopoJson));
+      mockFs.writeFileSync.mockReturnValue(undefined);
+      mockFs.statSync.mockReturnValue({ size: 25 * 1024 } as fs.Stats); // 25KB
+    });
+
+    it('should export separate water and roads SVG files', async () => {
+      const mockEmitter = {
+        emitStart: vi.fn(),
+        emitProgress: vi.fn(),
+        emitComplete: vi.fn(),
+        emitError: vi.fn(),
+      } as unknown as ProgressEmitter;
+
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+        emitter: mockEmitter,
+      });
+
+      // Verify progress events
+      expect(mockEmitter.emitStart).toHaveBeenCalledWith(
+        'export_layers',
+        4,
+        'Exporting layered SVG files...'
+      );
+      expect(mockEmitter.emitComplete).toHaveBeenCalledWith(
+        'export_layers',
+        expect.stringContaining('Layers exported'),
+        expect.objectContaining({
+          outputDir: testLayersDir,
+          waterSizeKB: expect.any(String),
+          roadSizeKB: expect.any(String),
+        })
+      );
+
+      // Verify water.svg was written
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        path.join(testLayersDir, 'water.svg'),
+        expect.stringContaining('<svg'),
+        'utf-8'
+      );
+
+      // Verify roads.svg was written
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        path.join(testLayersDir, 'roads.svg'),
+        expect.stringContaining('<svg'),
+        'utf-8'
+      );
+
+      // Verify manifest.json was written
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+        path.join(testLayersDir, 'manifest.json'),
+        expect.stringContaining('"viewBox"'),
+        'utf-8'
+      );
+    });
+
+    it('should create layers directory if it does not exist', async () => {
+      mockFs.existsSync.mockImplementation((p) => {
+        // TopoJSON exists, but layers dir doesn't
+        return (p as string).includes('test_map.json');
+      });
+
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+      });
+
+      expect(mockFs.mkdirSync).toHaveBeenCalledWith(testLayersDir, { recursive: true });
+    });
+
+    it('should generate water.svg with correct structure', async () => {
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+      });
+
+      const waterSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call) => call[0].endsWith('water.svg')
+      )?.[1];
+
+      expect(waterSvg).toContain('<svg viewBox=');
+      expect(waterSvg).toContain('<g id="water">');
+      expect(waterSvg).toContain('<path d=');
+      expect(waterSvg).not.toContain('<style>'); // No embedded styles
+    });
+
+    it('should generate roads.svg with correct structure', async () => {
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+      });
+
+      const roadsSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call) => call[0].endsWith('roads.svg')
+      )?.[1];
+
+      expect(roadsSvg).toContain('<svg viewBox=');
+      expect(roadsSvg).toContain('<g id="roads">');
+      expect(roadsSvg).toContain('<path d=');
+      expect(roadsSvg).not.toContain('<style>'); // No embedded styles
+    });
+
+    it('should generate manifest.json with correct structure', async () => {
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+      });
+
+      const manifest = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call) => call[0].endsWith('manifest.json')
+      )?.[1];
+
+      const manifestObj = JSON.parse(manifest);
+
+      expect(manifestObj).toHaveProperty('viewBox');
+      expect(manifestObj).toHaveProperty('layers');
+      expect(manifestObj).toHaveProperty('themes');
+      expect(manifestObj.layers).toHaveLength(2);
+      expect(manifestObj.layers[0]).toMatchObject({
+        id: 'water',
+        file: 'water.svg',
+        description: expect.any(String),
+        zIndex: expect.any(Number),
+      });
+      expect(manifestObj.layers[1]).toMatchObject({
+        id: 'roads',
+        file: 'roads.svg',
+        description: expect.any(String),
+        zIndex: expect.any(Number),
+      });
+    });
+
+    it('should include theme definitions in manifest', async () => {
+      await exportLayers({
+        topoJsonPath: testTopoJsonPath,
+        outputDir: testLayersDir,
+      });
+
+      const manifest = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
+        (call) => call[0].endsWith('manifest.json')
+      )?.[1];
+
+      const manifestObj = JSON.parse(manifest);
+
+      expect(manifestObj.themes).toHaveProperty('vintage');
+      expect(manifestObj.themes).toHaveProperty('yle');
+      expect(manifestObj.themes.vintage).toHaveProperty('water');
+      expect(manifestObj.themes.vintage).toHaveProperty('roads');
+      expect(manifestObj.themes.vintage.water).toHaveProperty('fill');
+      expect(manifestObj.themes.vintage.roads).toHaveProperty('stroke');
+    });
+
+    it('should throw error if TopoJSON file does not exist', async () => {
+      mockFs.existsSync.mockReturnValue(false);
+
+      await expect(
+        exportLayers({
+          topoJsonPath: testTopoJsonPath,
+          outputDir: testLayersDir,
+        })
+      ).rejects.toThrow('TopoJSON file not found');
+    });
+
+    it('should throw error if water layer is missing', async () => {
+      const incompleteTopoJson = {
+        type: 'Topology',
+        objects: {
+          roads: mockTopoJson.objects.roads,
+        },
+        arcs: mockTopoJson.arcs,
+      };
+
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(incompleteTopoJson));
+
+      await expect(
+        exportLayers({
+          topoJsonPath: testTopoJsonPath,
+          outputDir: testLayersDir,
+        })
+      ).rejects.toThrow('Water layer not found in TopoJSON');
+    });
+
+    it('should throw error if roads layer is missing', async () => {
+      const incompleteTopoJson = {
+        type: 'Topology',
+        objects: {
+          water: mockTopoJson.objects.water,
+        },
+        arcs: mockTopoJson.arcs,
+      };
+
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(incompleteTopoJson));
+
+      await expect(
+        exportLayers({
+          topoJsonPath: testTopoJsonPath,
+          outputDir: testLayersDir,
+        })
+      ).rejects.toThrow('Roads layer not found in TopoJSON');
+    });
+
+    it('should emit error on failure', async () => {
+      const mockEmitter = {
+        emitStart: vi.fn(),
+        emitProgress: vi.fn(),
+        emitComplete: vi.fn(),
+        emitError: vi.fn(),
+      } as unknown as ProgressEmitter;
+
+      mockFs.existsSync.mockReturnValue(false);
+
+      await expect(
+        exportLayers({
+          topoJsonPath: testTopoJsonPath,
+          outputDir: testLayersDir,
+          emitter: mockEmitter,
+        })
+      ).rejects.toThrow();
+
+      expect(mockEmitter.emitError).toHaveBeenCalledWith(
+        'export_layers',
+        expect.any(Error),
+        'Failed to export layers'
       );
     });
   });
