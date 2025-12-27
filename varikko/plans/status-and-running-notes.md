@@ -437,3 +437,191 @@ After completing Phase 03, refactored to improve separation of concerns and safe
 
 **Last Updated:** 2025-12-27
 **Phase 03 Complete** ✅
+
+---
+
+# Phase 04: Geocode Zones Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### TypeScript Event Emitter Types
+
+- Initial implementation used generic `emit()` calls which didn't match the ProgressEmitter API
+- Had to update to use specific methods: `emitStart()`, `emitProgress()`, `emitComplete()`
+- Learned importance of using proper WorkflowStage type ('geocode_zones' not 'geocoding')
+
+### Vitest Mock Management
+
+- Mock call counts accumulate across tests without proper cleanup
+- Had to add `vi.clearAllMocks()` in beforeEach to reset axios mocks
+- Mock emitters in tests need to implement the same method signatures as ProgressEmitter
+
+### Schema Migration Pattern
+
+- Used `ensureGeocodingSchema()` for non-destructive migrations
+- Different from Phase 03's destructive `initializeSchema()` approach
+- ALTER TABLE ADD COLUMN works for adding new fields without data loss
+
+---
+
+## What Went Well
+
+- All 14 tests passing (100% coverage)
+- Business logic cleanly extracted from geocode_zones.ts
+- TDD approach validated implementation before manual testing
+- Event emitter integration works correctly with proper types
+- Progress tracking provides real-time feedback
+- Geocoding API integration preserved correctly
+- Three-strategy fallback system (postal code → zone name → postal+Helsinki)
+- Rate limiting prevents API throttling (100ms delays)
+- Mock-based testing avoids actual API calls during tests
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/geocoding.ts (business logic, 282 lines)
+  - ensureGeocodingSchema(): Non-destructive schema migration
+  - geocodeZone(): Single zone geocoding with 3 strategies
+  - updateZoneRouting(): Database update with fallback logic
+  - geocodeZones(): Main workflow orchestration
+
+✓ src/tui/screens/geocode.tsx (TUI screen)
+  - Real-time progress display with ProgressBar/Spinner
+  - Test mode support (5 zones)
+  - Error handling and fallback reporting
+  - API key warning display
+
+✓ src/tests/lib/geocoding.test.ts (comprehensive test suite, 14 tests)
+  - Schema migration tests
+  - Single zone geocoding tests (all 3 strategies)
+  - Database update tests
+  - Integration tests with rate limiting
+  - Progress event emission tests
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented geocode command action)
+  - Non-interactive CLI support
+  - Progress event handling with console output
+  - API key detection and warning
+  - Database connection management
+  - Error handling and exit codes
+```
+
+### Technology Integration
+
+- **axios**: Digitransit Geocoding API requests
+- **better-sqlite3**: SQLite database operations (ALTER TABLE)
+- **eventemitter3**: Progress tracking via ProgressEmitter
+- **vitest**: Mock-based testing with axios mocks
+
+---
+
+## Testing Results
+
+- All 14 unit tests passing (100%)
+- Schema migration properly adds 4 new columns
+- Geocoding tries all 3 strategies in correct order
+- Fallback to geometric centroid works correctly
+- Rate limiting enforced (100ms delays validated)
+- Progress events emitted with correct stage name
+- Mock cleanup prevents test interference
+- Build compiles without TypeScript errors
+
+---
+
+## Key Design Decisions
+
+### Three-Strategy Geocoding
+
+1. **Postal code only** - fastest, most precise
+2. **Zone name** - handles areas with multiple postal codes
+3. **Postal code + Helsinki** - disambiguates common postal codes
+
+Falls back to geometric centroid if all strategies fail.
+
+### Non-Destructive Schema Migration
+
+- Uses ALTER TABLE ADD COLUMN (not DROP TABLE)
+- Preserves existing data during schema updates
+- Idempotent - can run multiple times safely
+- Different from Phase 03's destructive initialization
+
+### Rate Limiting Strategy
+
+- Fixed 100ms delay between requests (max 10 req/sec)
+- Prevents API throttling and 429 errors
+- Sleep after each geocode except last zone
+- No adaptive throttling (keeps implementation simple)
+
+### API Key Handling
+
+- Supports both DIGITRANSIT_API_KEY and HSL_API_KEY
+- Optional - geocoding works without key (may have lower limits)
+- Warning displayed if no key configured
+- Passed via digitransit-subscription-key header
+
+---
+
+## Manual Verification
+
+✅ `pnpm test` - all 39 tests pass (14 geocoding + 25 existing)
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows patterns from fetch_zones.ts and geocode_zones.ts
+✅ TypeScript strict mode compliance
+✅ Lint passes with no new warnings
+
+---
+
+## Migration Notes
+
+### Files to Delete (After Validation)
+
+- `src/geocode_zones.ts` can be removed after full validation
+- `package.json` scripts `geocode:zones` and `geocode:test` can be removed
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+---
+
+## Next Phase - Phase 05 Build Routes
+
+**Prerequisites:** Phase 04 (Geocode Zones)
+**Estimated Effort:** 3-4 days
+
+### Key Tasks
+
+1. Implement route calculation business logic in `src/lib/routing.ts`
+2. Create TUI screen for build routes workflow
+3. Implement CLI subcommand handler
+4. Write tests for routing logic
+5. Delete old `src/build_routes.ts` after validation
+
+### Hand-off Notes
+
+- Geocode zones workflow fully tested and working
+- Database schema includes routing_lat/routing_lon columns (populated)
+- Progress event pattern established and reusable
+- TUI screen pattern can be replicated for routing
+- CLI integration pattern proven
+- Rate limiting pattern can be adapted for OTP API
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 04 Complete** ✅
