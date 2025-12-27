@@ -48,18 +48,29 @@ describe('geocoding - ensureGeocodingSchema', () => {
 });
 
 describe('geocoding - geocodeZone', () => {
+  const testGeometry = {
+    type: 'Polygon',
+    coordinates: [[
+      [24.94, 60.16],
+      [24.96, 60.16],
+      [24.96, 60.18],
+      [24.94, 60.18],
+      [24.94, 60.16],
+    ]],
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should try postal code first', async () => {
+  it('should reverse geocode from POI coordinates', async () => {
     const mockResponse = {
       data: {
         type: 'FeatureCollection',
         features: [
           {
             geometry: { coordinates: [24.9497, 60.1653] },
-            properties: { name: 'Kaartinkaupunki' },
+            properties: { name: 'Mannerheimintie 2' },
           },
         ],
       },
@@ -67,81 +78,81 @@ describe('geocoding - geocodeZone', () => {
 
     vi.mocked(axios.get).mockResolvedValue(mockResponse);
 
-    const result = await geocodeZone('00100', 'Kaartinkaupunki', 'test-key');
+    const result = await geocodeZone(60.17, 24.95, testGeometry, 'test-key');
 
     expect(result.success).toBe(true);
     expect(result.lat).toBeCloseTo(60.1653, 4);
     expect(result.lon).toBeCloseTo(24.9497, 4);
-    expect(result.source).toContain('postal code');
+    expect(result.source).toContain('reverse:');
 
-    // Should have called API with postal code
+    // Should have called reverse geocoding API
     expect(axios.get).toHaveBeenCalledWith(
-      expect.stringContaining('digitransit.fi'),
+      expect.stringContaining('/reverse'),
       expect.objectContaining({
-        params: expect.objectContaining({ text: '00100' }),
+        params: expect.objectContaining({
+          'point.lat': '60.17',
+          'point.lon': '24.95',
+        }),
       })
     );
   });
 
-  it('should try zone name if postal code fails', async () => {
+  it('should expand radius if first attempt fails', async () => {
     vi.mocked(axios.get)
-      // First call (postal code) fails
+      // First call (500m) fails
       .mockResolvedValueOnce({ data: { features: [] } })
-      // Second call (zone name) succeeds
+      // Second call (1km) succeeds
       .mockResolvedValueOnce({
         data: {
           features: [
             {
               geometry: { coordinates: [24.9401, 60.1618] },
-              properties: { name: 'Punavuori' },
+              properties: { name: 'Nearby Street' },
             },
           ],
         },
       });
 
-    const result = await geocodeZone('00120', 'Punavuori', 'test-key');
+    const result = await geocodeZone(60.16, 24.94, testGeometry, 'test-key');
 
     expect(result.success).toBe(true);
-    expect(result.source).toContain('zone name');
+    expect(result.source).toContain('1km');
     expect(axios.get).toHaveBeenCalledTimes(2);
   });
 
-  it('should try postal code + Helsinki as last resort', async () => {
-    vi.mocked(axios.get)
-      .mockResolvedValueOnce({ data: { features: [] } })  // Postal code fails
-      .mockResolvedValueOnce({ data: { features: [] } })  // Zone name fails
-      .mockResolvedValueOnce({  // Postal + Helsinki succeeds
-        data: {
-          features: [
-            {
-              geometry: { coordinates: [24.9520, 60.1555] },
-              properties: { name: 'Kaivopuisto' },
-            },
-          ],
-        },
-      });
+  it('should validate results are inside zone polygon', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: {
+        features: [
+          {
+            geometry: { coordinates: [24.9500, 60.1700] },  // Inside test polygon
+            properties: { name: 'Inside Address' },
+          },
+        ],
+      },
+    });
 
-    const result = await geocodeZone('00130', 'Kaivopuisto', 'test-key');
+    const result = await geocodeZone(60.17, 24.95, testGeometry, 'test-key');
 
     expect(result.success).toBe(true);
-    expect(result.source).toContain('Helsinki');
-    expect(axios.get).toHaveBeenCalledTimes(3);
+    expect(result.insideZone).toBe(true);
+    expect(result.distance).toBeDefined();
   });
 
   it('should return failure if all strategies fail', async () => {
     vi.mocked(axios.get).mockResolvedValue({ data: { features: [] } });
 
-    const result = await geocodeZone('00140', 'Unknown', 'test-key');
+    const result = await geocodeZone(60.17, 24.95, testGeometry, 'test-key');
 
     expect(result.success).toBe(false);
     expect(result.error).toBeTruthy();
-    expect(axios.get).toHaveBeenCalledTimes(3);  // All 3 strategies tried
+    expect(axios.get).toHaveBeenCalledTimes(5);  // All 5 radius strategies tried
   });
 
   it('should handle network errors', async () => {
     vi.mocked(axios.get).mockRejectedValue(new Error('Network timeout'));
 
-    const result = await geocodeZone('00150', 'Eira', 'test-key');
+    const result = await geocodeZone(60.17, 24.95, testGeometry, 'test-key');
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Network timeout');
@@ -150,7 +161,7 @@ describe('geocoding - geocodeZone', () => {
   it('should include API key in headers if provided', async () => {
     vi.mocked(axios.get).mockResolvedValue({ data: { features: [] } });
 
-    await geocodeZone('00100', 'Test', 'my-api-key');
+    await geocodeZone(60.17, 24.95, testGeometry, 'my-api-key');
 
     expect(axios.get).toHaveBeenCalledWith(
       expect.any(String),
@@ -183,7 +194,9 @@ describe('geocoding - updateZoneRouting', () => {
       success: true,
       lat: 60.1700,
       lon: 24.9550,
-      source: 'geocoded:postal code',
+      source: 'reverse:address 500m',
+      distance: 45,
+      insideZone: true,
     };
 
     updateZoneRouting(testDB.db, '00100', result, 60.1653, 24.9497);
@@ -196,7 +209,8 @@ describe('geocoding - updateZoneRouting', () => {
 
     expect(zone.routing_lat).toBeCloseTo(60.1700, 4);
     expect(zone.routing_lon).toBeCloseTo(24.9550, 4);
-    expect(zone.routing_source).toBe('geocoded:postal code');
+    expect(zone.routing_source).toContain('reverse:address 500m');
+    expect(zone.routing_source).toContain('45m');
     expect(zone.geocoding_error).toBeNull();
   });
 
@@ -212,9 +226,9 @@ describe('geocoding - updateZoneRouting', () => {
       .prepare('SELECT routing_lat, routing_lon, routing_source, geocoding_error FROM places WHERE id = ?')
       .get('00100') as any;
 
-    expect(zone.routing_lat).toBeCloseTo(60.1653, 4);  // Fallback to geometric
+    expect(zone.routing_lat).toBeCloseTo(60.1653, 4);  // Fallback to inside point (POI)
     expect(zone.routing_lon).toBeCloseTo(24.9497, 4);
-    expect(zone.routing_source).toBe('fallback:geometric');
+    expect(zone.routing_source).toBe('fallback:inside_point');
     expect(zone.geocoding_error).toBe('No results found');
   });
 });
@@ -254,6 +268,7 @@ describe('geocoding - geocodeZones (integration)', () => {
 
     expect(result.success).toBe(5);
     expect(result.failed).toBe(0);
+    expect(result.insideZone + result.outsideZone).toBe(5);
 
     // All zones should have routing coords
     const zones = testDB.db.prepare('SELECT id FROM places').all() as Array<{ id: string }>;
@@ -263,11 +278,16 @@ describe('geocoding - geocodeZones (integration)', () => {
   });
 
   it('should handle partial failures', async () => {
+    // First zone succeeds, second zone fails all 5 attempts, rest succeed
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
-      .mockResolvedValueOnce({ data: { features: [] } })  // Fail second zone (3 attempts each)
+      // Zone 2: fail all 5 radius strategies
       .mockResolvedValueOnce({ data: { features: [] } })
       .mockResolvedValueOnce({ data: { features: [] } })
+      .mockResolvedValueOnce({ data: { features: [] } })
+      .mockResolvedValueOnce({ data: { features: [] } })
+      .mockResolvedValueOnce({ data: { features: [] } })
+      // Remaining zones succeed
       .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
       .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
       .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } });

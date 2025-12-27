@@ -1,5 +1,9 @@
 #!/usr/bin/env node
+import { config } from 'dotenv';
 import { parseCLI } from './cli';
+
+// Load .env from parent directory
+config({ path: '../.env' });
 
 // Graceful shutdown on Ctrl+C
 process.on('SIGINT', () => {

@@ -11,7 +11,12 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm build:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm exec vitest:*)"
+      "Bash(pnpm exec vitest:*)",
+      "WebFetch(domain:digitransit.fi)",
+      "WebSearch",
+      "Bash(pnpm --filter varikko build:*)",
+      "Bash(pnpm --filter varikko test)",
+      "Bash(pnpm --filter varikko exec vitest:*)"
     ],
     "deny": [],
     "ask": []

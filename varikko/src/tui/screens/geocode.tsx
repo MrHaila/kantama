@@ -20,7 +20,7 @@ export function GeocodeScreen({ testMode, apiKey, onComplete, onCancel }: Geocod
   const { exit } = useApp();
   const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
-  const [result, setResult] = useState<{ success: number; failed: number; errors: Array<{ id: string; error: string }> } | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number; insideZone: number; outsideZone: number; errors: Array<{ id: string; error: string }> } | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   useInput((input, key) => {
@@ -101,7 +101,7 @@ export function GeocodeScreen({ testMode, apiKey, onComplete, onCancel }: Geocod
         {status === 'complete' && result && (
           <Box flexDirection="column">
             <Text color="green">
-              {symbols.success} Geocoding complete!
+              {symbols.success} Reverse geocoding complete!
             </Text>
             <Box marginTop={1}>
               <Text>Successfully geocoded: </Text>
@@ -109,7 +109,16 @@ export function GeocodeScreen({ testMode, apiKey, onComplete, onCancel }: Geocod
               <Text> zones</Text>
             </Box>
             <Box>
-              <Text>Failed (fallback to geometric): </Text>
+              <Text>  • Points inside zone: </Text>
+              <Text color="green">{result.insideZone}</Text>
+            </Box>
+            <Box>
+              <Text>  • Points outside zone: </Text>
+              <Text color="yellow">{result.outsideZone}</Text>
+              <Text color="gray"> (nearest address)</Text>
+            </Box>
+            <Box>
+              <Text>Failed (fallback to POI): </Text>
               <Text color="yellow">{result.failed}</Text>
               <Text> zones</Text>
             </Box>

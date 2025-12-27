@@ -22,10 +22,14 @@ export function createTestDB(path: string = TEST_DB_PATH): TestDB {
     CREATE TABLE IF NOT EXISTS places (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      city TEXT,
+      name_se TEXT,
+      admin_level TEXT,
       lat REAL NOT NULL,
       lon REAL NOT NULL,
       geometry TEXT NOT NULL,
       svg_path TEXT NOT NULL,
+      source_layer TEXT,
       routing_lat REAL,
       routing_lon REAL,
       routing_source TEXT,
@@ -114,18 +118,22 @@ export function seedDB(db: Database.Database, fixtures: {
 }): void {
   if (fixtures.places) {
     const insertPlace = db.prepare(`
-      INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon, routing_source)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO places (id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer, routing_lat, routing_lon, routing_source)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const place of fixtures.places) {
       insertPlace.run(
         place.id,
         place.name,
+        null,  // city (fixtures don't have this)
+        null,  // name_se (fixtures don't have this)
+        null,  // admin_level (fixtures don't have this)
         place.lat,
         place.lon,
         JSON.stringify(place.geometry),
         place.svg_path,
+        null,  // source_layer (fixtures don't have this)
         place.routing_lat || null,
         place.routing_lon || null,
         place.routing_source || null

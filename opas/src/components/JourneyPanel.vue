@@ -102,7 +102,7 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
           <div class="text-2xl font-bold text-vintage-dark row-span-2 flex items-center">
             {{ journeyDetails.duration ? Math.round(journeyDetails.duration / 60) + ' min' : '' }}
           </div>
-          
+
           <!-- To row -->
           <span class="text-xs uppercase tracking-wide text-vintage-dark/50 font-medium">To</span>
           <span class="text-sm font-medium text-vintage-dark">{{ journeyDetails.to?.name }}</span>

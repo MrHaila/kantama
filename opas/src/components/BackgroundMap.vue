@@ -31,8 +31,14 @@ async function loadLayers() {
     svg.setAttribute('viewBox', viewBox.value)
     svg.setAttribute('class', 'w-full h-auto')
 
-    // Load and append each requested layer in order
-    for (const layerId of layers) {
+    // Load and append each requested layer in z-index order
+    const sortedLayers = [...layers].sort((a, b) => {
+      const aIndex = manifest.layers.find((l) => l.id === a)?.zIndex ?? 0
+      const bIndex = manifest.layers.find((l) => l.id === b)?.zIndex ?? 0
+      return aIndex - bIndex
+    })
+
+    for (const layerId of sortedLayers) {
       const layerSvg = await layerService.loadLayer(layerId)
       const layerGroup = layerSvg.querySelector(`#${layerId}`)
 
@@ -65,7 +71,7 @@ async function loadLayers() {
     }
 
     containerRef.value.appendChild(svg)
-    console.log(`Loaded layers: ${layers.join(', ')}`)
+    console.log(`Loaded layers in z-index order: ${sortedLayers.join(', ')}`)
   } catch (error) {
     console.error('Failed to load background map layers:', error)
   }
