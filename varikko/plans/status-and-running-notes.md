@@ -825,3 +825,194 @@ Falls back to geometric centroid if all strategies fail.
 
 **Last Updated:** 2025-12-27
 **Phase 05 Complete** ✅
+
+---
+
+# Phase 06: Clear Data Workflow - Status & Running Notes
+
+**Date:** 2025-12-27
+**Status:** ✅ COMPLETE
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+```text
+✓ src/lib/clearing.ts (business logic, 185 lines)
+  - clearData(): Clear/reset database data with selective options
+  - getCounts(): Get record counts for all tables
+  - Support for --routes (reset to PENDING), --places, --metadata, --deciles flags
+  - VACUUM after clearing to reclaim disk space
+
+✓ src/tui/screens/clear.tsx (TUI screen)
+  - Real-time progress display with Spinner
+  - Show current database state before clearing
+  - Summary of deleted records after completion
+  - Error handling with user-friendly messages
+
+✓ src/tests/lib/clearing.test.ts (comprehensive test suite, 9 tests)
+  - getCounts() tests (2 tests)
+  - clearData() tests (7 tests)
+  - All scenarios covered: clear all, selective clearing, progress events
+  - All tests passing ✓
+```
+
+### Files Modified
+
+```text
+✓ src/cli.ts (implemented clear command action)
+  - Non-interactive CLI support with confirmation prompt
+  - Support for --force, --routes, --places, --metadata, --deciles flags
+  - Display current state before clearing
+  - Progress event handling with console output
+  - Summary of deleted records after completion
+```
+
+### Technology Integration
+
+- **better-sqlite3**: SQLite database operations (DELETE, UPDATE, VACUUM)
+- **eventemitter3**: Progress tracking via ProgressEmitter
+- **readline**: Interactive confirmation prompt for CLI
+- **vitest**: Comprehensive test coverage
+
+---
+
+## Testing Results
+
+- All 9 unit tests passing (100%)
+- getCounts() returns accurate counts for all tables
+- clearData() correctly handles all clearing modes:
+  - Default (no flags): clears all data
+  - --routes: resets routes to PENDING (preserves count)
+  - --places: deletes places and routes
+  - --metadata: deletes metadata only
+  - --deciles: deletes deciles only
+  - Multiple flags: clears only specified tables
+- VACUUM runs after clearing
+- Progress events emitted correctly
+- Build compiles without TypeScript errors
+
+---
+
+## Key Design Decisions
+
+### Selective Clearing
+
+- **Default behavior**: Clears all data (routes, places, metadata, deciles)
+- **--routes flag**: Resets route data to PENDING without deleting rows
+  - Sets duration, numberOfTransfers, walkDistance, legs to NULL
+  - Sets status to 'PENDING'
+  - Useful for re-running route calculations without re-fetching zones
+- **--places flag**: Deletes places AND routes (cascade delete)
+- **--metadata flag**: Deletes metadata only
+- **--deciles flag**: Deletes deciles only
+- **Multiple flags**: Can combine flags to clear specific subsets
+
+### Safety Features
+
+- **Confirmation prompt**: Required unless --force flag is used
+- **Display current state**: Shows record counts before clearing
+- **Summary after completion**: Shows exact number of deleted records
+- **VACUUM**: Automatically reclaims disk space after clearing
+
+### Non-Destructive Schema
+
+- Does NOT drop tables (unlike initializeSchema)
+- Only deletes/updates data
+- Safe to run multiple times
+
+---
+
+## What Went Well
+
+- All 9 tests passing on first attempt after schema fixes
+- Business logic cleanly extracted from clear_routes.ts
+- TDD approach validated implementation
+- Event emitter integration worked seamlessly
+- CLI confirmation prompt provides good UX
+- Build compiles successfully with no type errors
+
+---
+
+## Unexpected Learnings & Plan Expansions
+
+### Database Schema Column Names
+
+- Routes table uses `time_period` not `period`
+- Deciles table uses:
+  - `decile_number` (not `decile`)
+  - `min_duration` / `max_duration` (not `min_value` / `max_value`)
+  - `color_hex` (not `color`)
+  - `label` (NOT NULL column required)
+- Had to match exact schema from zones.ts initializeSchema()
+
+### ProgressEmitter API
+
+- emitStart() signature: `(stage, total?, message?, metadata?)`
+- emitProgress() signature: `(stage, current, total, message?, metadata?)`
+- emitComplete() signature: `(stage, message?, metadata?)`
+- emitError() signature: `(stage, error, message?)`
+- All events emitted to single 'progress' event listener
+
+### Ink Component Patterns
+
+- Spinner is a named export, not default
+- Theme exports individual items (colors, symbols) not a theme object
+- Footer expects `label` prop not `description`
+- Text component color prop expects string (e.g., "green") not Chalk objects
+
+---
+
+## Manual Verification
+
+✅ `pnpm test clearing` - all 9 tests pass
+✅ `pnpm build` - compiles successfully
+✅ Test suite covers all acceptance criteria
+✅ Code follows patterns from previous phases
+✅ TypeScript strict mode compliance
+✅ Lint passes with no new warnings
+
+---
+
+## Migration Notes
+
+### Files to Delete (After Full Validation)
+
+- `src/clear_routes.ts` can be removed after full validation
+- No package.json scripts to remove (none existed for clear)
+
+### Breaking Changes
+
+- None - old scripts still work during transition
+- New implementation is additive at this stage
+
+---
+
+## Next Phase - Phase 07 Calculate Deciles
+
+**Prerequisites:** Phase 05 (Build Routes)
+**Estimated Effort:** 2 days
+
+### Key Tasks
+
+1. Implement decile calculation business logic in `src/lib/deciles.ts`
+2. Create TUI screen for calculate deciles workflow
+3. Implement CLI subcommand handler
+4. Write tests for decile calculation logic
+5. Generate heatmap color distribution from route durations
+
+### Hand-off Notes
+
+- Clear data workflow fully tested and working
+- Database operations proven (DELETE, UPDATE, VACUUM)
+- Progress event pattern established and reusable
+- TUI screen pattern can be replicated for deciles
+- CLI integration pattern proven
+- Deciles table schema ready for population
+
+---
+
+**Last Updated:** 2025-12-27
+**Phase 06 Complete** ✅

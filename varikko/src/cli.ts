@@ -3,7 +3,9 @@ import { openDB } from './lib/db';
 import { fetchZones, initializeSchema } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
+import { clearData, getCounts } from './lib/clearing';
 import { createProgressEmitter } from './lib/events';
+import readline from 'readline';
 
 export interface CLIOptions {
   interactive: boolean;
@@ -241,8 +243,100 @@ export function parseCLI(): CLICommand | null {
     .option('--routes', 'Reset routes to PENDING only')
     .option('--places', 'Clear places and routes')
     .option('--metadata', 'Clear metadata only')
-    .action((_options) => {
-      // Will be implemented in Phase 06
+    .option('--deciles', 'Clear deciles only')
+    .action(async (options) => {
+      const db = openDB();
+
+      try {
+        const { routes, places, metadata, deciles } = options;
+        const clearAll = !routes && !places && !metadata && !deciles;
+
+        // Get current counts
+        const counts = getCounts(db);
+
+        // Build target description
+        let targetMsg = 'ALL data (routes, places, metadata, deciles)';
+        if (!clearAll) {
+          const targets = [];
+          if (routes) targets.push('routes (reset to PENDING)');
+          if (places) targets.push('places and routes');
+          if (metadata) targets.push('metadata');
+          if (deciles) targets.push('deciles');
+          targetMsg = targets.join(', ');
+        }
+
+        // Show current state
+        console.log('Current database state:');
+        console.log(`  Places: ${counts.places.toLocaleString()}`);
+        console.log(`  Routes: ${counts.routes.toLocaleString()}`);
+        console.log(`  Metadata: ${counts.metadata.toLocaleString()}`);
+        console.log(`  Deciles: ${counts.deciles.toLocaleString()}`);
+        console.log();
+
+        // Confirmation prompt
+        if (!options.force) {
+          const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout,
+          });
+
+          const answer = await new Promise<string>((resolve) => {
+            rl.question(`Are you sure you want to clear ${targetMsg}? (y/N) `, (ans) => {
+              rl.close();
+              resolve(ans);
+            });
+          });
+
+          if (answer.toLowerCase() !== 'y') {
+            console.log('Aborted.');
+            db.close();
+            process.exit(0);
+          }
+        }
+
+        const emitter = createProgressEmitter();
+
+        emitter.on('progress', (event) => {
+          if (event.type === 'start') {
+            console.log(`Clearing ${targetMsg}...`);
+          } else if (event.type === 'progress') {
+            console.log(event.message || '');
+          } else if (event.type === 'complete') {
+            console.log('✓', event.message || 'Complete');
+          } else if (event.type === 'error') {
+            console.error('✗', event.message || 'Error', event.error);
+          }
+        });
+
+        const result = clearData(db, {
+          routes,
+          places,
+          metadata,
+          deciles,
+          emitter,
+        });
+
+        console.log('\nDeleted records:');
+        if (result.deleted.places !== undefined) {
+          console.log(`  Places: ${result.deleted.places.toLocaleString()}`);
+        }
+        if (result.deleted.routes !== undefined) {
+          console.log(
+            `  Routes: ${result.deleted.routes.toLocaleString()}${routes && !places ? ' (reset to PENDING)' : ''}`
+          );
+        }
+        if (result.deleted.metadata !== undefined) {
+          console.log(`  Metadata: ${result.deleted.metadata.toLocaleString()}`);
+        }
+        if (result.deleted.deciles !== undefined) {
+          console.log(`  Deciles: ${result.deleted.deciles.toLocaleString()}`);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        process.exit(1);
+      } finally {
+        db.close();
+      }
     });
 
   program
