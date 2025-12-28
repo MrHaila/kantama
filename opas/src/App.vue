@@ -1,26 +1,30 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, computed } from 'vue'
 import BackgroundMap from './components/BackgroundMap.vue'
 import InteractiveMap from './components/InteractiveMap.vue'
 import InfoPanelContainer from './components/InfoPanelContainer.vue'
 import { useAppState } from './composables/useAppState'
+import { useMapDataStore } from './stores/mapData'
+import type { MapThemeName } from './config/mapThemes'
 
 const { currentState, error, initialize } = useAppState()
+const store = useMapDataStore()
 
-// Theme management
-const currentTheme = ref<'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'>('vintage')
+// Derive theme from current time period
+const currentTheme = computed<MapThemeName>(() => {
+  const period = store.currentTimePeriod.toLowerCase()
+  if (period === 'morning' || period === 'evening' || period === 'midnight') {
+    return period as MapThemeName
+  }
+  return 'morning' // Default fallback
+})
 
-const themes: Array<'vintage' | 'modern' | 'dark' | 'contrast' | 'yle'> = [
-  'vintage',
-  'modern',
-  'dark',
-  'contrast',
-  'yle',
-]
+// Period options
+type TimePeriod = 'MORNING' | 'EVENING' | 'MIDNIGHT'
+const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT']
 
-function cycleTheme(): void {
-  const currentIndex = themes.indexOf(currentTheme.value!)
-  currentTheme.value = themes[(currentIndex + 1) % themes.length]!
+function setPeriod(period: TimePeriod): void {
+  store.currentTimePeriod = period
 }
 
 onMounted(() => {
@@ -39,14 +43,21 @@ onMounted(() => {
       <p class="text-xs text-vintage-dark/50 tracking-widest mt-1 italic">/ˈkɑntɑmɑ/ — n. how far you can get</p>
     </div>
 
-    <!-- Theme Selector - Bottom Right -->
+    <!-- Period Toggle - Bottom Right -->
     <div class="fixed bottom-6 right-6 z-20">
-      <button
-        class="px-4 py-2 bg-vintage-cream border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] hover:bg-vintage-dark/10 transition-colors text-vintage-dark font-sans text-xs tracking-widest uppercase"
-        @click="cycleTheme"
-      >
-        {{ currentTheme }}
-      </button>
+      <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
+        <button
+          v-for="period in periods"
+          :key="period"
+          class="px-4 py-2 font-sans text-xs tracking-widest uppercase transition-colors"
+          :class="store.currentTimePeriod === period
+            ? 'bg-vintage-dark text-vintage-cream'
+            : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'"
+          @click="setPeriod(period)"
+        >
+          {{ period }}
+        </button>
+      </div>
     </div>
 
     <!-- Main Content -->

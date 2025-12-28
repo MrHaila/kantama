@@ -7,7 +7,7 @@ interface Props {
   layers?: LayerId[]
 }
 
-const { theme = 'vintage', layers = ['water'] } = defineProps<Props>()
+const { theme = 'morning', layers = ['water'] } = defineProps<Props>()
 
 const containerRef = ref<HTMLElement | null>(null)
 const viewBox = ref<string>('')
