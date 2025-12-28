@@ -111,10 +111,10 @@ export class KauniainenFetcher implements CityFetcher {
 
   async fetchFeatures(): Promise<Feature[]> {
     // Kauniainen is small (10km²) - fetch entire municipality boundary
-    // Using Statistics Finland's municipality layer, filtered for Kauniainen (code 235)
-    const url = 'https://geo.stat.fi/geoserver/wfs?' +
+    // Using HSY's seutukartta for high resolution (120 points vs StatFi's 11 points)
+    const url = 'https://kartta.hsy.fi/geoserver/wfs?' +
       'service=WFS&version=2.0.0&request=GetFeature&' +
-      'typeName=tilastointialueet:kunta1000k_2024&' +
+      'typeName=taustakartat_ja_aluejaot:seutukartta_kunta_2021&' +
       'outputFormat=application/json&srsName=EPSG:4326&' +
       'CQL_FILTER=kunta=\'235\'';
 
@@ -130,13 +130,12 @@ export class KauniainenFetcher implements CityFetcher {
       cityCode: this.cityCode,
       city: this.cityName,
       name: props.nimi || 'Kauniainen',
-      nameSe: props.namn || 'Grankulla',
+      nameSe: props.nimi_r || 'Grankulla',
       adminLevel: 'kunta',
       geometry: feature.geometry,
       metadata: {
-        area: props.pinta_ala,
         kunta: props.kunta,
-        sourceLayer: 'tilastointialueet:kunta1000k_2024'
+        sourceLayer: 'taustakartat_ja_aluejaot:seutukartta_kunta_2021'
       }
     };
   }

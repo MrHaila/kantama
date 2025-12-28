@@ -3,8 +3,8 @@ import { computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { themes, type ThemeColors } from '../config/themes'
 
-interface Decile {
-  decile_number: number
+interface TimeBucket {
+  bucket_number: number
   min_duration: number
   max_duration: number | null
   color_hex: string
@@ -16,19 +16,19 @@ const store = useMapDataStore()
 // Current theme (could be made reactive in the future)
 const currentTheme = computed<ThemeColors>(() => themes.vintage!)
 
-// Computed property to get deciles from the store
-const deciles = computed<Decile[]>(() => {
-  const baseDeciles = store.deciles || []
+// Computed property to get time buckets from the store
+const timeBuckets = computed<TimeBucket[]>(() => {
+  const baseTimeBuckets = store.timeBuckets || []
 
   // Override colors with theme colors if we have the right number
-  if (baseDeciles.length === currentTheme.value.decileColors.length) {
-    return baseDeciles.map((decile, index) => ({
-      ...decile,
-      color_hex: currentTheme.value.decileColors[index] || decile.color_hex,
+  if (baseTimeBuckets.length === currentTheme.value.timeBucketColors.length) {
+    return baseTimeBuckets.map((bucket, index) => ({
+      ...bucket,
+      color_hex: currentTheme.value.timeBucketColors[index] || bucket.color_hex,
     }))
   }
 
-  return baseDeciles
+  return baseTimeBuckets
 })
 </script>
 
@@ -36,9 +36,9 @@ const deciles = computed<Decile[]>(() => {
   <div class="heatmap-legend">
     <div class="legend-title">Travel Time</div>
     <div class="legend-items">
-      <div v-for="decile in deciles" :key="decile.decile_number" class="legend-item">
-        <div class="legend-color" :style="{ backgroundColor: decile.color_hex }"></div>
-        <div class="legend-label">{{ decile.label }}</div>
+      <div v-for="bucket in timeBuckets" :key="bucket.bucket_number" class="legend-item">
+        <div class="legend-color" :style="{ backgroundColor: bucket.color_hex }"></div>
+        <div class="legend-label">{{ bucket.label }}</div>
       </div>
     </div>
   </div>

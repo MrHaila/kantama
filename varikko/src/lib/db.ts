@@ -33,7 +33,7 @@ export interface DBStats {
     no_route: number;
     error: number;
   };
-  deciles: {
+  timeBuckets: {
     calculated: boolean;
     count: number;
   };
@@ -54,7 +54,7 @@ export function getDBStats(db: Database.Database): DBStats {
     GROUP BY status
   `).all() as Array<{ status: string; count: number }>;
 
-  const decilesCalculated = db.prepare('SELECT COUNT(*) as count FROM deciles').get() as { count: number };
+  const timeBucketsCalculated = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as { count: number };
 
   const lastRun = db.prepare("SELECT value FROM metadata WHERE key = 'last_fetch'").get() as { value: string } | undefined;
 
@@ -73,9 +73,9 @@ export function getDBStats(db: Database.Database): DBStats {
       no_route: statusMap['NO_ROUTE'] || 0,
       error: statusMap['ERROR'] || 0,
     },
-    deciles: {
-      calculated: decilesCalculated.count === 10,
-      count: decilesCalculated.count,
+    timeBuckets: {
+      calculated: timeBucketsCalculated.count === 6,
+      count: timeBucketsCalculated.count,
     },
     lastRun: lastRun ? JSON.parse(lastRun.value) : null,
   };

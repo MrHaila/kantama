@@ -53,9 +53,9 @@ export function createTestDB(path: string = TEST_DB_PATH): TestDB {
     CREATE INDEX IF NOT EXISTS idx_routes_to ON routes(to_id, time_period);
     CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
 
-    CREATE TABLE IF NOT EXISTS deciles (
+    CREATE TABLE IF NOT EXISTS time_buckets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      decile_number INTEGER UNIQUE NOT NULL,
+      bucket_number INTEGER UNIQUE NOT NULL,
       min_duration INTEGER NOT NULL,
       max_duration INTEGER NOT NULL,
       color_hex TEXT NOT NULL,
@@ -63,7 +63,7 @@ export function createTestDB(path: string = TEST_DB_PATH): TestDB {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    CREATE INDEX IF NOT EXISTS idx_deciles_number ON deciles(decile_number);
+    CREATE INDEX IF NOT EXISTS idx_time_buckets_number ON time_buckets(bucket_number);
 
     CREATE TABLE IF NOT EXISTS metadata (
       key TEXT PRIMARY KEY,
@@ -107,8 +107,8 @@ export function seedDB(db: Database.Database, fixtures: {
     legs?: object | null;
     status?: string;
   }>;
-  deciles?: Array<{
-    decile_number: number;
+  timeBuckets?: Array<{
+    bucket_number: number;
     min_duration: number;
     max_duration: number;
     color_hex: string;
@@ -161,19 +161,19 @@ export function seedDB(db: Database.Database, fixtures: {
     }
   }
 
-  if (fixtures.deciles) {
-    const insertDecile = db.prepare(`
-      INSERT INTO deciles (decile_number, min_duration, max_duration, color_hex, label)
+  if (fixtures.timeBuckets) {
+    const insertBucket = db.prepare(`
+      INSERT INTO time_buckets (bucket_number, min_duration, max_duration, color_hex, label)
       VALUES (?, ?, ?, ?, ?)
     `);
 
-    for (const decile of fixtures.deciles) {
-      insertDecile.run(
-        decile.decile_number,
-        decile.min_duration,
-        decile.max_duration,
-        decile.color_hex,
-        decile.label
+    for (const bucket of fixtures.timeBuckets) {
+      insertBucket.run(
+        bucket.bucket_number,
+        bucket.min_duration,
+        bucket.max_duration,
+        bucket.color_hex,
+        bucket.label
       );
     }
   }
@@ -194,7 +194,7 @@ export function getDBSnapshot(db: Database.Database) {
   return {
     places: db.prepare('SELECT * FROM places ORDER BY id').all(),
     routes: db.prepare('SELECT * FROM routes ORDER BY from_id, to_id, time_period').all(),
-    deciles: db.prepare('SELECT * FROM deciles ORDER BY decile_number').all(),
+    timeBuckets: db.prepare('SELECT * FROM time_buckets ORDER BY bucket_number').all(),
     metadata: db.prepare('SELECT * FROM metadata ORDER BY key').all(),
   };
 }

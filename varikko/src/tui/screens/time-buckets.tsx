@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import Database from 'better-sqlite3';
-import { calculateDeciles, Decile } from '../../lib/deciles.js';
+import { calculateTimeBuckets, TimeBucket } from '../../lib/time-buckets.js';
 import { ProgressEmitter, ProgressEvent } from '../../lib/events.js';
 import { Header } from '../components/Header.js';
 import { Footer } from '../components/Footer.js';
@@ -9,7 +9,7 @@ import { ProgressBar } from '../components/ProgressBar.js';
 import { Spinner } from '../components/Spinner.js';
 import { symbols } from '../theme.js';
 
-interface DecilesScreenProps {
+interface TimeBucketsScreenProps {
   dbPath: string;
   force?: boolean;
   onExit: (error?: Error) => void;
@@ -17,13 +17,13 @@ interface DecilesScreenProps {
 
 type Status = 'idle' | 'running' | 'complete' | 'error';
 
-export default function DecilesScreen({ dbPath, force = false, onExit }: DecilesScreenProps) {
+export default function TimeBucketsScreen({ dbPath, force = false, onExit }: TimeBucketsScreenProps) {
   const [status, setStatus] = useState<Status>('idle');
   const [progress, setProgress] = useState(0);
-  const [total, setTotal] = useState(10);
+  const [total, setTotal] = useState(8);
   const [message, setMessage] = useState('Initializing...');
   const [error, setError] = useState<string | null>(null);
-  const [deciles, setDeciles] = useState<Decile[] | null>(null);
+  const [timeBuckets, setTimeBuckets] = useState<TimeBucket[] | null>(null);
 
   useEffect(() => {
     let db: Database.Database | null = null;
@@ -38,13 +38,13 @@ export default function DecilesScreen({ dbPath, force = false, onExit }: Deciles
         emitter.on('progress', (event: ProgressEvent) => {
           if (event.type === 'start') {
             setMessage(event.message || 'Starting...');
-            setTotal(event.total || 10);
+            setTotal(event.total || 8);
           } else if (event.type === 'progress') {
             setProgress(event.current || 0);
-            setTotal(event.total || 10);
+            setTotal(event.total || 8);
             setMessage(event.message || 'Processing...');
           } else if (event.type === 'complete') {
-            setProgress(event.total || 10);
+            setProgress(event.total || 8);
             setMessage(event.message || 'Complete!');
             setStatus('complete');
           } else if (event.type === 'error') {
@@ -53,8 +53,8 @@ export default function DecilesScreen({ dbPath, force = false, onExit }: Deciles
           }
         });
 
-        const result = calculateDeciles(db, { force, emitter });
-        setDeciles(result.deciles);
+        const result = calculateTimeBuckets(db, { force, emitter });
+        setTimeBuckets(result.timeBuckets);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);
         setError(errorMessage);
@@ -80,7 +80,7 @@ export default function DecilesScreen({ dbPath, force = false, onExit }: Deciles
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Header title="Calculate Deciles" />
+      <Header title="Calculate Time Buckets" />
 
       <Box flexDirection="column" marginTop={1} marginBottom={1}>
         {status === 'running' && (
@@ -94,7 +94,7 @@ export default function DecilesScreen({ dbPath, force = false, onExit }: Deciles
           </Box>
         )}
 
-        {status === 'complete' && deciles && (
+        {status === 'complete' && timeBuckets && (
           <Box flexDirection="column">
             <Box marginBottom={1}>
               <Text color="green">
@@ -103,19 +103,19 @@ export default function DecilesScreen({ dbPath, force = false, onExit }: Deciles
             </Box>
 
             <Box marginBottom={1}>
-              <Text bold>Decile Distribution:</Text>
+              <Text bold>Time Bucket Distribution:</Text>
             </Box>
 
-            {deciles.map((decile) => (
-              <Box key={decile.number} marginLeft={2}>
+            {timeBuckets.map((bucket) => (
+              <Box key={bucket.number} marginLeft={2}>
                 <Text>
-                  Decile {decile.number}: {decile.label} ({decile.color})
+                  Bucket {bucket.number}: {bucket.label} ({bucket.color})
                 </Text>
               </Box>
             ))}
 
             <Box marginTop={1}>
-              <Text dimColor>Deciles calculated successfully and stored in database.</Text>
+              <Text dimColor>Time buckets calculated successfully and stored in database.</Text>
             </Box>
           </Box>
         )}

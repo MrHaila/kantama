@@ -20,7 +20,7 @@ interface Status {
     routes?: number;
     places?: number;
     metadata?: number;
-    deciles?: number;
+    timeBuckets?: number;
   };
 }
 
@@ -30,7 +30,7 @@ export const ClearScreen: React.FC<ClearScreenProps> = ({ db, options }) => {
     routes: number;
     places: number;
     metadata: number;
-    deciles: number;
+    timeBuckets: number;
   } | null>(null);
 
   useEffect(() => {
@@ -79,17 +79,17 @@ export const ClearScreen: React.FC<ClearScreenProps> = ({ db, options }) => {
   }, [db, options, status.state]);
 
   // Determine what will be cleared
-  const { routes, places, metadata, deciles } = options;
-  const clearAll = !routes && !places && !metadata && !deciles;
+  const { routes, places, metadata, timeBuckets } = options;
+  const clearAll = !routes && !places && !metadata && !timeBuckets;
 
   const getTargetDescription = (): string => {
-    if (clearAll) return 'ALL data (routes, places, metadata, deciles)';
+    if (clearAll) return 'ALL data (routes, places, metadata, time_buckets)';
 
     const targets = [];
     if (routes) targets.push('routes (reset to PENDING)');
     if (places) targets.push('places and routes');
     if (metadata) targets.push('metadata');
-    if (deciles) targets.push('deciles');
+    if (timeBuckets) targets.push('time_buckets');
 
     return targets.join(', ');
   };
@@ -114,7 +114,7 @@ export const ClearScreen: React.FC<ClearScreenProps> = ({ db, options }) => {
                 Metadata: <Text color="cyan">{counts.metadata.toLocaleString()}</Text>
               </Text>
               <Text>
-                Deciles: <Text color="cyan">{counts.deciles.toLocaleString()}</Text>
+                Time Buckets: <Text color="cyan">{counts.timeBuckets.toLocaleString()}</Text>
               </Text>
             </Box>
           </Box>
@@ -160,9 +160,9 @@ export const ClearScreen: React.FC<ClearScreenProps> = ({ db, options }) => {
                     Metadata: <Text color="green">{status.deleted.metadata.toLocaleString()}</Text>
                   </Text>
                 )}
-                {status.deleted.deciles !== undefined && (
+                {status.deleted.timeBuckets !== undefined && (
                   <Text>
-                    Deciles: <Text color="green">{status.deleted.deciles.toLocaleString()}</Text>
+                    Time Buckets: <Text color="green">{status.deleted.timeBuckets.toLocaleString()}</Text>
                   </Text>
                 )}
               </Box>

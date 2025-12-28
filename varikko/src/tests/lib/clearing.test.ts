@@ -30,7 +30,7 @@ describe('clearing', () => {
         ).run('test_key', 'test_value');
 
         db.prepare(
-          `INSERT INTO deciles (decile_number, min_duration, max_duration, color_hex, label) VALUES (?, ?, ?, ?, ?)`
+          `INSERT INTO time_buckets (bucket_number, min_duration, max_duration, color_hex, label) VALUES (?, ?, ?, ?, ?)`
         ).run(1, 0, 10, '#ff0000', '0-10 min');
 
         const counts = getCounts(db);
@@ -38,7 +38,7 @@ describe('clearing', () => {
         expect(counts.places).toBe(2);
         expect(counts.routes).toBe(1);
         expect(counts.metadata).toBe(1);
-        expect(counts.deciles).toBe(1);
+        expect(counts.timeBuckets).toBe(1);
       } finally {
         cleanup();
       }
@@ -53,7 +53,7 @@ describe('clearing', () => {
         expect(counts.places).toBe(0);
         expect(counts.routes).toBe(0);
         expect(counts.metadata).toBe(0);
-        expect(counts.deciles).toBe(0);
+        expect(counts.timeBuckets).toBe(0);
       } finally {
         cleanup();
       }
@@ -95,7 +95,7 @@ describe('clearing', () => {
       db.prepare(`INSERT INTO metadata (key, value) VALUES (?, ?)`).run('test_key', 'test_value');
 
       db.prepare(
-        `INSERT INTO deciles (decile_number, min_duration, max_duration, color_hex, label) VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO time_buckets (bucket_number, min_duration, max_duration, color_hex, label) VALUES (?, ?, ?, ?, ?)`
       ).run(1, 0, 10, '#ff0000', '0-10 min');
     });
 
@@ -109,13 +109,13 @@ describe('clearing', () => {
       expect(result.deleted.places).toBe(2);
       expect(result.deleted.routes).toBe(2);
       expect(result.deleted.metadata).toBe(1);
-      expect(result.deleted.deciles).toBe(1);
+      expect(result.deleted.timeBuckets).toBe(1);
 
       const counts = getCounts(db);
       expect(counts.places).toBe(0);
       expect(counts.routes).toBe(0);
       expect(counts.metadata).toBe(0);
-      expect(counts.deciles).toBe(0);
+      expect(counts.timeBuckets).toBe(0);
     });
 
     it('should reset routes to PENDING when routes flag is set', () => {
@@ -156,7 +156,7 @@ describe('clearing', () => {
       expect(counts.places).toBe(0);
       expect(counts.routes).toBe(0);
       expect(counts.metadata).toBe(1); // Metadata should remain
-      expect(counts.deciles).toBe(1); // Deciles should remain
+      expect(counts.timeBuckets).toBe(1); // Time buckets should remain
     });
 
     it('should clear metadata when metadata flag is set', () => {
@@ -172,30 +172,30 @@ describe('clearing', () => {
       expect(counts.routes).toBe(2); // Routes should remain
     });
 
-    it('should clear deciles when deciles flag is set', () => {
-      const result = clearData(db, { deciles: true });
+    it('should clear timeBuckets when timeBuckets flag is set', () => {
+      const result = clearData(db, { timeBuckets: true });
 
-      expect(result.deleted.deciles).toBe(1);
+      expect(result.deleted.timeBuckets).toBe(1);
       expect(result.deleted.places).toBeUndefined();
       expect(result.deleted.routes).toBeUndefined();
 
       const counts = getCounts(db);
-      expect(counts.deciles).toBe(0);
+      expect(counts.timeBuckets).toBe(0);
       expect(counts.places).toBe(2); // Places should remain
       expect(counts.routes).toBe(2); // Routes should remain
     });
 
     it('should clear multiple specific tables when multiple flags are set', () => {
-      const result = clearData(db, { metadata: true, deciles: true });
+      const result = clearData(db, { metadata: true, timeBuckets: true });
 
       expect(result.deleted.metadata).toBe(1);
-      expect(result.deleted.deciles).toBe(1);
+      expect(result.deleted.timeBuckets).toBe(1);
       expect(result.deleted.places).toBeUndefined();
       expect(result.deleted.routes).toBeUndefined();
 
       const counts = getCounts(db);
       expect(counts.metadata).toBe(0);
-      expect(counts.deciles).toBe(0);
+      expect(counts.timeBuckets).toBe(0);
       expect(counts.places).toBe(2); // Places should remain
       expect(counts.routes).toBe(2); // Routes should remain
     });

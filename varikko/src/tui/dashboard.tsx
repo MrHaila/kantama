@@ -12,7 +12,7 @@ export type Screen =
   | 'geocode'
   | 'routes'
   | 'clear'
-  | 'deciles'
+  | 'time-buckets'
   | 'maps'
   | 'help';
 
@@ -35,7 +35,7 @@ const stages: Stage[] = [
   { key: '2', label: 'Geocode Zones', description: 'Resolve routing addresses', screen: 'geocode' },
   { key: '3', label: 'Build Routes', description: 'Calculate transit routes', screen: 'routes' },
   { key: '4', label: 'Clear Data', description: 'Reset or clear database', screen: 'clear' },
-  { key: '5', label: 'Calculate Deciles', description: 'Generate heatmap distribution', screen: 'deciles' },
+  { key: '5', label: 'Calculate Time Buckets', description: 'Generate heatmap buckets', screen: 'time-buckets' },
   { key: '6', label: 'Process Map', description: 'Convert shapefiles to TopoJSON', screen: 'maps' },
 ];
 

@@ -60,12 +60,12 @@ export function HelpScreen({ onBack }: HelpScreenProps) {
             <Box marginTop={1}>
               <Text><Text color="cyan">[4] Clear Data</Text> - Reset or clear database</Text>
             </Box>
-            <Text color="gray">    Selective clearing: routes, places, metadata, or deciles</Text>
+            <Text color="gray">    Selective clearing: routes, places, metadata, or time_buckets</Text>
 
             <Box marginTop={1}>
-              <Text><Text color="cyan">[5] Calculate Deciles</Text> - Generate heatmap distribution</Text>
+              <Text><Text color="cyan">[5] Calculate Time Buckets</Text> - Generate heatmap buckets</Text>
             </Box>
-            <Text color="gray">    Creates 10-bucket color distribution for visualization</Text>
+            <Text color="gray">    Creates 6 fixed time buckets for visualization</Text>
 
             <Box marginTop={1}>
               <Text><Text color="cyan">[6] Process Map</Text> - Convert shapefiles to TopoJSON/SVG</Text>
@@ -99,7 +99,7 @@ export function HelpScreen({ onBack }: HelpScreenProps) {
         <Box flexDirection="column">
           <Text bold color="cyan">TIPS</Text>
           <Box marginLeft={2} flexDirection="column">
-            <Text>• Run workflows in order: Fetch → Geocode → Routes → Deciles</Text>
+            <Text>• Run workflows in order: Fetch → Geocode → Routes → Time Buckets</Text>
             <Text>• Use test mode first to verify configuration</Text>
             <Text>• Clear data if you need to start over</Text>
             <Text>• Stats refresh automatically after each workflow</Text>

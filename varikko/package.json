@@ -10,8 +10,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint src",
-    "clean": "rm -rf dist",
-    "routes": "tsx src/cli/routes.ts"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@turf/turf": "^7.3.1",

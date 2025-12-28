@@ -4,7 +4,7 @@ export interface ThemeColors {
   border: string
   title: string
   text: string
-  decileColors: string[]
+  timeBucketColors: string[]
 }
 
 export const themes: Record<string, ThemeColors> = {
@@ -14,17 +14,13 @@ export const themes: Record<string, ThemeColors> = {
     border: '#8B7355',
     title: '#2A4D69',
     text: '#333',
-    decileColors: [
-      '#1a9850', // Dark Green - Fastest (Good)
-      '#66bd63', // Medium Green
-      '#a6d96a', // Light Green
-      '#d9ef8b', // Very Light Green
-      '#fee08b', // Yellow - Mid range
-      '#fdae61', // Light Orange
-      '#f46d43', // Orange
-      '#d73027', // Red-Orange
-      '#a50026', // Dark Red
-      '#8b0000', // Very Dark Red - Slowest (Bad)
+    timeBucketColors: [
+      '#1b9e77', // Vibrant Green - 0-15min (Fastest/Good)
+      '#66c2a5', // Light Green - 15-30min
+      '#fc8d62', // Light Orange - 30-45min
+      '#8da0cb', // Soft Blue - 45-60min
+      '#4574b4', // Medium Blue - 60-75min
+      '#1e3a8a', // Deep Blue - 75-90min+ (Slowest/Far)
     ],
   },
   dark: {
@@ -33,17 +29,13 @@ export const themes: Record<string, ThemeColors> = {
     border: '#2A9D8F',
     title: '#FDFBF7',
     text: '#FDFBF7',
-    decileColors: [
-      '#1a9850', // Dark Green - Fastest (Good)
-      '#66bd63', // Medium Green
-      '#a6d96a', // Light Green
-      '#d9ef8b', // Very Light Green
-      '#fee08b', // Yellow - Mid range
-      '#fdae61', // Light Orange
-      '#f46d43', // Orange
-      '#d73027', // Red-Orange
-      '#a50026', // Dark Red
-      '#8b0000', // Very Dark Red - Slowest (Bad)
+    timeBucketColors: [
+      '#1b9e77', // Vibrant Green - 0-15min (Fastest/Good)
+      '#66c2a5', // Light Green - 15-30min
+      '#fc8d62', // Light Orange - 30-45min
+      '#8da0cb', // Soft Blue - 45-60min
+      '#4574b4', // Medium Blue - 60-75min
+      '#1e3a8a', // Deep Blue - 75-90min+ (Slowest/Far)
     ],
   },
   ocean: {
@@ -52,17 +44,13 @@ export const themes: Record<string, ThemeColors> = {
     border: '#4682B4',
     title: '#1E3A5F',
     text: '#2C3E50',
-    decileColors: [
-      '#1a9850', // Dark Green - Fastest (Good)
-      '#66bd63', // Medium Green
-      '#a6d96a', // Light Green
-      '#d9ef8b', // Very Light Green
-      '#fee08b', // Yellow - Mid range
-      '#fdae61', // Light Orange
-      '#f46d43', // Orange
-      '#d73027', // Red-Orange
-      '#a50026', // Dark Red
-      '#8b0000', // Very Dark Red - Slowest (Bad)
+    timeBucketColors: [
+      '#1b9e77', // Vibrant Green - 0-15min (Fastest/Good)
+      '#66c2a5', // Light Green - 15-30min
+      '#fc8d62', // Light Orange - 30-45min
+      '#8da0cb', // Soft Blue - 45-60min
+      '#4574b4', // Medium Blue - 60-75min
+      '#1e3a8a', // Deep Blue - 75-90min+ (Slowest/Far)
     ],
   },
 }

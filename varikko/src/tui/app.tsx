@@ -5,7 +5,7 @@ import { FetchZonesScreen } from './screens/fetch-zones';
 import { GeocodeScreen } from './screens/geocode';
 import RoutesScreen from './screens/routes';
 import { ClearScreen } from './screens/clear';
-import DecilesScreen from './screens/deciles';
+import TimeBucketsScreen from './screens/time-buckets';
 import { MapsScreen } from './screens/maps';
 import { HelpScreen } from './screens/help';
 import { openDB, getDBPath } from '../lib/db';
@@ -69,7 +69,6 @@ export function App() {
         <RoutesScreen
           db={db}
           testMode={testMode}
-          useZoneBased={true}
           onExit={() => {
             db.close();
             handleBackToDashboard();
@@ -85,7 +84,7 @@ export function App() {
         routes: false,
         places: false,
         metadata: false,
-        deciles: false,
+        timeBuckets: false,
         force: true, // Skip confirmation in TUI (we'll add our own)
       };
       return (
@@ -96,14 +95,14 @@ export function App() {
       );
     }
 
-    case 'deciles':
+    case 'time-buckets':
       return (
-        <DecilesScreen
+        <TimeBucketsScreen
           dbPath={getDBPath()}
           force={false}
           onExit={(error) => {
             if (error) {
-              console.error('Deciles calculation failed:', error);
+              console.error('Time buckets calculation failed:', error);
             }
             handleBackToDashboard();
           }}

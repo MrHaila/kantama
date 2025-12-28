@@ -2,11 +2,13 @@ import axios from 'axios';
 import * as turf from '@turf/turf';
 import * as d3 from 'd3-geo';
 import type Database from 'better-sqlite3';
-import type { Geometry, Position, Polygon, MultiPolygon, Feature } from 'geojson';
+import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
 import type { StandardZone, ZoneData } from './types';
 import polylabel from 'polylabel';
+import { getWaterMask, clipZoneWithWater } from './coastline';
+
 import {
   WIDTH,
   HEIGHT,
@@ -71,7 +73,7 @@ function calculateInsidePoint(geometry: Geometry): [number, number] | null {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     // If polylabel fails, return null (geometry is likely invalid)
     return null;
   }
@@ -226,28 +228,28 @@ function cleanGeometry(geometry: Geometry): Geometry | null {
 /**
  * Download zones from WFS service
  */
-export async function downloadZonesFromWFS(): Promise<any> {
+export async function downloadZonesFromWFS(): Promise<FeatureCollection<Geometry, FeatureProperties>> {
   const response = await axios.get(WFS_URL, {
     responseType: 'json',
     maxContentLength: Infinity,
     maxBodyLength: Infinity,
   });
 
-  return response.data;
+  return response.data as FeatureCollection<Geometry, FeatureProperties>;
 }
 
 /**
  * Process raw WFS features into ZoneData
  */
 export function processZones(
-  features: any[],
+  features: Feature<Geometry, FeatureProperties>[],
   options: { testMode?: boolean; testLimit?: number } = {}
 ): ZoneData[] {
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
 
   let processed = features
-    .map((feature: Feature<Geometry, FeatureProperties>) => {
+    .map((feature) => {
       const props = feature.properties;
       const code = props.postinumeroalue || props.posti_alue;
       const name = props.nimi;
@@ -297,7 +299,7 @@ export function processZones(
 export function validateSchema(db: Database.Database): boolean {
   try {
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'deciles')")
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'time_buckets')")
       .all() as Array<{ name: string }>;
 
     return tables.length === 4;
@@ -349,9 +351,9 @@ export function initializeSchema(db: Database.Database): void {
       value TEXT
     );
 
-    CREATE TABLE IF NOT EXISTS deciles (
+    CREATE TABLE IF NOT EXISTS time_buckets (
       id INTEGER PRIMARY KEY,
-      decile_number INTEGER NOT NULL UNIQUE,
+      bucket_number INTEGER NOT NULL UNIQUE,
       min_duration INTEGER NOT NULL,
       max_duration INTEGER NOT NULL,
       color_hex TEXT NOT NULL,
@@ -361,7 +363,7 @@ export function initializeSchema(db: Database.Database): void {
 
     CREATE INDEX IF NOT EXISTS idx_routes_to ON routes(to_id, time_period);
     CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
-    CREATE INDEX IF NOT EXISTS idx_deciles_number ON deciles(decile_number);
+    CREATE INDEX IF NOT EXISTS idx_time_buckets_number ON time_buckets(bucket_number);
   `);
 }
 
@@ -641,7 +643,7 @@ export async function fetchZones(
   );
 
   // Process zones
-  const zones = processZones(geojson.features, {
+  const zones = processZones(geojson.features as Feature<Geometry, FeatureProperties>[], {
     testMode: options.testMode,
     testLimit: options.testLimit || 5,
   });

@@ -4,7 +4,7 @@ import { fetchZones, initializeSchema } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
 import { clearData, getCounts } from './lib/clearing';
-import { calculateDeciles } from './lib/deciles';
+import { calculateTimeBuckets } from './lib/time-buckets';
 import { processMaps } from './lib/maps';
 import { createProgressEmitter } from './lib/events';
 import readline from 'readline';
@@ -224,7 +224,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(`✗ Errors: ${result.errors}`);
 
         if (result.ok > 0) {
-          console.log('\nNext step: Run `varikko deciles` to calculate heatmap data');
+          console.log('\nNext step: Run `varikko time-buckets` to calculate heatmap data');
         } else {
           console.log('\n⚠️  No successful routes calculated');
           console.log('   Check that OTP server is running (if using local mode)');
@@ -245,25 +245,25 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .option('--routes', 'Reset routes to PENDING only')
     .option('--places', 'Clear places and routes')
     .option('--metadata', 'Clear metadata only')
-    .option('--deciles', 'Clear deciles only')
+    .option('--time-buckets', 'Clear time buckets only')
     .action(async (options) => {
       const db = openDB();
 
       try {
-        const { routes, places, metadata, deciles } = options;
-        const clearAll = !routes && !places && !metadata && !deciles;
+        const { routes, places, metadata, timeBuckets } = options;
+        const clearAll = !routes && !places && !metadata && !timeBuckets;
 
         // Get current counts
         const counts = getCounts(db);
 
         // Build target description
-        let targetMsg = 'ALL data (routes, places, metadata, deciles)';
+        let targetMsg = 'ALL data (routes, places, metadata, time_buckets)';
         if (!clearAll) {
           const targets = [];
           if (routes) targets.push('routes (reset to PENDING)');
           if (places) targets.push('places and routes');
           if (metadata) targets.push('metadata');
-          if (deciles) targets.push('deciles');
+          if (timeBuckets) targets.push('time_buckets');
           targetMsg = targets.join(', ');
         }
 
@@ -272,7 +272,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(`  Places: ${counts.places.toLocaleString()}`);
         console.log(`  Routes: ${counts.routes.toLocaleString()}`);
         console.log(`  Metadata: ${counts.metadata.toLocaleString()}`);
-        console.log(`  Deciles: ${counts.deciles.toLocaleString()}`);
+        console.log(`  Time Buckets: ${counts.timeBuckets.toLocaleString()}`);
         console.log();
 
         // Confirmation prompt
@@ -314,7 +314,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
           routes,
           places,
           metadata,
-          deciles,
+          timeBuckets,
           emitter,
         });
 
@@ -330,8 +330,8 @@ export async function parseCLI(): Promise<CLICommand | null> {
         if (result.deleted.metadata !== undefined) {
           console.log(`  Metadata: ${result.deleted.metadata.toLocaleString()}`);
         }
-        if (result.deleted.deciles !== undefined) {
-          console.log(`  Deciles: ${result.deleted.deciles.toLocaleString()}`);
+        if (result.deleted.timeBuckets !== undefined) {
+          console.log(`  Time Buckets: ${result.deleted.timeBuckets.toLocaleString()}`);
         }
       } catch (error) {
         console.error('Error:', error);
@@ -342,8 +342,8 @@ export async function parseCLI(): Promise<CLICommand | null> {
     });
 
   program
-    .command('deciles')
-    .description('Calculate heatmap deciles')
+    .command('time-buckets')
+    .description('Calculate heatmap time buckets')
     .option('-f, --force', 'Force recalculation even if already calculated')
     .action((options) => {
       const db = openDB();
@@ -351,7 +351,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
-          console.log('Calculating deciles...');
+          console.log('Calculating time buckets...');
         } else if (event.type === 'progress') {
           console.log(event.message || '');
         } else if (event.type === 'complete') {
@@ -362,17 +362,17 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = calculateDeciles(db, {
+        const result = calculateTimeBuckets(db, {
           force: options.force,
           emitter,
         });
 
-        console.log('\n=== Decile Distribution ===');
-        result.deciles.forEach((decile) => {
-          console.log(`Decile ${decile.number}: ${decile.label} (${decile.color})`);
+        console.log('\n=== Time Bucket Distribution ===');
+        result.timeBuckets.forEach((bucket) => {
+          console.log(`Bucket ${bucket.number}: ${bucket.label} (${bucket.color})`);
         });
 
-        console.log('\nDeciles stored in database and ready for heatmap visualization.');
+        console.log('\nTime buckets stored in database and ready for heatmap visualization.');
       } catch (error) {
         if (error instanceof Error && error.message.includes('already exist')) {
           console.log('\n' + error.message);

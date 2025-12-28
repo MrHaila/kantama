@@ -292,7 +292,7 @@ describe('zones - validateSchema', () => {
     emptyDB.db.exec('DROP TABLE IF EXISTS places');
     emptyDB.db.exec('DROP TABLE IF EXISTS routes');
     emptyDB.db.exec('DROP TABLE IF EXISTS metadata');
-    emptyDB.db.exec('DROP TABLE IF EXISTS deciles');
+    emptyDB.db.exec('DROP TABLE IF EXISTS time_buckets');
 
     expect(validateSchema(emptyDB.db)).toBe(false);
     emptyDB.cleanup();
@@ -304,7 +304,7 @@ describe('zones - validateSchema', () => {
     partialDB.db.exec('DROP TABLE IF EXISTS places');
     partialDB.db.exec('DROP TABLE IF EXISTS routes');
     partialDB.db.exec('DROP TABLE IF EXISTS metadata');
-    partialDB.db.exec('DROP TABLE IF EXISTS deciles');
+    partialDB.db.exec('DROP TABLE IF EXISTS time_buckets');
 
     // Create only some tables
     partialDB.db.exec('CREATE TABLE places (id TEXT)');
@@ -334,7 +334,7 @@ describe('zones - initializeSchema', () => {
       .all() as Array<{ name: string }>;
 
     expect(tables.map((t) => t.name)).toEqual(
-      expect.arrayContaining(['places', 'routes', 'metadata', 'deciles'])
+      expect.arrayContaining(['places', 'routes', 'metadata', 'time_buckets'])
     );
   });
 
@@ -349,7 +349,7 @@ describe('zones - initializeSchema', () => {
       expect.arrayContaining([
         'idx_routes_to',
         'idx_routes_status',
-        'idx_deciles_number',
+        'idx_time_buckets_number',
       ])
     );
   });
@@ -575,7 +575,7 @@ describe('zones - fetchZones (integration)', () => {
     uninitializedDB.db.exec('DROP TABLE IF EXISTS places');
     uninitializedDB.db.exec('DROP TABLE IF EXISTS routes');
     uninitializedDB.db.exec('DROP TABLE IF EXISTS metadata');
-    uninitializedDB.db.exec('DROP TABLE IF EXISTS deciles');
+    uninitializedDB.db.exec('DROP TABLE IF EXISTS time_buckets');
 
     await expect(fetchZones(uninitializedDB.db, { testMode: true })).rejects.toThrow(
       'Database schema not initialized'

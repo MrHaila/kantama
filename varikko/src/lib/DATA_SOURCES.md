@@ -76,20 +76,19 @@ See `gml-parser.ts` for implementation details.
 
 | Property | Value |
 |----------|-------|
-| **Endpoint** | `https://geo.stat.fi/geoserver/wfs` |
-| **Layer** | `tilastointialueet:kunta1000k_2024` |
+| **Endpoint** | `https://kartta.hsy.fi/geoserver/wfs` |
+| **Layer** | `taustakartat_ja_aluejaot:seutukartta_kunta_2021` |
 | **Format** | GeoJSON |
-| **CRS** | EPSG:4326 (native) |
+| **CRS** | EPSG:4326 (requested via `srsName`) |
 | **Admin Level** | kunta (municipality) |
 | **Expected Count** | 1 zone |
 
 **Key Properties:**
 - `kunta` → Municipality code ("235")
 - `nimi` → Finnish name ("Kauniainen")
-- `namn` → Swedish name ("Grankulla")
-- `pinta_ala` → Area in km²
+- `nimi_r` → Swedish name ("Grankulla")
 
-**Implementation Note:** Kauniainen is a small city (~10 km²) with no publicly available district subdivision data. A single zone (`KAU-001`) covers the entire municipality, fetched from Statistics Finland using municipality boundary layer with CQL filter `kunta='235'`.
+**Implementation Note:** Kauniainen is a small city (~10 km²) with no publicly available district subdivision data. A single zone (`KAU-001`) covers the entire municipality, fetched from HSY's Seutukartta for high resolution (120 points vs Statistics Finland's 11 points).
 
 ## Coordinate Transformation
 

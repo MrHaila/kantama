@@ -6,7 +6,7 @@ export interface ClearOptions {
   routes?: boolean; // Reset routes to PENDING
   places?: boolean; // Clear places AND routes
   metadata?: boolean; // Clear metadata
-  deciles?: boolean; // Clear deciles
+  timeBuckets?: boolean; // Clear time buckets
   emitter?: ProgressEmitter;
 }
 
@@ -15,7 +15,7 @@ export interface ClearResult {
     routes?: number;
     places?: number;
     metadata?: number;
-    deciles?: number;
+    timeBuckets?: number;
   };
 }
 
@@ -23,11 +23,11 @@ export interface ClearResult {
  * Clear database data based on options
  *
  * Behavior:
- * - If no flags specified: clears ALL data (routes, places, metadata, deciles)
+ * - If no flags specified: clears ALL data (routes, places, metadata, time_buckets)
  * - If --routes: resets route status to PENDING (doesn't delete)
  * - If --places: deletes places AND routes (cascade)
  * - If --metadata: deletes metadata
- * - If --deciles: deletes deciles
+ * - If --time-buckets: deletes time buckets
  *
  * Always runs VACUUM after clearing to reclaim disk space.
  */
@@ -35,10 +35,10 @@ export function clearData(
   db: Database.Database,
   options: ClearOptions = {}
 ): ClearResult {
-  const { routes, places, metadata, deciles, emitter } = options;
+  const { routes, places, metadata, timeBuckets, emitter } = options;
 
   // Default to clearing everything if no specific flags
-  const clearAll = !routes && !places && !metadata && !deciles;
+  const clearAll = !routes && !places && !metadata && !timeBuckets;
 
   const result: ClearResult = {
     deleted: {},
@@ -47,7 +47,7 @@ export function clearData(
   try {
     const operation = clearAll
       ? 'all'
-      : [routes && 'routes', places && 'places', metadata && 'metadata', deciles && 'deciles']
+      : [routes && 'routes', places && 'places', metadata && 'metadata', timeBuckets && 'time_buckets']
           .filter(Boolean)
           .join(', ');
 
@@ -66,19 +66,19 @@ export function clearData(
       const metadataCount = db.prepare('SELECT COUNT(*) as count FROM metadata').get() as {
         count: number;
       };
-      const decilesCount = db.prepare('SELECT COUNT(*) as count FROM deciles').get() as {
+      const timeBucketsCount = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
         count: number;
       };
 
       db.prepare('DELETE FROM routes').run();
       db.prepare('DELETE FROM places').run();
       db.prepare('DELETE FROM metadata').run();
-      db.prepare('DELETE FROM deciles').run();
+      db.prepare('DELETE FROM time_buckets').run();
 
       result.deleted.routes = routesCount.count;
       result.deleted.places = placesCount.count;
       result.deleted.metadata = metadataCount.count;
-      result.deleted.deciles = decilesCount.count;
+      result.deleted.timeBuckets = timeBucketsCount.count;
     } else {
       // Selective clearing
       if (routes) {
@@ -118,12 +118,12 @@ export function clearData(
         result.deleted.metadata = metadataCount.count;
       }
 
-      if (deciles) {
-        const decilesCount = db.prepare('SELECT COUNT(*) as count FROM deciles').get() as {
+      if (timeBuckets) {
+        const timeBucketsCount = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
           count: number;
         };
-        db.prepare('DELETE FROM deciles').run();
-        result.deleted.deciles = decilesCount.count;
+        db.prepare('DELETE FROM time_buckets').run();
+        result.deleted.timeBuckets = timeBucketsCount.count;
       }
     }
 
@@ -147,7 +147,7 @@ export function getCounts(db: Database.Database): {
   routes: number;
   places: number;
   metadata: number;
-  deciles: number;
+  timeBuckets: number;
 } {
   try {
     const routesCount = db.prepare('SELECT COUNT(*) as count FROM routes').get() as {
@@ -159,7 +159,7 @@ export function getCounts(db: Database.Database): {
     const metadataCount = db.prepare('SELECT COUNT(*) as count FROM metadata').get() as {
       count: number;
     };
-    const decilesCount = db.prepare('SELECT COUNT(*) as count FROM deciles').get() as {
+    const timeBucketsCount = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
       count: number;
     };
 
@@ -167,7 +167,7 @@ export function getCounts(db: Database.Database): {
       routes: routesCount.count,
       places: placesCount.count,
       metadata: metadataCount.count,
-      deciles: decilesCount.count,
+      timeBuckets: timeBucketsCount.count,
     };
   } catch (_error) {
     // If tables don't exist, return 0
@@ -175,7 +175,7 @@ export function getCounts(db: Database.Database): {
       routes: 0,
       places: 0,
       metadata: 0,
-      deciles: 0,
+      timeBuckets: 0,
     };
   }
 }

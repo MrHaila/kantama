@@ -5,7 +5,7 @@ export type WorkflowStage =
   | 'geocode_zones'
   | 'build_routes'
   | 'clear_data'
-  | 'calculate_deciles'
+  | 'calculate_time_buckets'
   | 'process_map'
   | 'generate_svg'
   | 'export_layers';

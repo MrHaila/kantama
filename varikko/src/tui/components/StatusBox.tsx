@@ -11,7 +11,7 @@ interface DBStats {
     no_route: number;
     error: number;
   };
-  deciles: {
+  timeBuckets: {
     calculated: boolean;
     count: number;
   };
@@ -43,8 +43,8 @@ export function StatusBox({ stats }: StatusBoxProps) {
         <Text color="gray">)</Text>
       </Box>
       <Box>
-        <Text>Deciles: </Text>
-        {stats.deciles.calculated ? (
+        <Text>Time Buckets: </Text>
+        {stats.timeBuckets.calculated ? (
           <Text color="green">{symbols.success} Calculated</Text>
         ) : (
           <Text color="gray">Not calculated</Text>

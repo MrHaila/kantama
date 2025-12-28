@@ -56,35 +56,44 @@ export function assertZoneHasRoutingCoords(
 }
 
 /**
- * Assert deciles are correctly calculated
+ * Assert time buckets are correctly calculated
  */
-export function assertDecilesValid(db: Database.Database) {
-  const deciles = db.prepare('SELECT * FROM deciles ORDER BY decile_number').all() as Array<{
-    decile_number: number;
+export function assertTimeBucketsValid(db: Database.Database) {
+  const buckets = db.prepare('SELECT * FROM time_buckets ORDER BY bucket_number').all() as Array<{
+    bucket_number: number;
     min_duration: number;
     max_duration: number;
     color_hex: string;
     label: string;
   }>;
 
-  // Should have 10 deciles
-  expect(deciles).toHaveLength(10);
+  // Should have 6 time buckets
+  expect(buckets).toHaveLength(6);
 
-  // Decile numbers should be 1-10
-  expect(deciles.map(d => d.decile_number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  // Bucket numbers should be 1-6
+  expect(buckets.map(b => b.bucket_number)).toEqual([1, 2, 3, 4, 5, 6]);
 
-  // Ranges should be continuous (no gaps)
-  for (let i = 0; i < deciles.length - 1; i++) {
-    expect(deciles[i].max_duration).toBe(deciles[i + 1].min_duration - 1);
-  }
+  // Verify fixed bucket boundaries
+  const expectedBuckets = [
+    { number: 1, min: 0, max: 900, label: '15min' },
+    { number: 2, min: 900, max: 1800, label: '30min' },
+    { number: 3, min: 1800, max: 2700, label: '45min' },
+    { number: 4, min: 2700, max: 3600, label: '1h' },
+    { number: 5, min: 3600, max: 4500, label: '1h 15min' },
+    { number: 6, min: 4500, max: -1, label: '1h 30min' },
+  ];
 
-  // Last decile should have max_duration = -1 (open-ended)
-  expect(deciles[9].max_duration).toBe(-1);
+  buckets.forEach((bucket, index) => {
+    const expected = expectedBuckets[index];
+    expect(bucket.bucket_number).toBe(expected.number);
+    expect(bucket.min_duration).toBe(expected.min);
+    expect(bucket.max_duration).toBe(expected.max);
+    expect(bucket.label).toBe(expected.label);
+  });
 
-  // All should have colors and labels
-  for (const decile of deciles) {
-    expect(decile.color_hex).toMatch(/^#[0-9a-f]{6}$/i);
-    expect(decile.label).toBeTruthy();
+  // All should have colors
+  for (const bucket of buckets) {
+    expect(bucket.color_hex).toMatch(/^#[0-9a-f]{6}$/i);
   }
 }
 
@@ -95,7 +104,7 @@ export function assertDBMatches(actual: Record<string, unknown[]>, expected: Rec
   ignoredFields?: string[];
   tables?: string[];
 }) {
-  const tables = options?.tables || ['places', 'routes', 'deciles', 'metadata'];
+  const tables = options?.tables || ['places', 'routes', 'timeBuckets', 'metadata'];
   const ignored = options?.ignoredFields || ['created_at'];
 
   for (const table of tables) {
