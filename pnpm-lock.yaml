@@ -59,6 +59,9 @@ importers:
       topojson-client:
         specifier: ^3.1.0
         version: 3.1.0
+      varikko:
+        specifier: workspace:*
+        version: link:../varikko
       vue:
         specifier: ^3.5.26
         version: 3.5.26(typescript@5.9.3)

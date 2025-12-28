@@ -1,32 +1,23 @@
 import { decode } from '@msgpack/msgpack';
+// Import shared types from varikko
+import type {
+  Zone,
+  TimeBucket,
+  ZonesData,
+  CompactLeg,
+  CompactRoute,
+  ZoneRoutesData,
+  TimePeriod,
+} from 'varikko';
+
+// Re-export types for backwards compatibility
+export type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesData, TimePeriod };
 
 // ============================================================================
-// Types
+// Opas-specific types
 // ============================================================================
 
-export interface Zone {
-  id: string;
-  name: string;
-  city: string;
-  svgPath: string;
-  routingPoint: [number, number];
-}
-
-export interface TimeBucket {
-  number: number;
-  min: number;
-  max: number;
-  color: string;
-  label: string;
-}
-
-export interface ZonesData {
-  version: number;
-  timeBuckets: TimeBucket[];
-  zones: Zone[];
-}
-
-/** Route status mapping to match varikko export */
+/** Route status mapping to match varikko export (as const for opas usage) */
 export const RouteStatus = {
   OK: 0,
   NO_ROUTE: 1,
@@ -35,33 +26,6 @@ export const RouteStatus = {
 } as const;
 
 export type RouteStatusType = (typeof RouteStatus)[keyof typeof RouteStatus];
-
-export interface CompactLeg {
-  m: string; // mode
-  d: number; // duration
-  di?: number; // distance
-  f?: { n: string; lt?: number; ln?: number }; // from: name, lat, lon
-  t?: { n: string; lt?: number; ln?: number }; // to: name, lat, lon
-  g?: string; // geometry (encoded polyline)
-  sn?: string; // routeShortName
-  ln?: string; // routeLongName
-}
-
-export interface CompactRoute {
-  i: string; // toId
-  d: number | null; // duration
-  t: number | null; // transfers
-  s: RouteStatusType; // status
-  l?: CompactLeg[]; // legs
-}
-
-export interface ZoneRoutesData {
-  f: string; // fromId
-  p: string; // period (M, E, N)
-  r: CompactRoute[]; // routes
-}
-
-export type TimePeriod = 'MORNING' | 'EVENING' | 'MIDNIGHT';
 
 export interface DataServiceError {
   type: 'zones_not_found' | 'routes_not_found' | 'parse_error' | 'network_error';

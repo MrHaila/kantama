@@ -16,7 +16,7 @@ import {
   MAP_CENTER,
   MAP_SCALE,
   CLIP_BBOX,
-} from './mapConfig';
+} from '../shared/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

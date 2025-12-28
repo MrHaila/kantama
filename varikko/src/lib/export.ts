@@ -4,8 +4,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ProgressEmitter } from './events';
 
+// Import shared types from shared module
+import {
+  Zone,
+  TimeBucket,
+  ZonesData,
+  CompactLeg,
+  CompactRoute,
+  ZoneRoutesData,
+  RouteStatus,
+} from '../shared/types';
+
 // ============================================================================
-// Types
+// Export-specific types
 // ============================================================================
 
 export interface ExportOptions {
@@ -18,67 +29,6 @@ export interface ExportResult {
   routeFiles: number;
   totalSize: number;
   errors: string[];
-}
-
-/** Compact zone format for zones.json */
-export interface CompactZone {
-  id: string;
-  name: string;
-  city: string;
-  svgPath: string;
-  routingPoint: [number, number]; // [lat, lon]
-}
-
-/** Time bucket (same as DB but serializable) */
-export interface TimeBucket {
-  number: number;
-  min: number;
-  max: number;
-  color: string;
-  label: string;
-}
-
-/** Root zones.json structure */
-export interface ZonesFile {
-  version: number;
-  timeBuckets: TimeBucket[];
-  zones: CompactZone[];
-}
-
-/** Route status mapping to minimize bytes */
-export enum RouteStatus {
-  OK = 0,
-  NO_ROUTE = 1,
-  ERROR = 2,
-  PENDING = 3,
-}
-
-/** Leg data for route visualization (minimized keys) */
-export interface CompactLeg {
-  m: string; // mode
-  d: number; // duration
-  di?: number; // distance
-  f?: { n: string; lt?: number; ln?: number }; // from: name, lat, lon
-  t?: { n: string; lt?: number; ln?: number }; // to: name, lat, lon
-  g?: string; // geometry (encoded polyline)
-  sn?: string; // routeShortName
-  ln?: string; // routeLongName
-}
-
-/** Compact route for msgpack files (minimized keys) */
-export interface CompactRoute {
-  i: string; // toId
-  d: number | null; // duration
-  t: number | null; // transfers
-  s: RouteStatus; // status
-  l?: CompactLeg[]; // legs
-}
-
-/** Per-zone route file structure (minimized keys) */
-export interface ZoneRoutesFile {
-  f: string; // fromId
-  p: string; // period (M, E, N)
-  r: CompactRoute[]; // routes
 }
 
 // ============================================================================
@@ -119,7 +69,7 @@ export function exportZones(db: Database.Database, outputPath: string): { zones:
     label: string;
   }[];
 
-  const zonesFile: ZonesFile = {
+  const zonesFile: ZonesData = {
     version: 1,
     timeBuckets: timeBuckets.map((tb) => ({
       number: tb.bucket_number,
@@ -265,7 +215,7 @@ export function exportZoneRoutes(
         return route;
       });
 
-    const routesData: ZoneRoutesFile = {
+    const routesData: ZoneRoutesData = {
       f: zoneId,
       p: config.key,
       r: compactRoutes,
