@@ -1,19 +1,9 @@
 <script setup lang="ts">
 import { getModeColor } from '../utils/transportColors'
-
-interface Leg {
-  mode: string
-  duration: number
-  distance?: number
-  routeName?: string
-  from?: { name: string; lat?: number; lon?: number }
-  to?: { name: string; lat?: number; lon?: number }
-  legGeometry?: { points: string }
-  route?: { shortName?: string; longName?: string }
-}
+import type { CompactLeg } from '../services/DataService'
 
 interface Props {
-  legs: Leg[]
+  legs: CompactLeg[]
   totalDuration: number
   walkDistance: number
   transfers: number
@@ -89,11 +79,11 @@ const getModeLabel = (mode: string): string => {
               </span>
               <!-- Colored badge for route number/name -->
               <span
-                v-if="leg.route?.shortName || leg.route?.longName || leg.routeName"
+                v-if="leg.routeShortName || leg.routeLongName"
                 class="px-1 py-0.5 text-xs font-medium rounded"
                 :style="{ backgroundColor: getModeColor(leg.mode), color: 'white' }"
               >
-                {{ leg.route?.shortName || leg.route?.longName || leg.routeName }}
+                {{ leg.routeShortName || leg.routeLongName }}
               </span>
             </div>
             <span class="text-sm text-vintage-dark/70">

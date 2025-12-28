@@ -7,10 +7,12 @@ import { buildRoutes, getOTPConfig } from './lib/routing';
 import { clearData, getCounts } from './lib/clearing';
 import { calculateTimeBuckets } from './lib/time-buckets';
 import { processMaps } from './lib/maps';
+import { exportAll, getExportStats } from './lib/export';
 import { createProgressEmitter } from './lib/events';
 import * as fmt from './lib/cli-format';
 import readline from 'readline';
 import fs from 'fs';
+import path from 'path';
 
 export interface CLIOptions {
   interactive: boolean;
@@ -687,6 +689,93 @@ export async function parseCLI(): Promise<CLICommand | null> {
           console.error('');
           process.exit(1);
         }
+      } finally {
+        db.close();
+      }
+    });
+
+  program
+    .command('export')
+    .description('Export data to optimized format for opas')
+    .option('-o, --output <dir>', 'Output directory', '../opas/public')
+    .option('--dry-run', 'Show export statistics without writing files')
+    .action((options) => {
+      const db = openDB();
+      const emitter = createProgressEmitter();
+      const startTime = Date.now();
+
+      // Header
+      console.log('');
+      console.log(fmt.header('EXPORTING DATA', '📦'));
+      console.log('');
+
+      if (options.dryRun) {
+        // Just show statistics
+        const stats = getExportStats(db);
+        console.log(fmt.bold('Export Statistics (dry run):'));
+        console.log(fmt.keyValue('  Zones:', stats.zones.toLocaleString(), 20));
+        console.log(fmt.keyValue('  Calculated Routes:', stats.routes.toLocaleString(), 20));
+        console.log(fmt.keyValue('  Est. zones.json:', fmt.formatBytes(stats.estimatedZonesSize), 20));
+        console.log(fmt.keyValue('  Est. route files:', fmt.formatBytes(stats.estimatedRoutesSize), 20));
+        console.log('');
+        console.log(fmt.suggestion('Run without --dry-run to export files'));
+        console.log('');
+        db.close();
+        return;
+      }
+
+      const outputDir = path.resolve(process.cwd(), options.output);
+      console.log(fmt.keyValue('Output:', outputDir, 15));
+      console.log('');
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start') {
+          console.log(fmt.infoMessage('Exporting data...'));
+        } else if (event.type === 'progress') {
+          if (event.current && event.total) {
+            console.log(fmt.progressBar(event.current, event.total, { width: 30 }) + ' ' + (event.message || ''));
+          } else if (event.message) {
+            console.log(fmt.dim(event.message));
+          }
+        } else if (event.type === 'complete') {
+          console.log(fmt.successMessage(event.message || 'Complete'));
+        } else if (event.type === 'error') {
+          console.error(fmt.errorMessage(event.message || 'Error'));
+          if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
+        }
+      });
+
+      try {
+        const result = exportAll(db, { outputDir, emitter });
+        const duration = Date.now() - startTime;
+
+        console.log('');
+        console.log(fmt.divider(50));
+        console.log(fmt.bold('EXPORT COMPLETE'));
+        console.log(fmt.divider(50));
+        console.log(fmt.keyValue('zones.json:', result.zonesFile, 20));
+        console.log(fmt.keyValue('Route files:', result.routeFiles.toLocaleString(), 20));
+        console.log(fmt.keyValue('Total size:', fmt.formatBytes(result.totalSize), 20));
+        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 20));
+
+        if (result.errors.length > 0) {
+          console.log('');
+          console.log(fmt.warningMessage(`${result.errors.length} errors occurred during export`));
+          result.errors.slice(0, 3).forEach((err) => {
+            console.log(fmt.dim(`  ${fmt.symbols.bullet} ${err}`));
+          });
+        }
+
+        console.log('');
+        console.log(fmt.successMessage('Data exported successfully!'));
+        console.log(fmt.suggestion('opas will now load data from the new format'));
+        console.log('');
+      } catch (error) {
+        console.error('');
+        console.error(fmt.errorMessage('Export failed'));
+        console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
+        console.error('');
+        process.exit(1);
       } finally {
         db.close();
       }

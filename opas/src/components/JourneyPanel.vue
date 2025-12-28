@@ -2,22 +2,22 @@
 import { computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import { dbService, type Leg, type Place } from '../services/DatabaseService'
+import { type Zone, type CompactLeg } from '../services/DataService'
 import JourneyDetails from './JourneyDetails.vue'
 
 interface JourneyDetailsData {
   isHint?: boolean
   isError?: boolean
-  from: Place
-  to?: Place
+  from: Zone
+  to?: Zone
   duration?: number
   walkDistance?: number
   transfers?: number
-  legs?: Leg[]
+  legs?: CompactLeg[]
 }
 
 const store = useMapDataStore()
-const { activeZoneId, hoveredZoneId, zones, currentTimePeriod } = storeToRefs(store)
+const { activeZoneId, hoveredZoneId, zones, currentTimePeriod, currentRouteDetails } = storeToRefs(store)
 
 const journeyDetails = computed<JourneyDetailsData | null>(() => {
   if (!activeZoneId.value) {
@@ -38,9 +38,9 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
 
   if (!fromZone || !toZone) return null
 
-  const routeDetails = dbService.getRouteDetails(activeZoneId.value, hoveredZoneId.value, currentTimePeriod.value)
+  const routeData = currentRouteDetails.value
 
-  if (!routeDetails || routeDetails.status !== 'OK') {
+  if (!routeData || routeData.status !== 'OK') {
     return {
       isError: true,
       from: fromZone,
@@ -48,15 +48,13 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
     }
   }
 
-  const legs = dbService.parseLegs(routeDetails.legs)
-
   return {
     from: fromZone,
     to: toZone,
-    duration: routeDetails.duration,
-    walkDistance: routeDetails.walkDistance,
-    transfers: routeDetails.numberOfTransfers,
-    legs: legs,
+    duration: routeData.duration ?? undefined,
+    walkDistance: routeData.walkDistance ?? undefined,
+    transfers: routeData.transfers ?? undefined,
+    legs: routeData.legs,
   }
 })
 </script>
