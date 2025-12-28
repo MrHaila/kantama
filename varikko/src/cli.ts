@@ -1,5 +1,6 @@
 import { Command } from 'commander';
-import { openDB } from './lib/db';
+import Database from 'better-sqlite3';
+import { openDB, getDBStats, getDBPath, getRecentErrors } from './lib/db';
 import { fetchZones, initializeSchema } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
@@ -7,7 +8,9 @@ import { clearData, getCounts } from './lib/clearing';
 import { calculateTimeBuckets } from './lib/time-buckets';
 import { processMaps } from './lib/maps';
 import { createProgressEmitter } from './lib/events';
+import * as fmt from './lib/cli-format';
 import readline from 'readline';
+import fs from 'fs';
 
 export interface CLIOptions {
   interactive: boolean;
@@ -21,17 +24,161 @@ export interface CLICommand {
   options: CLIOptions;
 }
 
+/**
+ * Display comprehensive database status
+ */
+function showStatus(db: Database.Database): void {
+  const dbPath = getDBPath();
+  const stats = getDBStats(db);
+
+  // Get database file info
+  let dbSize = 'Unknown';
+  let dbModified = 'Unknown';
+  try {
+    const fileStats = fs.statSync(dbPath);
+    dbSize = fmt.formatBytes(fileStats.size);
+    dbModified = fmt.formatTimestamp(fileStats.mtime);
+  } catch {
+    // File might not exist yet
+  }
+
+  // Header
+  console.log('');
+  console.log(fmt.boxTop(60, 'VARIKKO DATABASE STATUS'));
+  console.log('');
+
+  // Database Overview
+  console.log(fmt.header('DATABASE', '💾'));
+  console.log(fmt.keyValue('  Path:', dbPath, 18));
+  console.log(fmt.keyValue('  Size:', dbSize, 18));
+  console.log(fmt.keyValue('  Last Modified:', dbModified, 18));
+  console.log('');
+
+  // Zones Status
+  console.log(fmt.header('ZONES', '📍'));
+  if (stats.zones === 0) {
+    console.log(fmt.muted('  No zones fetched yet'));
+    console.log(fmt.suggestion('  Run \'varikko fetch\' to fetch postal code zones'));
+  } else {
+    console.log(fmt.keyValue('  Total Zones:', stats.zones, 18));
+    if (stats.lastRun?.timestamp) {
+      const lastFetch = new Date(stats.lastRun.timestamp);
+      console.log(fmt.keyValue('  Last Fetch:', fmt.formatTimestamp(lastFetch), 18));
+    }
+  }
+  console.log('');
+
+  // Routes Status
+  console.log(fmt.header('ROUTES', '🚌'));
+  if (stats.routes.total === 0) {
+    console.log(fmt.muted('  No routes calculated yet'));
+    if (stats.zones > 0) {
+      console.log(fmt.suggestion('  Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
+    }
+  } else {
+    const totalPerPeriod = stats.routes.total / 3; // 3 periods: MORNING, EVENING, MIDNIGHT
+    console.log(fmt.keyValue('  Total Routes:', `${stats.routes.total.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
+
+    // Calculate percentages
+    const okPct = stats.routes.total > 0 ? ((stats.routes.ok / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const pendingPct = stats.routes.total > 0 ? ((stats.routes.pending / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const noRoutePct = stats.routes.total > 0 ? ((stats.routes.no_route / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const errorPct = stats.routes.total > 0 ? ((stats.routes.error / stats.routes.total) * 100).toFixed(1) : '0.0';
+
+    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${stats.routes.ok.toLocaleString()} (${okPct}%)`, 18));
+
+    if (stats.routes.pending > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${stats.routes.pending.toLocaleString()} (${pendingPct}%)`, 18));
+    }
+
+    if (stats.routes.no_route > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${stats.routes.no_route.toLocaleString()} (${noRoutePct}%)`, 18));
+    }
+
+    if (stats.routes.error > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${stats.routes.error.toLocaleString()} (${errorPct}%)`, 18));
+    }
+  }
+  console.log('');
+
+  // Time Buckets Status
+  console.log(fmt.header('TIME BUCKETS', '🗺️'));
+  if (stats.timeBuckets.calculated) {
+    console.log(fmt.successMessage('  Calculated (6 buckets)'));
+  } else if (stats.timeBuckets.count > 0) {
+    console.log(fmt.warningMessage(`  Partially calculated (${stats.timeBuckets.count}/6 buckets)`));
+    console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
+  } else {
+    console.log(fmt.muted('  Not calculated yet'));
+    if (stats.routes.ok > 0) {
+      console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
+    }
+  }
+  console.log('');
+
+  // Recent Errors (if any)
+  if (stats.routes.error > 0) {
+    const errors = getRecentErrors(db, 5);
+    console.log(fmt.header('RECENT ERRORS', '⚠️'));
+    console.log(fmt.muted(`  Showing ${Math.min(5, errors.length)} of ${stats.routes.error.toLocaleString()} total errors`));
+    console.log('');
+    errors.forEach((err) => {
+      try {
+        const legsData = JSON.parse(err.legs);
+        const errorMsg = legsData.error || 'Unknown error';
+        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
+        console.log(`    ${fmt.error(errorMsg)}`);
+      } catch {
+        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
+      }
+    });
+    console.log('');
+  }
+
+  // Next Steps
+  console.log(fmt.header('NEXT STEPS', '💡'));
+  const suggestions: string[] = [];
+
+  if (stats.zones === 0) {
+    suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
+  } else if (stats.routes.total === 0) {
+    suggestions.push('Run \'varikko geocode\' to geocode zones');
+    suggestions.push('Run \'varikko routes\' to calculate transit routes');
+  } else if (stats.routes.pending > 0) {
+    suggestions.push('Run \'varikko routes\' to calculate pending routes');
+  } else if (!stats.timeBuckets.calculated && stats.routes.ok > 0) {
+    suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
+  } else if (stats.timeBuckets.calculated) {
+    suggestions.push('All data calculated! Ready for visualization');
+  }
+
+  if (suggestions.length > 0) {
+    console.log(fmt.numberedList(suggestions, 2));
+  } else {
+    console.log(fmt.muted('  No actions needed'));
+  }
+  console.log('');
+
+  console.log(fmt.boxBottom(60));
+  console.log('');
+}
+
 export async function parseCLI(): Promise<CLICommand | null> {
   const program = new Command();
 
   program
     .name('varikko')
-    .description('Varikko Data Pipeline - Interactive TUI and CLI for transit route calculation')
-    .version('2.0.0');
+    .description('Varikko Data Pipeline - CLI for transit route calculation')
+    .version('3.0.0');
 
-  // Default (no subcommand) → interactive TUI
+  // Default (no subcommand) → show status
   program.action(() => {
-    // Will be handled in main.ts
+    const db = openDB();
+    try {
+      showStatus(db);
+    } finally {
+      db.close();
+    }
   });
 
   // Subcommands (non-interactive mode)
@@ -425,21 +572,23 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .command('status')
     .description('Show database status')
     .action(() => {
-      // Will be implemented in Phase 10
+      const db = openDB();
+      try {
+        showStatus(db);
+      } finally {
+        db.close();
+      }
     });
 
   await program.parseAsync();
 
-  // Return parsed command (null = interactive mode)
+  // All commands now execute via Commander actions
+  // Return a dummy command to indicate execution completed
   const options = program.opts();
   const [command] = program.args;
 
-  if (!command) {
-    return null;  // Interactive mode
-  }
-
   return {
-    command,
+    command: command || 'status', // Default command is status
     options: options as CLIOptions,
   };
 }
