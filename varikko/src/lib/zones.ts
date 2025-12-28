@@ -18,7 +18,7 @@ import {
   MAP_CENTER,
   MAP_SCALE,
   METRO_AREA_BOUNDS,
-} from './mapConfig';
+} from '../shared/config';
 
 // Constants
 const WFS_URL =

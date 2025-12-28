@@ -13,7 +13,7 @@ import {
   VIEWBOX,
   MAP_CENTER,
   MAP_SCALE,
-} from './mapConfig';
+} from '../shared/config';
 
 // Re-export for use in SVG generation
 export { VIEWBOX_X, VIEWBOX_Y, WIDTH, HEIGHT };

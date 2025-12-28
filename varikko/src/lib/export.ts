@@ -4,8 +4,18 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { ProgressEmitter } from './events';
 
+// Import shared types from shared module
+import type {
+  Zone,
+  TimeBucket,
+  CompactLeg,
+  CompactRoute,
+  ZoneRoutesData,
+  ZonesData,
+} from '../shared/types';
+
 // ============================================================================
-// Types
+// Export-specific types
 // ============================================================================
 
 export interface ExportOptions {
@@ -18,65 +28,6 @@ export interface ExportResult {
   routeFiles: number;
   totalSize: number;
   errors: string[];
-}
-
-/** Compact zone format for zones.json */
-export interface CompactZone {
-  id: string;
-  name: string;
-  city: string;
-  svgPath: string;
-  routingPoint: [number, number]; // [lat, lon]
-}
-
-/** Time bucket (same as DB but serializable) */
-export interface TimeBucket {
-  number: number;
-  min: number;
-  max: number;
-  color: string;
-  label: string;
-}
-
-/** Root zones.json structure */
-export interface ZonesFile {
-  version: number;
-  generated: string;
-  timeBuckets: TimeBucket[];
-  zones: CompactZone[];
-}
-
-/** Leg data for route visualization */
-export interface CompactLeg {
-  mode: string;
-  duration: number;
-  distance?: number;
-  from?: { name: string; lat?: number; lon?: number };
-  to?: { name: string; lat?: number; lon?: number };
-  geometry?: string; // Encoded polyline
-  routeShortName?: string;
-  routeLongName?: string;
-}
-
-/** Compact route for msgpack files */
-export interface CompactRoute {
-  toId: string;
-  duration: number | null; // seconds, null if no route
-  transfers: number | null;
-  walkDistance: number | null; // meters
-  status: 'OK' | 'NO_ROUTE' | 'ERROR' | 'PENDING';
-  legs?: CompactLeg[]; // Only present for OK routes
-}
-
-/** Per-zone route file structure */
-export interface ZoneRoutesFile {
-  fromId: string;
-  generated: string;
-  periods: {
-    MORNING: CompactRoute[];
-    EVENING: CompactRoute[];
-    MIDNIGHT: CompactRoute[];
-  };
 }
 
 // ============================================================================
@@ -117,7 +68,7 @@ export function exportZones(db: Database.Database, outputPath: string): { zones:
     label: string;
   }[];
 
-  const zonesFile: ZonesFile = {
+  const zonesFile: ZonesData = {
     version: 1,
     generated: new Date().toISOString(),
     timeBuckets: timeBuckets.map((tb) => ({
@@ -201,7 +152,7 @@ export function exportZoneRoutes(
   outputPath: string
 ): { routes: number; size: number } {
   const periods = ['MORNING', 'EVENING', 'MIDNIGHT'] as const;
-  const routesData: ZoneRoutesFile = {
+  const routesData: ZoneRoutesData = {
     fromId: zoneId,
     generated: new Date().toISOString(),
     periods: {
