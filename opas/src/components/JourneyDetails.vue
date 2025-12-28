@@ -5,7 +5,6 @@ import type { CompactLeg } from '../services/DataService'
 interface Props {
   legs: CompactLeg[]
   totalDuration: number
-  walkDistance: number
   transfers: number
 }
 
@@ -66,33 +65,33 @@ const getModeLabel = (mode: string): string => {
     <div class="space-y-3">
       <div v-for="(leg, index) in legs" :key="index" class="flex items-start space-x-3">
         <!-- Transport Icon -->
-        <div class="text-xl flex-shrink-0 mt-0.5">
-          {{ getTransportIcon(leg.mode) }}
+        <div class="text-xl shrink-0 mt-0.5">
+          {{ getTransportIcon(leg.m) }}
         </div>
 
         <!-- Leg Details -->
-        <div class="flex-grow min-w-0">
+        <div class="grow min-w-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <span class="font-medium text-vintage-dark text-sm">
-                {{ getModeLabel(leg.mode) }}
+                {{ getModeLabel(leg.m) }}
               </span>
               <!-- Colored badge for route number/name -->
               <span
-                v-if="leg.routeShortName || leg.routeLongName"
+                v-if="leg.sn || leg.ln"
                 class="px-1 py-0.5 text-xs font-medium rounded"
-                :style="{ backgroundColor: getModeColor(leg.mode), color: 'white' }"
+                :style="{ backgroundColor: getModeColor(leg.m), color: 'white' }"
               >
-                {{ leg.routeShortName || leg.routeLongName }}
+                {{ leg.sn || leg.ln }}
               </span>
             </div>
             <span class="text-sm text-vintage-dark/70">
-              {{ formatDuration(leg.duration) }}
+              {{ formatDuration(leg.d) }}
             </span>
           </div>
 
-          <div v-if="leg.from && leg.to" class="text-xs text-vintage-dark/50 mt-1 truncate">
-            {{ leg.from.name }} → {{ leg.to.name }}
+          <div v-if="leg.f && leg.t" class="text-xs text-vintage-dark/50 mt-1 truncate">
+            {{ leg.f.n }} → {{ leg.t.n }}
           </div>
         </div>
       </div>

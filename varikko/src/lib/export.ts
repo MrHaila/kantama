@@ -41,42 +41,44 @@ export interface TimeBucket {
 /** Root zones.json structure */
 export interface ZonesFile {
   version: number;
-  generated: string;
   timeBuckets: TimeBucket[];
   zones: CompactZone[];
 }
 
-/** Leg data for route visualization */
+/** Route status mapping to minimize bytes */
+export enum RouteStatus {
+  OK = 0,
+  NO_ROUTE = 1,
+  ERROR = 2,
+  PENDING = 3,
+}
+
+/** Leg data for route visualization (minimized keys) */
 export interface CompactLeg {
-  mode: string;
-  duration: number;
-  distance?: number;
-  from?: { name: string; lat?: number; lon?: number };
-  to?: { name: string; lat?: number; lon?: number };
-  geometry?: string; // Encoded polyline
-  routeShortName?: string;
-  routeLongName?: string;
+  m: string; // mode
+  d: number; // duration
+  di?: number; // distance
+  f?: { n: string; lt?: number; ln?: number }; // from: name, lat, lon
+  t?: { n: string; lt?: number; ln?: number }; // to: name, lat, lon
+  g?: string; // geometry (encoded polyline)
+  sn?: string; // routeShortName
+  ln?: string; // routeLongName
 }
 
-/** Compact route for msgpack files */
+/** Compact route for msgpack files (minimized keys) */
 export interface CompactRoute {
-  toId: string;
-  duration: number | null; // seconds, null if no route
-  transfers: number | null;
-  walkDistance: number | null; // meters
-  status: 'OK' | 'NO_ROUTE' | 'ERROR' | 'PENDING';
-  legs?: CompactLeg[]; // Only present for OK routes
+  i: string; // toId
+  d: number | null; // duration
+  t: number | null; // transfers
+  s: RouteStatus; // status
+  l?: CompactLeg[]; // legs
 }
 
-/** Per-zone route file structure */
+/** Per-zone route file structure (minimized keys) */
 export interface ZoneRoutesFile {
-  fromId: string;
-  generated: string;
-  periods: {
-    MORNING: CompactRoute[];
-    EVENING: CompactRoute[];
-    MIDNIGHT: CompactRoute[];
-  };
+  f: string; // fromId
+  p: string; // period (M, E, N)
+  r: CompactRoute[]; // routes
 }
 
 // ============================================================================
@@ -119,7 +121,6 @@ export function exportZones(db: Database.Database, outputPath: string): { zones:
 
   const zonesFile: ZonesFile = {
     version: 1,
-    generated: new Date().toISOString(),
     timeBuckets: timeBuckets.map((tb) => ({
       number: tb.bucket_number,
       min: tb.min_duration,
@@ -152,37 +153,41 @@ function parseLegs(legsJson: string | null): CompactLeg[] | undefined {
     const legs = JSON.parse(legsJson);
     if (!Array.isArray(legs)) return undefined;
 
-    return legs.map((leg: Record<string, unknown>) => {
+    return legs.map((leg: {
+      mode?: string;
+      duration?: number;
+      distance?: number;
+      from?: { name?: string; lat?: number; lon?: number };
+      to?: { name?: string; lat?: number; lon?: number };
+      legGeometry?: { points?: string };
+      route?: { shortName?: string; longName?: string };
+    }) => {
       const compactLeg: CompactLeg = {
-        mode: String(leg.mode || 'WALK'),
-        duration: Number(leg.duration || 0),
+        m: String(leg.mode || 'WALK'),
+        d: Number(leg.duration || 0),
       };
 
-      if (leg.distance) compactLeg.distance = Number(leg.distance);
+      if (leg.distance) compactLeg.di = Number(leg.distance);
       if (leg.from && typeof leg.from === 'object') {
-        const from = leg.from as Record<string, unknown>;
-        compactLeg.from = {
-          name: String(from.name || ''),
-          lat: from.lat !== undefined ? Number(from.lat) : undefined,
-          lon: from.lon !== undefined ? Number(from.lon) : undefined,
+        compactLeg.f = {
+          n: String(leg.from.name || ''),
+          lt: leg.from.lat !== undefined ? Number(leg.from.lat) : undefined,
+          ln: leg.from.lon !== undefined ? Number(leg.from.lon) : undefined,
         };
       }
       if (leg.to && typeof leg.to === 'object') {
-        const to = leg.to as Record<string, unknown>;
-        compactLeg.to = {
-          name: String(to.name || ''),
-          lat: to.lat !== undefined ? Number(to.lat) : undefined,
-          lon: to.lon !== undefined ? Number(to.lon) : undefined,
+        compactLeg.t = {
+          n: String(leg.to.name || ''),
+          lt: leg.to.lat !== undefined ? Number(leg.to.lat) : undefined,
+          ln: leg.to.lon !== undefined ? Number(leg.to.lon) : undefined,
         };
       }
-      if (leg.legGeometry && typeof leg.legGeometry === 'object') {
-        const geom = leg.legGeometry as Record<string, unknown>;
-        if (geom.points) compactLeg.geometry = String(geom.points);
+      if (leg.legGeometry?.points) {
+        compactLeg.g = String(leg.legGeometry.points);
       }
-      if (leg.route && typeof leg.route === 'object') {
-        const route = leg.route as Record<string, unknown>;
-        if (route.shortName) compactLeg.routeShortName = String(route.shortName);
-        if (route.longName) compactLeg.routeLongName = String(route.longName);
+      if (leg.route) {
+        if (leg.route.shortName) compactLeg.sn = String(leg.route.shortName);
+        if (leg.route.longName) compactLeg.ln = String(leg.route.longName);
       }
 
       return compactLeg;
@@ -193,68 +198,88 @@ function parseLegs(legsJson: string | null): CompactLeg[] | undefined {
 }
 
 /**
- * Export routes for a single zone to msgpack
+ * Map status string to RouteStatus enum
+ */
+function mapStatus(status: string): RouteStatus {
+  switch (status) {
+    case 'OK':
+      return RouteStatus.OK;
+    case 'NO_ROUTE':
+      return RouteStatus.NO_ROUTE;
+    case 'ERROR':
+      return RouteStatus.ERROR;
+    case 'PENDING':
+    default:
+      return RouteStatus.PENDING;
+  }
+}
+
+/**
+ * Export routes for a single zone to msgpack (split into period files)
  */
 export function exportZoneRoutes(
   db: Database.Database,
   zoneId: string,
-  outputPath: string
+  outputDir: string
 ): { routes: number; size: number } {
-  const periods = ['MORNING', 'EVENING', 'MIDNIGHT'] as const;
-  const routesData: ZoneRoutesFile = {
-    fromId: zoneId,
-    generated: new Date().toISOString(),
-    periods: {
-      MORNING: [],
-      EVENING: [],
-      MIDNIGHT: [],
-    },
+  const periodMap: Record<string, { key: string; suffix: string }> = {
+    MORNING: { key: 'M', suffix: 'morning' },
+    EVENING: { key: 'E', suffix: 'evening' },
+    MIDNIGHT: { key: 'N', suffix: 'midnight' },
   };
 
   let totalRoutes = 0;
+  let totalSize = 0;
 
-  for (const period of periods) {
+  for (const [periodName, config] of Object.entries(periodMap)) {
     const routes = db
       .prepare(
         `
-        SELECT to_id, duration, numberOfTransfers, walkDistance, status, legs
+        SELECT to_id, duration, numberOfTransfers, status, legs
         FROM routes
         WHERE from_id = ? AND time_period = ?
       `
       )
-      .all(zoneId, period) as {
+      .all(zoneId, periodName) as {
       to_id: string;
       duration: number | null;
       numberOfTransfers: number | null;
-      walkDistance: number | null;
       status: string;
       legs: string | null;
     }[];
 
-    routesData.periods[period] = routes.map((r) => {
-      const route: CompactRoute = {
-        toId: r.to_id,
-        duration: r.duration,
-        transfers: r.numberOfTransfers,
-        walkDistance: r.walkDistance !== null ? Math.round(r.walkDistance) : null,
-        status: r.status as CompactRoute['status'],
-      };
+    const compactRoutes = routes
+      .filter((r) => r.status !== 'PENDING')
+      .map((r) => {
+        const route: CompactRoute = {
+          i: r.to_id,
+          d: r.duration,
+          t: r.numberOfTransfers,
+          s: mapStatus(r.status),
+        };
 
-      // Only include legs for OK routes
-      if (r.status === 'OK' && r.legs) {
-        route.legs = parseLegs(r.legs);
-      }
+        if (r.status === 'OK' && r.legs) {
+          route.l = parseLegs(r.legs);
+        }
 
-      return route;
-    });
+        return route;
+      });
+
+    const routesData: ZoneRoutesFile = {
+      f: zoneId,
+      p: config.key,
+      r: compactRoutes,
+    };
+
+    const encoded = encode(routesData);
+    const outputPath = path.join(outputDir, `${zoneId}-${config.suffix}.msgpack`);
+    fs.writeFileSync(outputPath, Buffer.from(encoded));
 
     totalRoutes += routes.length;
+    totalSize += encoded.length;
   }
 
-  const encoded = encode(routesData);
-  fs.writeFileSync(outputPath, Buffer.from(encoded));
-
-  return { routes: totalRoutes, size: encoded.length };
+  return { routes: totalRoutes, size: totalSize };
 }
 
 /**
@@ -291,12 +316,11 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
   // Export per-zone route files
   for (let i = 0; i < zones.length; i++) {
     const zone = zones[i];
-    const routePath = path.join(routesDir, `${zone.id}.msgpack`);
 
     try {
-      const routeResult = exportZoneRoutes(db, zone.id, routePath);
+      const routeResult = exportZoneRoutes(db, zone.id, routesDir);
       totalSize += routeResult.size;
-      routeFilesCount++;
+      routeFilesCount += 3; // morning, evening, midnight
     } catch (err) {
       errors.push(`Failed to export routes for ${zone.id}: ${err instanceof Error ? err.message : String(err)}`);
     }

@@ -55,9 +55,9 @@ const routePaths = computed(() => {
   if (!currentRouteLegs.value.length) return []
 
   return currentRouteLegs.value
-    .filter((leg) => leg.geometry)
+    .filter((leg) => leg.g)
     .map((leg, index) => {
-      const points = decodePolyline(leg.geometry!)
+      const points = decodePolyline(leg.g!)
       const svgPoints = points
         .map(([lat, lon]) => latLonToSvg(lat, lon))
         .filter((p): p is [number, number] => p !== null)
@@ -69,9 +69,9 @@ const routePaths = computed(() => {
       return {
         id: `leg-${index}`,
         d: pathData,
-        mode: leg.mode,
-        color: modeColors[leg.mode] || '#666666',
-        routeName: leg.routeShortName || leg.routeLongName,
+        mode: leg.m,
+        color: modeColors[leg.m] || '#666666',
+        routeName: leg.sn || leg.ln,
       }
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)
@@ -83,14 +83,14 @@ const routeStops = computed(() => {
   const legs = currentRouteLegs.value
 
   legs.forEach((leg, index) => {
-    if (leg.from?.lat && leg.from?.lon) {
-      const pos = latLonToSvg(leg.from.lat, leg.from.lon)
+    if (leg.f?.lt && leg.f?.ln) {
+      const pos = latLonToSvg(leg.f.lt, leg.f.ln)
       if (pos) {
         stops.push({
           id: `from-${index}`,
           x: pos[0],
           y: pos[1],
-          color: modeColors[leg.mode] || '#666666',
+          color: modeColors[leg.m] || '#666666',
         })
       }
     }
@@ -98,8 +98,8 @@ const routeStops = computed(() => {
 
   // Add final destination
   const lastLeg = legs[legs.length - 1]
-  if (lastLeg?.to?.lat && lastLeg?.to?.lon) {
-    const pos = latLonToSvg(lastLeg.to.lat, lastLeg.to.lon)
+  if (lastLeg?.t?.lt && lastLeg?.t?.ln) {
+    const pos = latLonToSvg(lastLeg.t.lt, lastLeg.t.ln)
     if (pos) {
       stops.push({
         id: 'destination',
