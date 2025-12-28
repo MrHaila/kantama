@@ -8,7 +8,6 @@ import type {
   CompactRoute,
   ZoneRoutesData,
   TimePeriod,
-  RouteStatus as VarikkoRouteStatus,
 } from 'varikko';
 
 // Re-export types for backwards compatibility
@@ -18,7 +17,7 @@ export type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesD
 // Opas-specific types
 // ============================================================================
 
-/** Route status mapping to match varikko export (as const for opas) */
+/** Route status mapping to match varikko export (as const for opas usage) */
 export const RouteStatus = {
   OK: 0,
   NO_ROUTE: 1,
@@ -61,7 +60,7 @@ class DataService {
    * Get cache key for a zone and period
    */
   private getCacheKey(zoneId: string, period: TimePeriod): string {
-    return \`\${zoneId}-\${period}\`;
+    return `${zoneId}-${period}`;
   }
 
   /**
@@ -76,7 +75,7 @@ class DataService {
     }
 
     try {
-      const response = await fetch(\`\${this.baseUrl}/zones.json\`);
+      const response = await fetch(`${this.baseUrl}/zones.json`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -88,7 +87,7 @@ class DataService {
         } else {
           this.state.zonesError = {
             type: 'network_error',
-            message: \`Failed to fetch zones: \${response.status} \${response.statusText}\`,
+            message: `Failed to fetch zones: ${response.status} ${response.statusText}`,
             details: 'Check that the dev server is running and data files exist in public/data/',
           };
         }
@@ -115,7 +114,7 @@ class DataService {
       this.state.zonesLoaded = true;
       this.state.initialized = true;
 
-      console.log(\`DataService: Loaded \${this.zones.size} zones, \${this.timeBuckets.length} time buckets\`);
+      console.log(`DataService: Loaded ${this.zones.size} zones, ${this.timeBuckets.length} time buckets`);
       return this.state;
     } catch (error) {
       this.state.zonesError = {
@@ -181,19 +180,19 @@ class DataService {
     const suffix = period === 'MORNING' ? 'morning' : period === 'EVENING' ? 'evening' : 'midnight';
 
     try {
-      const response = await fetch(\`\${this.baseUrl}/routes/\${zoneId}-\${suffix}.msgpack\`);
+      const response = await fetch(`${this.baseUrl}/routes/${zoneId}-${suffix}.msgpack`);
 
       if (!response.ok) {
         if (response.status === 404) {
           this.state.routeErrors.set(zoneId, {
             type: 'routes_not_found',
-            message: \`Routes for zone \${zoneId} (\${period}) not found\`,
+            message: `Routes for zone ${zoneId} (${period}) not found`,
             details: 'This zone may not have been exported yet. Run "varikko export" to update.',
           });
         } else {
           this.state.routeErrors.set(zoneId, {
             type: 'network_error',
-            message: \`Failed to fetch routes: \${response.status}\`,
+            message: `Failed to fetch routes: ${response.status}`,
           });
         }
         return null;

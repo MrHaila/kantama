@@ -41,14 +41,14 @@ export interface ExportResult {
 export function exportZones(db: Database.Database, outputPath: string): { zones: number; size: number } {
   const places = db
     .prepare(
-      \`
+      `
       SELECT
         id, name, city, svg_path,
         COALESCE(routing_lat, lat) as lat,
         COALESCE(routing_lon, lon) as lon
       FROM places
       WHERE svg_path IS NOT NULL
-    \`
+    `
     )
     .all() as {
     id: string;
@@ -184,11 +184,11 @@ export function exportZoneRoutes(
   for (const [periodName, config] of Object.entries(periodMap)) {
     const routes = db
       .prepare(
-        \`
+        `
         SELECT to_id, duration, numberOfTransfers, status, legs
         FROM routes
         WHERE from_id = ? AND time_period = ?
-      \`
+      `
       )
       .all(zoneId, periodName) as {
       to_id: string;
@@ -222,7 +222,7 @@ export function exportZoneRoutes(
     };
 
     const encoded = encode(routesData);
-    const outputPath = path.join(outputDir, \`\${zoneId}-\${config.suffix}.msgpack\`);
+    const outputPath = path.join(outputDir, `${zoneId}-${config.suffix}.msgpack`);
     fs.writeFileSync(outputPath, Buffer.from(encoded));
 
     totalRoutes += routes.length;
@@ -258,9 +258,9 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
   try {
     const zonesResult = exportZones(db, zonesPath);
     totalSize += zonesResult.size;
-    emitter?.emitProgress('export', 1, zones.length + 1, \`Exported \${zonesResult.zones} zones\`);
+    emitter?.emitProgress('export', 1, zones.length + 1, `Exported ${zonesResult.zones} zones`);
   } catch (err) {
-    errors.push(\`Failed to export zones: \${err instanceof Error ? err.message : String(err)}\`);
+    errors.push(`Failed to export zones: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Export per-zone route files
@@ -272,11 +272,11 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
       totalSize += routeResult.size;
       routeFilesCount += 3; // morning, evening, midnight
     } catch (err) {
-      errors.push(\`Failed to export routes for \${zone.id}: \${err instanceof Error ? err.message : String(err)}\`);
+      errors.push(`Failed to export routes for ${zone.id}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     if ((i + 1) % 10 === 0 || i === zones.length - 1) {
-      emitter?.emitProgress('export', i + 2, zones.length + 1, \`Exported \${i + 1}/\${zones.length} zone routes\`);
+      emitter?.emitProgress('export', i + 2, zones.length + 1, `Exported ${i + 1}/${zones.length} zone routes`);
     }
   }
 
