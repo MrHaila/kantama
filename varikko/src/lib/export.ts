@@ -5,13 +5,14 @@ import * as path from 'path';
 import { ProgressEmitter } from './events';
 
 // Import shared types from shared module
-import type {
+import {
   Zone,
   TimeBucket,
+  ZonesData,
   CompactLeg,
   CompactRoute,
   ZoneRoutesData,
-  ZonesData,
+  RouteStatus,
 } from '../shared/types';
 
 // ============================================================================
@@ -40,14 +41,14 @@ export interface ExportResult {
 export function exportZones(db: Database.Database, outputPath: string): { zones: number; size: number } {
   const places = db
     .prepare(
-      `
+      \`
       SELECT
         id, name, city, svg_path,
         COALESCE(routing_lat, lat) as lat,
         COALESCE(routing_lon, lon) as lon
       FROM places
       WHERE svg_path IS NOT NULL
-    `
+    \`
     )
     .all() as {
     id: string;
@@ -70,7 +71,6 @@ export function exportZones(db: Database.Database, outputPath: string): { zones:
 
   const zonesFile: ZonesData = {
     version: 1,
-    generated: new Date().toISOString(),
     timeBuckets: timeBuckets.map((tb) => ({
       number: tb.bucket_number,
       min: tb.min_duration,
@@ -103,37 +103,41 @@ function parseLegs(legsJson: string | null): CompactLeg[] | undefined {
     const legs = JSON.parse(legsJson);
     if (!Array.isArray(legs)) return undefined;
 
-    return legs.map((leg: Record<string, unknown>) => {
+    return legs.map((leg: {
+      mode?: string;
+      duration?: number;
+      distance?: number;
+      from?: { name?: string; lat?: number; lon?: number };
+      to?: { name?: string; lat?: number; lon?: number };
+      legGeometry?: { points?: string };
+      route?: { shortName?: string; longName?: string };
+    }) => {
       const compactLeg: CompactLeg = {
-        mode: String(leg.mode || 'WALK'),
-        duration: Number(leg.duration || 0),
+        m: String(leg.mode || 'WALK'),
+        d: Number(leg.duration || 0),
       };
 
-      if (leg.distance) compactLeg.distance = Number(leg.distance);
+      if (leg.distance) compactLeg.di = Number(leg.distance);
       if (leg.from && typeof leg.from === 'object') {
-        const from = leg.from as Record<string, unknown>;
-        compactLeg.from = {
-          name: String(from.name || ''),
-          lat: from.lat !== undefined ? Number(from.lat) : undefined,
-          lon: from.lon !== undefined ? Number(from.lon) : undefined,
+        compactLeg.f = {
+          n: String(leg.from.name || ''),
+          lt: leg.from.lat !== undefined ? Number(leg.from.lat) : undefined,
+          ln: leg.from.lon !== undefined ? Number(leg.from.lon) : undefined,
         };
       }
       if (leg.to && typeof leg.to === 'object') {
-        const to = leg.to as Record<string, unknown>;
-        compactLeg.to = {
-          name: String(to.name || ''),
-          lat: to.lat !== undefined ? Number(to.lat) : undefined,
-          lon: to.lon !== undefined ? Number(to.lon) : undefined,
+        compactLeg.t = {
+          n: String(leg.to.name || ''),
+          lt: leg.to.lat !== undefined ? Number(leg.to.lat) : undefined,
+          ln: leg.to.lon !== undefined ? Number(leg.to.lon) : undefined,
         };
       }
-      if (leg.legGeometry && typeof leg.legGeometry === 'object') {
-        const geom = leg.legGeometry as Record<string, unknown>;
-        if (geom.points) compactLeg.geometry = String(geom.points);
+      if (leg.legGeometry?.points) {
+        compactLeg.g = String(leg.legGeometry.points);
       }
-      if (leg.route && typeof leg.route === 'object') {
-        const route = leg.route as Record<string, unknown>;
-        if (route.shortName) compactLeg.routeShortName = String(route.shortName);
-        if (route.longName) compactLeg.routeLongName = String(route.longName);
+      if (leg.route) {
+        if (leg.route.shortName) compactLeg.sn = String(leg.route.shortName);
+        if (leg.route.longName) compactLeg.ln = String(leg.route.longName);
       }
 
       return compactLeg;
@@ -144,68 +148,88 @@ function parseLegs(legsJson: string | null): CompactLeg[] | undefined {
 }
 
 /**
- * Export routes for a single zone to msgpack
+ * Map status string to RouteStatus enum
+ */
+function mapStatus(status: string): RouteStatus {
+  switch (status) {
+    case 'OK':
+      return RouteStatus.OK;
+    case 'NO_ROUTE':
+      return RouteStatus.NO_ROUTE;
+    case 'ERROR':
+      return RouteStatus.ERROR;
+    case 'PENDING':
+    default:
+      return RouteStatus.PENDING;
+  }
+}
+
+/**
+ * Export routes for a single zone to msgpack (split into period files)
  */
 export function exportZoneRoutes(
   db: Database.Database,
   zoneId: string,
-  outputPath: string
+  outputDir: string
 ): { routes: number; size: number } {
-  const periods = ['MORNING', 'EVENING', 'MIDNIGHT'] as const;
-  const routesData: ZoneRoutesData = {
-    fromId: zoneId,
-    generated: new Date().toISOString(),
-    periods: {
-      MORNING: [],
-      EVENING: [],
-      MIDNIGHT: [],
-    },
+  const periodMap: Record<string, { key: string; suffix: string }> = {
+    MORNING: { key: 'M', suffix: 'morning' },
+    EVENING: { key: 'E', suffix: 'evening' },
+    MIDNIGHT: { key: 'N', suffix: 'midnight' },
   };
 
   let totalRoutes = 0;
+  let totalSize = 0;
 
-  for (const period of periods) {
+  for (const [periodName, config] of Object.entries(periodMap)) {
     const routes = db
       .prepare(
-        `
-        SELECT to_id, duration, numberOfTransfers, walkDistance, status, legs
+        \`
+        SELECT to_id, duration, numberOfTransfers, status, legs
         FROM routes
         WHERE from_id = ? AND time_period = ?
-      `
+      \`
       )
-      .all(zoneId, period) as {
+      .all(zoneId, periodName) as {
       to_id: string;
       duration: number | null;
       numberOfTransfers: number | null;
-      walkDistance: number | null;
       status: string;
       legs: string | null;
     }[];
 
-    routesData.periods[period] = routes.map((r) => {
-      const route: CompactRoute = {
-        toId: r.to_id,
-        duration: r.duration,
-        transfers: r.numberOfTransfers,
-        walkDistance: r.walkDistance !== null ? Math.round(r.walkDistance) : null,
-        status: r.status as CompactRoute['status'],
-      };
+    const compactRoutes = routes
+      .filter((r) => r.status !== 'PENDING')
+      .map((r) => {
+        const route: CompactRoute = {
+          i: r.to_id,
+          d: r.duration,
+          t: r.numberOfTransfers,
+          s: mapStatus(r.status),
+        };
 
-      // Only include legs for OK routes
-      if (r.status === 'OK' && r.legs) {
-        route.legs = parseLegs(r.legs);
-      }
+        if (r.status === 'OK' && r.legs) {
+          route.l = parseLegs(r.legs);
+        }
 
-      return route;
-    });
+        return route;
+      });
+
+    const routesData: ZoneRoutesData = {
+      f: zoneId,
+      p: config.key,
+      r: compactRoutes,
+    };
+
+    const encoded = encode(routesData);
+    const outputPath = path.join(outputDir, \`\${zoneId}-\${config.suffix}.msgpack\`);
+    fs.writeFileSync(outputPath, Buffer.from(encoded));
 
     totalRoutes += routes.length;
+    totalSize += encoded.length;
   }
 
-  const encoded = encode(routesData);
-  fs.writeFileSync(outputPath, Buffer.from(encoded));
-
-  return { routes: totalRoutes, size: encoded.length };
+  return { routes: totalRoutes, size: totalSize };
 }
 
 /**
@@ -234,26 +258,25 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
   try {
     const zonesResult = exportZones(db, zonesPath);
     totalSize += zonesResult.size;
-    emitter?.emitProgress('export', 1, zones.length + 1, `Exported ${zonesResult.zones} zones`);
+    emitter?.emitProgress('export', 1, zones.length + 1, \`Exported \${zonesResult.zones} zones\`);
   } catch (err) {
-    errors.push(`Failed to export zones: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(\`Failed to export zones: \${err instanceof Error ? err.message : String(err)}\`);
   }
 
   // Export per-zone route files
   for (let i = 0; i < zones.length; i++) {
     const zone = zones[i];
-    const routePath = path.join(routesDir, `${zone.id}.msgpack`);
 
     try {
-      const routeResult = exportZoneRoutes(db, zone.id, routePath);
+      const routeResult = exportZoneRoutes(db, zone.id, routesDir);
       totalSize += routeResult.size;
-      routeFilesCount++;
+      routeFilesCount += 3; // morning, evening, midnight
     } catch (err) {
-      errors.push(`Failed to export routes for ${zone.id}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(\`Failed to export routes for \${zone.id}: \${err instanceof Error ? err.message : String(err)}\`);
     }
 
     if ((i + 1) % 10 === 0 || i === zones.length - 1) {
-      emitter?.emitProgress('export', i + 2, zones.length + 1, `Exported ${i + 1}/${zones.length} zone routes`);
+      emitter?.emitProgress('export', i + 2, zones.length + 1, \`Exported \${i + 1}/\${zones.length} zone routes\`);
     }
   }
 

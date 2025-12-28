@@ -8,6 +8,7 @@ import type {
   CompactRoute,
   ZoneRoutesData,
   TimePeriod,
+  RouteStatus as VarikkoRouteStatus,
 } from 'varikko';
 
 // Re-export types for backwards compatibility
@@ -16,6 +17,16 @@ export type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesD
 // ============================================================================
 // Opas-specific types
 // ============================================================================
+
+/** Route status mapping to match varikko export (as const for opas) */
+export const RouteStatus = {
+  OK: 0,
+  NO_ROUTE: 1,
+  ERROR: 2,
+  PENDING: 3,
+} as const;
+
+export type RouteStatusType = (typeof RouteStatus)[keyof typeof RouteStatus];
 
 export interface DataServiceError {
   type: 'zones_not_found' | 'routes_not_found' | 'parse_error' | 'network_error';
@@ -37,7 +48,7 @@ export interface DataServiceState {
 class DataService {
   private zones: Map<string, Zone> = new Map();
   private timeBuckets: TimeBucket[] = [];
-  private routeCache: Map<string, ZoneRoutesData> = new Map();
+  private routeCache: Map<string, CompactRoute[]> = new Map();
   private state: DataServiceState = {
     initialized: false,
     zonesLoaded: false,
@@ -45,6 +56,13 @@ class DataService {
     routeErrors: new Map(),
   };
   private baseUrl: string = '/data';
+
+  /**
+   * Get cache key for a zone and period
+   */
+  private getCacheKey(zoneId: string, period: TimePeriod): string {
+    return \`\${zoneId}-\${period}\`;
+  }
 
   /**
    * Initialize the data service by loading zones.json
@@ -58,7 +76,7 @@ class DataService {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/zones.json`);
+      const response = await fetch(\`\${this.baseUrl}/zones.json\`);
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -70,7 +88,7 @@ class DataService {
         } else {
           this.state.zonesError = {
             type: 'network_error',
-            message: `Failed to fetch zones: ${response.status} ${response.statusText}`,
+            message: \`Failed to fetch zones: \${response.status} \${response.statusText}\`,
             details: 'Check that the dev server is running and data files exist in public/data/',
           };
         }
@@ -97,7 +115,7 @@ class DataService {
       this.state.zonesLoaded = true;
       this.state.initialized = true;
 
-      console.log(`DataService: Loaded ${this.zones.size} zones, ${this.timeBuckets.length} time buckets`);
+      console.log(\`DataService: Loaded \${this.zones.size} zones, \${this.timeBuckets.length} time buckets\`);
       return this.state;
     } catch (error) {
       this.state.zonesError = {
@@ -146,32 +164,36 @@ class DataService {
   }
 
   /**
-   * Load routes for a specific zone
+   * Load routes for a specific zone and period
    * Returns null if routes not available, with error info in state
    */
-  async loadRoutesForZone(zoneId: string): Promise<ZoneRoutesData | null> {
+  async loadRoutesForZone(zoneId: string, period: TimePeriod): Promise<CompactRoute[] | null> {
+    const cacheKey = this.getCacheKey(zoneId, period);
+
     // Check cache first
-    if (this.routeCache.has(zoneId)) {
-      return this.routeCache.get(zoneId)!;
+    if (this.routeCache.has(cacheKey)) {
+      return this.routeCache.get(cacheKey)!;
     }
 
     // Clear any previous error for this zone
     this.state.routeErrors.delete(zoneId);
 
+    const suffix = period === 'MORNING' ? 'morning' : period === 'EVENING' ? 'evening' : 'midnight';
+
     try {
-      const response = await fetch(`${this.baseUrl}/routes/${zoneId}.msgpack`);
+      const response = await fetch(\`\${this.baseUrl}/routes/\${zoneId}-\${suffix}.msgpack\`);
 
       if (!response.ok) {
         if (response.status === 404) {
           this.state.routeErrors.set(zoneId, {
             type: 'routes_not_found',
-            message: `Routes for zone ${zoneId} not found`,
+            message: \`Routes for zone \${zoneId} (\${period}) not found\`,
             details: 'This zone may not have been exported yet. Run "varikko export" to update.',
           });
         } else {
           this.state.routeErrors.set(zoneId, {
             type: 'network_error',
-            message: `Failed to fetch routes: ${response.status}`,
+            message: \`Failed to fetch routes: \${response.status}\`,
           });
         }
         return null;
@@ -181,7 +203,7 @@ class DataService {
       const data = decode(new Uint8Array(buffer)) as ZoneRoutesData;
 
       // Validate data structure
-      if (!data.periods || !data.fromId) {
+      if (!data.r || !data.f) {
         this.state.routeErrors.set(zoneId, {
           type: 'parse_error',
           message: 'Invalid route file format',
@@ -191,8 +213,8 @@ class DataService {
       }
 
       // Cache the routes
-      this.routeCache.set(zoneId, data);
-      return data;
+      this.routeCache.set(cacheKey, data.r);
+      return data.r;
     } catch (error) {
       this.state.routeErrors.set(zoneId, {
         type: 'parse_error',
@@ -209,20 +231,16 @@ class DataService {
    */
   getRouteCosts(zoneId: string, period: TimePeriod): Map<string, number> {
     const costs = new Map<string, number>();
-    const routeData = this.routeCache.get(zoneId);
+    const cacheKey = this.getCacheKey(zoneId, period);
+    const routes = this.routeCache.get(cacheKey);
 
-    if (!routeData) {
-      return costs;
-    }
-
-    const routes = routeData.periods[period];
     if (!routes) {
       return costs;
     }
 
     for (const route of routes) {
-      if (route.status === 'OK' && route.duration !== null) {
-        costs.set(route.toId, route.duration);
+      if (route.s === RouteStatus.OK && route.d !== null) {
+        costs.set(route.i, route.d);
       }
     }
 
@@ -233,17 +251,13 @@ class DataService {
    * Get route details between two zones
    */
   getRouteDetails(fromId: string, toId: string, period: TimePeriod): CompactRoute | null {
-    const routeData = this.routeCache.get(fromId);
-    if (!routeData) {
-      return null;
-    }
-
-    const routes = routeData.periods[period];
+    const cacheKey = this.getCacheKey(fromId, period);
+    const routes = this.routeCache.get(cacheKey);
     if (!routes) {
       return null;
     }
 
-    return routes.find((r) => r.toId === toId) || null;
+    return routes.find((r) => r.i === toId) || null;
   }
 
   /**
@@ -254,10 +268,10 @@ class DataService {
   }
 
   /**
-   * Check if routes are loaded for a zone
+   * Check if routes are loaded for a zone and period
    */
-  hasRoutesLoaded(zoneId: string): boolean {
-    return this.routeCache.has(zoneId);
+  hasRoutesLoaded(zoneId: string, period: TimePeriod): boolean {
+    return this.routeCache.has(this.getCacheKey(zoneId, period));
   }
 
   /**

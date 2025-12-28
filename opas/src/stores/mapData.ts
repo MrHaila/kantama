@@ -8,6 +8,7 @@ import {
   type DataServiceError,
   type CompactRoute,
   type CompactLeg,
+  RouteStatus,
 } from '../services/DataService';
 import { themes } from '../config/themes';
 
@@ -101,9 +102,9 @@ export const useMapDataStore = defineStore('mapData', () => {
     isLoadingRoutes.value = true;
 
     try {
-      // Load routes for this zone if not cached
-      if (!dataService.hasRoutesLoaded(activeZoneId.value)) {
-        const routes = await dataService.loadRoutesForZone(activeZoneId.value);
+      // Load routes for this zone and period if not cached
+      if (!dataService.hasRoutesLoaded(activeZoneId.value, currentTimePeriod.value)) {
+        const routes = await dataService.loadRoutesForZone(activeZoneId.value, currentTimePeriod.value);
         if (!routes) {
           routeError.value = dataService.getRouteError(activeZoneId.value);
           currentCosts.value = new Map();
@@ -154,8 +155,8 @@ export const useMapDataStore = defineStore('mapData', () => {
    */
   const currentRouteLegs = computed<CompactLeg[]>(() => {
     const details = currentRouteDetails.value;
-    if (!details || details.status !== 'OK' || !details.legs) return [];
-    return details.legs;
+    if (!details || details.s !== RouteStatus.OK || !details.l) return [];
+    return details.l;
   });
 
   /**

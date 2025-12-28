@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import { type Zone, type CompactLeg } from '../services/DataService'
+import { type Zone, type CompactLeg, RouteStatus } from '../services/DataService'
 import JourneyDetails from './JourneyDetails.vue'
 
 interface JourneyDetailsData {
@@ -11,7 +11,6 @@ interface JourneyDetailsData {
   from: Zone
   to?: Zone
   duration?: number
-  walkDistance?: number
   transfers?: number
   legs?: CompactLeg[]
 }
@@ -40,7 +39,7 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
 
   const routeData = currentRouteDetails.value
 
-  if (!routeData || routeData.status !== 'OK') {
+  if (!routeData || routeData.s !== RouteStatus.OK) {
     return {
       isError: true,
       from: fromZone,
@@ -51,10 +50,9 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
   return {
     from: fromZone,
     to: toZone,
-    duration: routeData.duration ?? undefined,
-    walkDistance: routeData.walkDistance ?? undefined,
-    transfers: routeData.transfers ?? undefined,
-    legs: routeData.legs,
+    duration: routeData.d ?? undefined,
+    transfers: routeData.t ?? undefined,
+    legs: routeData.l,
   }
 })
 </script>
@@ -111,7 +109,6 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
         v-if="journeyDetails.legs && journeyDetails.duration !== undefined"
         :legs="journeyDetails.legs"
         :total-duration="journeyDetails.duration"
-        :walk-distance="journeyDetails.walkDistance ?? 0"
         :transfers="journeyDetails.transfers ?? 0"
       />
     </div>
