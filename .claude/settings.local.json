@@ -16,7 +16,12 @@
       "WebSearch",
       "Bash(pnpm --filter varikko build:*)",
       "Bash(pnpm --filter varikko test)",
-      "Bash(pnpm --filter varikko exec vitest:*)"
+      "Bash(pnpm --filter varikko exec vitest:*)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm exec tsx:*)",
+      "Bash(node -e:*)",
+      "Bash(sqlite3:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []
