@@ -2,14 +2,14 @@
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
-import type { Place } from '../services/DatabaseService'
+import type { Zone } from '../services/DataService'
 
 const store = useMapDataStore()
 const { activeZoneId, zones, currentCosts } = storeToRefs(store)
 
 const zoneDetails = computed(() => {
   if (!activeZoneId.value || !zones.value) return null
-  const zone = zones.value.find((z: Place) => z.id === activeZoneId.value)
+  const zone = zones.value.find((z: Zone) => z.id === activeZoneId.value)
   return zone
 })
 

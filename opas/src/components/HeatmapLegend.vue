@@ -2,14 +2,7 @@
 import { computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { themes, type ThemeColors } from '../config/themes'
-
-interface TimeBucket {
-  bucket_number: number
-  min_duration: number
-  max_duration: number | null
-  color_hex: string
-  label: string
-}
+import type { TimeBucket } from '../services/DataService'
 
 const store = useMapDataStore()
 
@@ -24,7 +17,7 @@ const timeBuckets = computed<TimeBucket[]>(() => {
   if (baseTimeBuckets.length === currentTheme.value.timeBucketColors.length) {
     return baseTimeBuckets.map((bucket, index) => ({
       ...bucket,
-      color_hex: currentTheme.value.timeBucketColors[index] || bucket.color_hex,
+      color: currentTheme.value.timeBucketColors[index] || bucket.color,
     }))
   }
 
@@ -36,8 +29,8 @@ const timeBuckets = computed<TimeBucket[]>(() => {
   <div class="heatmap-legend">
     <div class="legend-title">Travel Time</div>
     <div class="legend-items">
-      <div v-for="bucket in timeBuckets" :key="bucket.bucket_number" class="legend-item">
-        <div class="legend-color" :style="{ backgroundColor: bucket.color_hex }"></div>
+      <div v-for="bucket in timeBuckets" :key="bucket.number" class="legend-item">
+        <div class="legend-color" :style="{ backgroundColor: bucket.color }"></div>
         <div class="legend-label">{{ bucket.label }}</div>
       </div>
     </div>

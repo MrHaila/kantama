@@ -36,8 +36,9 @@ class LayerService {
       if (!response.ok) {
         throw new Error(`Failed to load manifest: ${response.statusText}`)
       }
-      this.manifest = await response.json()
-      return this.manifest
+      const manifest: LayerManifest = await response.json()
+      this.manifest = manifest
+      return manifest
     } catch (error) {
       console.error('Failed to load layer manifest:', error)
       throw error
@@ -87,7 +88,7 @@ class LayerService {
       const svgContent = await response.text()
       const parser = new DOMParser()
       const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml')
-      const svgElement = svgDoc.documentElement
+      const svgElement = svgDoc.documentElement as unknown as SVGElement
 
       if (svgElement.tagName !== 'svg') {
         throw new Error(`Invalid SVG content for layer ${layerId}`)

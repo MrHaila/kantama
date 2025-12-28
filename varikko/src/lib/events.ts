@@ -8,7 +8,8 @@ export type WorkflowStage =
   | 'calculate_time_buckets'
   | 'process_map'
   | 'generate_svg'
-  | 'export_layers';
+  | 'export_layers'
+  | 'export';
 
 export interface ProgressEvent {
   stage: WorkflowStage;

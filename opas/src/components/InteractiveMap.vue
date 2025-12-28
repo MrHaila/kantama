@@ -55,9 +55,9 @@ const routePaths = computed(() => {
   if (!currentRouteLegs.value.length) return []
 
   return currentRouteLegs.value
-    .filter((leg) => leg.legGeometry?.points)
+    .filter((leg) => leg.geometry)
     .map((leg, index) => {
-      const points = decodePolyline(leg.legGeometry!.points)
+      const points = decodePolyline(leg.geometry!)
       const svgPoints = points
         .map(([lat, lon]) => latLonToSvg(lat, lon))
         .filter((p): p is [number, number] => p !== null)
@@ -71,7 +71,7 @@ const routePaths = computed(() => {
         d: pathData,
         mode: leg.mode,
         color: modeColors[leg.mode] || '#666666',
-        routeName: leg.route?.shortName || leg.route?.longName,
+        routeName: leg.routeShortName || leg.routeLongName,
       }
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)
@@ -216,8 +216,8 @@ onUnmounted(() => {
           <circle
             v-for="zone in zones"
             :key="`ref-${zone.id}`"
-            :cx="latLonToSvg(zone.routingLat ?? zone.lat, zone.routingLon ?? zone.lon)?.[0]"
-            :cy="latLonToSvg(zone.routingLat ?? zone.lat, zone.routingLon ?? zone.lon)?.[1]"
+            :cx="latLonToSvg(zone.routingPoint[0], zone.routingPoint[1])?.[0]"
+            :cy="latLonToSvg(zone.routingPoint[0], zone.routingPoint[1])?.[1]"
             r="3"
             fill="#264653"
             stroke="#ffffff"
