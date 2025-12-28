@@ -5,6 +5,7 @@ import type Database from 'better-sqlite3';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
+import { CITY_CODES } from './types';
 import type { StandardZone, ZoneData } from './types';
 import polylabel from 'polylabel';
 import { getWaterMask, clipZoneWithWater } from './coastline';
@@ -482,12 +483,20 @@ export interface ProcessingStats {
 /**
  * Process standard zones into ZoneData
  */
-export function processZonesMultiCity(
+export async function processZonesMultiCity(
   standardZones: StandardZone[],
   options: { testMode?: boolean; testLimit?: number } = {}
-): { zones: ZoneData[]; stats: ProcessingStats } {
+): Promise<{ zones: ZoneData[]; stats: ProcessingStats }> {
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
+
+  // Load water mask for coastline clipping (required for Espoo zones)
+  const waterMask = await getWaterMask();
+  if (!waterMask) {
+    throw new Error(
+      `Water shapefile missing or failed to process. Required for Espoo zone coastline clipping.`
+    );
+  }
 
   const stats: ProcessingStats = {
     total: standardZones.length,
@@ -510,21 +519,34 @@ export function processZonesMultiCity(
         return null;
       }
 
+      // Apply water clipping for Espoo zones to follow coastline
+      let processedGeometry = cleanedGeometry;
+      if (zone.cityCode === CITY_CODES.ESPOO) {
+        // Only clip Polygon or MultiPolygon geometries (zones should always be these types)
+        if (cleanedGeometry.type === 'Polygon' || cleanedGeometry.type === 'MultiPolygon') {
+          const clipped = clipZoneWithWater(cleanedGeometry, waterMask);
+          if (clipped) {
+            processedGeometry = clipped;
+          }
+          // If clipping returns null, keep original (shouldn't happen for valid zones)
+        }
+      }
+
       // Calculate pole of inaccessibility (guaranteed inside point)
-      const insidePoint = calculateInsidePoint(cleanedGeometry);
+      const insidePoint = calculateInsidePoint(processedGeometry);
       if (!insidePoint) {
         stats.insidePointFailed++;
         return null;
       }
 
       // Filter to visible area
-      if (!isGeometryInVisibleArea(cleanedGeometry, visibleBounds)) {
+      if (!isGeometryInVisibleArea(processedGeometry, visibleBounds)) {
         stats.outsideVisibleArea++;
         return null;
       }
 
       // Generate SVG path
-      const svgPath = generateSvgPath(cleanedGeometry, projection);
+      const svgPath = generateSvgPath(processedGeometry, projection);
       if (!svgPath) {
         stats.svgPathFailed++;
         return null;
@@ -536,7 +558,7 @@ export function processZonesMultiCity(
         name: zone.name,
         lat: insidePoint[1],
         lon: insidePoint[0],
-        geometry: JSON.stringify(cleanedGeometry),
+        geometry: JSON.stringify(processedGeometry),
         svg_path: svgPath,
         city: zone.city,
         name_se: zone.nameSe,
@@ -575,7 +597,7 @@ export async function fetchZonesMultiCity(
     `Downloaded ${standardZones.length} zones, processing...`);
 
   // Process zones
-  const { zones, stats } = processZonesMultiCity(standardZones, {
+  const { zones, stats } = await processZonesMultiCity(standardZones, {
     testMode: options.testMode,
     testLimit: options.testLimit || 5
   });

@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import * as turf from '@turf/turf';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
+import { CLIP_BBOX } from './mapConfig';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +15,9 @@ const TARGET_CRS = 'EPSG:4326';
 
 /**
  * Generate a water mask from the shapefile.
- * Converts to GeoJSON, reprojects to WGS84, and dissolves into a single geometry.
+ * Converts to GeoJSON, reprojects to WGS84, clips to map bounds,
+ * simplifies, and dissolves into a single geometry.
+ * Uses same settings as map generation (80% simplification, CLIP_BBOX).
  */
 export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | null> {
   // Check if shapefile exists
@@ -23,18 +26,27 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
     return null;
   }
 
-  try {
-    // We use a temporary output file
-    const tempFile = path.join(__dirname, `temp_water_mask_${Date.now()}.json`);
+  const tempFile = path.join(__dirname, `temp_water_mask_${Date.now()}.json`);
+  const clipMaskFile = path.join(__dirname, `temp_clip_mask_${Date.now()}.json`);
 
-    // Convert to GeoJSON and reproject
+  try {
+    // Step 1: Create clipping mask (same as map generation)
+    await mapshaper.runCommands(
+      `-rectangle bbox=${CLIP_BBOX.join(',')} name=clip_mask -proj init=${TARGET_CRS} -o ${clipMaskFile}`
+    );
+
+    // Step 2: Process water shapefile with same settings as map generation
     // -i input
     // -proj target crs
-    // -dissolve to merge all water areas into one feature (performance optimization for clipping)
+    // -clip to map bounds
+    // -simplify 80% keep-shapes (matches map generation)
+    // -dissolve to merge all water areas into one feature
     // -o output
     const cmd = [
       `-i ${WATER_SHAPEFILE}`,
       `-proj ${TARGET_CRS}`,
+      `-clip ${clipMaskFile}`,
+      `-simplify 80% keep-shapes`,
       `-dissolve`,
       `-o ${tempFile} format=geojson`
     ].join(' ');
@@ -46,10 +58,13 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
     }
 
     const content = fs.readFileSync(tempFile, 'utf-8');
-    fs.unlinkSync(tempFile); // Cleanup
+
+    // Cleanup temp files
+    fs.unlinkSync(tempFile);
+    if (fs.existsSync(clipMaskFile)) fs.unlinkSync(clipMaskFile);
 
     const geojson = JSON.parse(content);
-    
+
     // mapshaper output is usually a FeatureCollection
     if (geojson.type === 'FeatureCollection' && geojson.features.length > 0) {
       return geojson.features[0] as Feature<Polygon | MultiPolygon>;
@@ -60,8 +75,8 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
     console.error('Error generating water mask:', error);
     // Ensure cleanup
     try {
-      const tempFile = path.join(__dirname, 'temp_water_mask.json');
       if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
+      if (fs.existsSync(clipMaskFile)) fs.unlinkSync(clipMaskFile);
     } catch {
       // ignore cleanup errors
     }
