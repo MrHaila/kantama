@@ -94,52 +94,69 @@ function showStatus(): void {
   }
   console.log('');
 
-  // Routes Status
+  // Routes Status - show stats for both transport modes
   console.log(fmt.header('ROUTES', '🚌'));
   const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
-  let totalOk = 0;
-  let totalPending = 0;
-  let totalNoRoute = 0;
-  let totalError = 0;
+  const modes: ['WALK', 'BICYCLE'] = ['WALK', 'BICYCLE'];
 
-  for (const period of periods) {
-    const counts = countRoutesByStatus(period);
-    totalOk += counts[RouteStatus.OK];
-    totalPending += counts[RouteStatus.PENDING];
-    totalNoRoute += counts[RouteStatus.NO_ROUTE];
-    totalError += counts[RouteStatus.ERROR];
-  }
+  // Track totals across all modes for next steps logic
+  let grandTotalOk = 0;
+  let grandTotalPending = 0;
+  let grandTotalRoutes = 0;
 
-  const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
+  for (const mode of modes) {
+    console.log(fmt.dim(`  ${mode === 'WALK' ? '🚶 Walking' : '🚴 Bicycle'} Routes`));
 
-  if (totalRoutes === 0) {
-    console.log(fmt.muted('  No routes calculated yet'));
-    if (zoneCount > 0) {
-      console.log(fmt.suggestion('  Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
-    }
-  } else {
-    const totalPerPeriod = totalRoutes / 3;
-    console.log(fmt.keyValue('  Total Routes:', `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
+    let totalOk = 0;
+    let totalPending = 0;
+    let totalNoRoute = 0;
+    let totalError = 0;
 
-    // Calculate percentages
-    const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
-    const pendingPct = totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
-    const noRoutePct = totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
-    const errorPct = totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
-
-    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${totalOk.toLocaleString()} (${okPct}%)`, 18));
-
-    if (totalPending > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${totalPending.toLocaleString()} (${pendingPct}%)`, 18));
+    for (const period of periods) {
+      const counts = countRoutesByStatus(period, mode);
+      totalOk += counts[RouteStatus.OK];
+      totalPending += counts[RouteStatus.PENDING];
+      totalNoRoute += counts[RouteStatus.NO_ROUTE];
+      totalError += counts[RouteStatus.ERROR];
     }
 
-    if (totalNoRoute > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`, 18));
-    }
+    const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
 
-    if (totalError > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${totalError.toLocaleString()} (${errorPct}%)`, 18));
+    if (totalRoutes === 0) {
+      console.log(fmt.muted('    No routes calculated yet'));
+      if (zoneCount > 0 && mode === 'WALK') {
+        console.log(fmt.suggestion('    Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
+      }
+    } else {
+      const totalPerPeriod = totalRoutes / 3;
+      console.log(fmt.keyValue('    Total:', `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
+
+      // Calculate percentages
+      const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
+      const pendingPct = totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
+      const noRoutePct = totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
+      const errorPct = totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
+
+      console.log(fmt.keyValue('    ' + fmt.symbols.success + ' Calculated:', `${totalOk.toLocaleString()} (${okPct}%)`, 18));
+
+      if (totalPending > 0) {
+        console.log(fmt.keyValue('    ' + fmt.symbols.pending + ' Pending:', `${totalPending.toLocaleString()} (${pendingPct}%)`, 18));
+      }
+
+      if (totalNoRoute > 0) {
+        console.log(fmt.keyValue('    ' + fmt.symbols.noRoute + ' No Route:', `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`, 18));
+      }
+
+      if (totalError > 0) {
+        console.log(fmt.keyValue('    ' + fmt.symbols.error + ' Errors:', `${totalError.toLocaleString()} (${errorPct}%)`, 18));
+      }
     }
+    console.log('');
+
+    // Accumulate grand totals
+    grandTotalOk += totalOk;
+    grandTotalPending += totalPending;
+    grandTotalRoutes += totalRoutes;
   }
   console.log('');
 
@@ -154,7 +171,7 @@ function showStatus(): void {
     console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
   } else {
     console.log(fmt.muted('  Not calculated yet'));
-    if (totalOk > 0) {
+    if (grandTotalOk > 0) {
       console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
     }
   }
@@ -166,12 +183,12 @@ function showStatus(): void {
 
   if (zoneCount === 0) {
     suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
-  } else if (totalRoutes === 0) {
+  } else if (grandTotalRoutes === 0) {
     suggestions.push('Run \'varikko geocode\' to geocode zones');
     suggestions.push('Run \'varikko routes\' to calculate transit routes');
-  } else if (totalPending > 0) {
+  } else if (grandTotalPending > 0) {
     suggestions.push('Run \'varikko routes\' to calculate pending routes');
-  } else if (bucketCount !== 6 && totalOk > 0) {
+  } else if (bucketCount !== 6 && grandTotalOk > 0) {
     suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
   } else if (bucketCount === 6) {
     suggestions.push('All data calculated! Ready for visualization');
@@ -366,6 +383,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .option('-z, --zones <count>', 'Number of random origin zones to process', parseInt)
     .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
+    .option('-m, --mode <mode>', 'Transport mode (WALK, BICYCLE)', 'WALK')
     .action(async (options) => {
       const emitter = createProgressEmitter();
       const startTime = Date.now();
@@ -376,6 +394,17 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error('');
         console.error(fmt.errorMessage(`Invalid period: ${options.period}`));
         console.error(fmt.dim(`  Valid periods: ${validPeriods.join(', ')}`));
+        console.error('');
+        process.exit(1);
+      }
+
+      // Validate transport mode
+      const validModes = ['WALK', 'BICYCLE'];
+      const transportMode = options.mode.toUpperCase();
+      if (!validModes.includes(transportMode)) {
+        console.error('');
+        console.error(fmt.errorMessage(`Invalid transport mode: ${options.mode}`));
+        console.error(fmt.dim(`  Valid modes: ${validModes.join(', ')}`));
         console.error('');
         process.exit(1);
       }
@@ -394,11 +423,12 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       // Header
       console.log('');
-      console.log(fmt.header('CALCULATING ROUTES', '🚌'));
+      console.log(fmt.header(`CALCULATING ROUTES (${transportMode})`, transportMode === 'BICYCLE' ? '🚴' : '🚌'));
       console.log('');
       console.log(fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15));
       console.log(fmt.keyValue('Concurrency:', `${config.concurrency} requests`, 15));
       console.log(fmt.keyValue('Period:', options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)', 15));
+      console.log(fmt.keyValue('Transport:', transportMode, 15));
 
       let modeDesc = 'Full dataset';
       if (options.zones && options.limit) {
@@ -448,6 +478,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       try {
         const result = await buildRoutes({
           period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
+          mode: transportMode as 'WALK' | 'BICYCLE',
           zones: options.zones,
           limit: options.limit,
           emitter,
