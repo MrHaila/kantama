@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { validatePeriod, validateTransportMode } from '../cli/validators';
+import { validatePeriod } from '../cli/validators';
 import { buildRoutes, getOTPConfig } from '../lib/routing';
 import { createProgressEmitter } from '../lib/events';
 import * as fmt from '../lib/cli-format';
@@ -8,7 +8,6 @@ interface RoutesOptions {
   zones?: number;
   limit?: number;
   period?: string;
-  mode: string;
   retry?: boolean;
 }
 
@@ -19,7 +18,6 @@ export function register(program: Command): void {
     .option('-z, --zones <count>', 'Number of random origin zones to process', parseInt)
     .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
-    .option('-m, --mode <mode>', 'Transport mode (WALK, BICYCLE)', 'WALK')
     .option('-r, --retry', 'Retry previously failed routes (ERROR status)')
     .action(action);
 }
@@ -30,9 +28,6 @@ export async function action(options: RoutesOptions): Promise<void> {
 
   // Validate period if specified
   const period = options.period ? validatePeriod(options.period) : undefined;
-
-  // Validate transport mode
-  const transportMode = validateTransportMode(options.mode);
 
   const config = getOTPConfig();
 
@@ -48,12 +43,7 @@ export async function action(options: RoutesOptions): Promise<void> {
 
   // Header
   console.log('');
-  console.log(
-    fmt.header(
-      `CALCULATING ROUTES (${transportMode})`,
-      transportMode === 'BICYCLE' ? '🚴' : '🚌'
-    )
-  );
+  console.log(fmt.header('CALCULATING ROUTES', '🚌'));
   console.log('');
   console.log(
     fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15)
@@ -68,7 +58,6 @@ export async function action(options: RoutesOptions): Promise<void> {
       15
     )
   );
-  console.log(fmt.keyValue('Transport:', transportMode, 15));
 
   let modeDesc = 'Full dataset';
   if (options.retry) {
@@ -158,7 +147,6 @@ export async function action(options: RoutesOptions): Promise<void> {
   try {
     const result = await buildRoutes({
       period: period as 'MORNING' | 'EVENING' | 'MIDNIGHT' | undefined,
-      mode: transportMode as 'WALK' | 'BICYCLE',
       zones: options.zones,
       limit: options.limit,
       retryFailed: options.retry,

@@ -18,18 +18,3 @@ export function validatePeriod(period: string): 'MORNING' | 'EVENING' | 'MIDNIGH
 
   return normalized as 'MORNING' | 'EVENING' | 'MIDNIGHT';
 }
-
-export function validateTransportMode(mode: string): 'WALK' | 'BICYCLE' {
-  const validModes = ['WALK', 'BICYCLE'] as const;
-  const normalized = mode.toUpperCase();
-
-  if (!validModes.includes(normalized as any)) {
-    console.error('');
-    console.error(fmt.errorMessage(`Invalid transport mode: ${mode}`));
-    console.error(fmt.dim(`  Valid modes: ${validModes.join(', ')}`));
-    console.error('');
-    process.exit(1);
-  }
-
-  return normalized as 'WALK' | 'BICYCLE';
-}

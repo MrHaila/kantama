@@ -27,19 +27,6 @@ function setPeriod(period: TimePeriod): void {
   store.currentTimePeriod = period
 }
 
-// Transport mode options
-type TransportMode = 'public' | 'bike' | 'car'
-const transportModes: { value: TransportMode; label: string; disabled: boolean }[] = [
-  { value: 'public', label: 'Public', disabled: false },
-  { value: 'bike', label: 'Bike', disabled: true },
-  { value: 'car', label: 'Car', disabled: true },
-]
-
-function setTransportMode(mode: TransportMode): void {
-  if (mode !== 'public') return // Only public transport is implemented
-  store.transportState.setTransportMode(mode)
-}
-
 onMounted(() => {
   initialize()
 })
@@ -58,27 +45,6 @@ onMounted(() => {
 
     <!-- Controls - Bottom Right -->
     <div class="fixed bottom-6 right-6 z-20 flex flex-col gap-3 items-end">
-      <!-- Transport Mode Toggle -->
-      <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
-        <button
-          v-for="mode in transportModes"
-          :key="mode.value"
-          :data-testid="`transport-mode-${mode.value}`"
-          class="px-4 py-2 font-sans text-xs tracking-widest uppercase transition-colors relative"
-          :class="[
-            store.transportState.transportMode === mode.value
-              ? 'bg-vintage-dark text-vintage-cream'
-              : 'bg-vintage-cream text-vintage-dark',
-            mode.disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-vintage-dark/10',
-          ]"
-          :disabled="mode.disabled"
-          :title="mode.disabled ? 'Coming soon' : `Switch to ${mode.label} transport`"
-          @click="setTransportMode(mode.value)"
-        >
-          {{ mode.label }}
-        </button>
-      </div>
-
       <!-- Period Toggle -->
       <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
         <button

@@ -125,108 +125,97 @@ function showStatus(): void {
   }
   console.log('');
 
-  // Routes Status - show stats for both transport modes
+  // Routes Status
   console.log(fmt.header('ROUTES', '🚌'));
   const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
-  const modes: ['WALK', 'BICYCLE'] = ['WALK', 'BICYCLE'];
 
-  // Track totals across all modes for next steps logic
-  let grandTotalOk = 0;
-  let grandTotalPending = 0;
-  let grandTotalRoutes = 0;
+  let totalOk = 0;
+  let totalPending = 0;
+  let totalNoRoute = 0;
+  let totalError = 0;
 
-  for (const mode of modes) {
-    console.log(fmt.dim(`  ${mode === 'WALK' ? '🚶 Walking' : '🚴 Bicycle'} Routes`));
+  for (const period of periods) {
+    const counts = countRoutesByStatus(period);
+    totalOk += counts[RouteStatus.OK];
+    totalPending += counts[RouteStatus.PENDING];
+    totalNoRoute += counts[RouteStatus.NO_ROUTE];
+    totalError += counts[RouteStatus.ERROR];
+  }
 
-    let totalOk = 0;
-    let totalPending = 0;
-    let totalNoRoute = 0;
-    let totalError = 0;
+  const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
 
-    for (const period of periods) {
-      const counts = countRoutesByStatus(period, mode);
-      totalOk += counts[RouteStatus.OK];
-      totalPending += counts[RouteStatus.PENDING];
-      totalNoRoute += counts[RouteStatus.NO_ROUTE];
-      totalError += counts[RouteStatus.ERROR];
+  if (totalRoutes === 0) {
+    console.log(fmt.muted('  No routes calculated yet'));
+    if (zoneCount > 0) {
+      console.log(
+        fmt.suggestion(
+          "  Run 'varikko geocode' then 'varikko routes' to calculate routes"
+        )
+      );
     }
+  } else {
+    const totalPerPeriod = totalRoutes / 3;
+    console.log(
+      fmt.keyValue(
+        '  Total:',
+        `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`,
+        18
+      )
+    );
 
-    const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
+    // Calculate percentages
+    const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
+    const pendingPct =
+      totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
+    const noRoutePct =
+      totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
+    const errorPct =
+      totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
 
-    if (totalRoutes === 0) {
-      console.log(fmt.muted('    No routes calculated yet'));
-      if (zoneCount > 0 && mode === 'WALK') {
-        console.log(
-          fmt.suggestion(
-            "    Run 'varikko geocode' then 'varikko routes' to calculate routes"
-          )
-        );
-      }
-    } else {
-      const totalPerPeriod = totalRoutes / 3;
+    console.log(
+      fmt.keyValue(
+        '  ' + fmt.symbols.success + ' Calculated:',
+        `${totalOk.toLocaleString()} (${okPct}%)`,
+        18
+      )
+    );
+
+    if (totalPending > 0) {
       console.log(
         fmt.keyValue(
-          '    Total:',
-          `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`,
+          '  ' + fmt.symbols.pending + ' Pending:',
+          `${totalPending.toLocaleString()} (${pendingPct}%)`,
           18
         )
       );
+    }
 
-      // Calculate percentages
-      const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
-      const pendingPct =
-        totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
-      const noRoutePct =
-        totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
-      const errorPct =
-        totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
-
+    if (totalNoRoute > 0) {
       console.log(
         fmt.keyValue(
-          '    ' + fmt.symbols.success + ' Calculated:',
-          `${totalOk.toLocaleString()} (${okPct}%)`,
+          '  ' + fmt.symbols.noRoute + ' No Route:',
+          `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`,
           18
         )
       );
-
-      if (totalPending > 0) {
-        console.log(
-          fmt.keyValue(
-            '    ' + fmt.symbols.pending + ' Pending:',
-            `${totalPending.toLocaleString()} (${pendingPct}%)`,
-            18
-          )
-        );
-      }
-
-      if (totalNoRoute > 0) {
-        console.log(
-          fmt.keyValue(
-            '    ' + fmt.symbols.noRoute + ' No Route:',
-            `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`,
-            18
-          )
-        );
-      }
-
-      if (totalError > 0) {
-        console.log(
-          fmt.keyValue(
-            '    ' + fmt.symbols.error + ' Errors:',
-            `${totalError.toLocaleString()} (${errorPct}%)`,
-            18
-          )
-        );
-      }
     }
-    console.log('');
 
-    // Accumulate grand totals
-    grandTotalOk += totalOk;
-    grandTotalPending += totalPending;
-    grandTotalRoutes += totalRoutes;
+    if (totalError > 0) {
+      console.log(
+        fmt.keyValue(
+          '  ' + fmt.symbols.error + ' Errors:',
+          `${totalError.toLocaleString()} (${errorPct}%)`,
+          18
+        )
+      );
+    }
   }
   console.log('');
+
+  // Use the totals for next steps logic
+  const grandTotalOk = totalOk;
+  const grandTotalPending = totalPending;
+  const grandTotalRoutes = totalRoutes;
 
   // Time Buckets Status
   const bucketCount = zonesData ? zonesData.timeBuckets.length : 0;

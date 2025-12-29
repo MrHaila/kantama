@@ -332,13 +332,12 @@ export function saveZones(
   emitter?.emitProgress('fetch_zones', zones.length, zones.length * 2, 'Initializing route files...');
 
   // Initialize empty route files (all routes marked as PENDING)
-  // Create route files for both WALK and BICYCLE modes
+  // Create route files
   const zoneIds = zones.map((z) => z.id);
   const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
-  const modes: ['WALK', 'BICYCLE'] = ['WALK', 'BICYCLE'];
-  initializeRoutes(zoneIds, periods, modes);
+  initializeRoutes(zoneIds, periods);
 
-  const routeCount = zones.length * zones.length * TIME_PERIODS.length * modes.length;
+  const routeCount = zones.length * zones.length * TIME_PERIODS.length;
 
   emitter?.emitComplete('fetch_zones', 'Zones saved successfully', {
     zoneCount: zones.length,

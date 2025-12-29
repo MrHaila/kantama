@@ -49,10 +49,9 @@ opas/public/data/
 ├── pipeline.json        # Pipeline execution state
 ├── manifest.json        # Data summary for frontend
 └── routes/              # Per-zone route files (MessagePack)
-    ├── {zoneId}-M.msgpack       # Morning routes (WALK)
-    ├── {zoneId}-E.msgpack       # Evening routes (WALK)
-    ├── {zoneId}-N.msgpack       # Midnight routes (WALK)
-    ├── {zoneId}-M-bicycle.msgpack  # Morning routes (BICYCLE)
+    ├── {zoneId}-M.msgpack       # Morning routes
+    ├── {zoneId}-E.msgpack       # Evening routes
+    ├── {zoneId}-N.msgpack       # Midnight routes
     └── ...
 ```
 
@@ -96,7 +95,6 @@ interface TimeBucket {
 interface ZoneRoutesData {
   f: string                   // fromId
   p: string                   // period: "M", "E", "N"
-  m?: TransportMode          // mode: "WALK" or "BICYCLE"
   r: CompactRoute[]          // all routes from this zone
 }
 
@@ -326,12 +324,11 @@ interface CityFetcher {
 4. **Type Safety**: Full TypeScript coverage with strict mode
 5. **File-Based Storage**: Direct writes to `opas/public/data/` - single source of truth
 6. **Multi-Period Support**: Routes calculated for different times of day
-7. **Multi-Transport Modes**: Supports WALK and BICYCLE routing
-8. **Compact Binary Format**: MessagePack for efficient route storage
-9. **Multi-City Support**: Modular fetcher pattern for different administrative levels
-10. **Partial Success**: Continues processing even if some cities fail
-11. **Atomic Writes**: Temp files + rename for crash safety
-12. **Shared Types**: Contract types in `src/shared/` used by both varikko and opas
+7. **Compact Binary Format**: MessagePack for efficient route storage
+8. **Multi-City Support**: Modular fetcher pattern for different administrative levels
+9. **Partial Success**: Continues processing even if some cities fail
+10. **Atomic Writes**: Temp files + rename for crash safety
+11. **Shared Types**: Contract types in `src/shared/` used by both varikko and opas
 
 ## Known Requirements
 

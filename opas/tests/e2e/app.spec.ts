@@ -38,23 +38,8 @@ test.describe('Opas Map Application', () => {
     await expect(page.getByTestId('info-panel')).toContainText('Discover Helsinki')
 
     // Controls
-    await expect(page.getByTestId('transport-mode-public')).toBeVisible()
     await expect(page.getByTestId('time-period-morning')).toBeVisible()
     await expect(page.getByTestId('time-period-evening')).toBeVisible()
     await expect(page.getByTestId('time-period-midnight')).toBeVisible()
-  })
-
-  test('transport mode buttons show correct state', async ({ page }) => {
-    await page.goto('/')
-
-    // Public should be active by default
-    const publicButton = page.getByTestId('transport-mode-public')
-    await expect(publicButton).toBeVisible()
-
-    // Bike and car should be disabled
-    const bikeButton = page.getByTestId('transport-mode-bike')
-    const carButton = page.getByTestId('transport-mode-car')
-    await expect(bikeButton).toBeDisabled()
-    await expect(carButton).toBeDisabled()
   })
 })
