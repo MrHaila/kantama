@@ -5,6 +5,7 @@ import {
   type Zone,
   type TimeBucket,
   type TimePeriod,
+  type TransportMode,
   type DataServiceError,
   type CompactRoute,
   type CompactLeg,
@@ -56,6 +57,7 @@ export const useMapDataStore = defineStore('mapData', () => {
   const zones = ref<Zone[]>([])
   const currentCosts = ref<Map<string, number>>(new Map())
   const currentTimePeriod = ref<TimePeriod>('MORNING')
+  const currentTransportMode = ref<TransportMode>('WALK')
   const timeBuckets = ref<TimeBucket[]>([])
 
   // Reachability state
@@ -111,12 +113,13 @@ export const useMapDataStore = defineStore('mapData', () => {
     if (zones.value.length === 0) return
 
     const period = currentTimePeriod.value
+    const mode = currentTransportMode.value
     const routesByZone = new Map<string, CompactRoute[]>()
 
-    // Load all zone routes for the current period
+    // Load all zone routes for the current period and mode
     for (const zone of zones.value) {
       if (!dataService.hasRoutesLoaded(zone.id, period)) {
-        await dataService.loadRoutesForZone(zone.id, period)
+        await dataService.loadRoutesForZone(zone.id, period, mode)
       }
       const routes = dataService.getRoutes(zone.id, period)
       if (routes) {
@@ -132,9 +135,9 @@ export const useMapDataStore = defineStore('mapData', () => {
   }
 
   /**
-   * Load routes when active zone or period changes
+   * Load routes when active zone, period, or transport mode changes
    */
-  watch([() => transportState.activeZoneId.value, currentTimePeriod], async () => {
+  watch([() => transportState.activeZoneId.value, currentTimePeriod, currentTransportMode], async () => {
     routeError.value = null
 
     if (!transportState.activeZoneId.value) {
@@ -145,9 +148,13 @@ export const useMapDataStore = defineStore('mapData', () => {
     isLoadingRoutes.value = true
 
     try {
-      // Load routes for this zone and period if not cached
+      // Load routes for this zone, period, and mode if not cached
       if (!dataService.hasRoutesLoaded(transportState.activeZoneId.value, currentTimePeriod.value)) {
-        const routes = await dataService.loadRoutesForZone(transportState.activeZoneId.value, currentTimePeriod.value)
+        const routes = await dataService.loadRoutesForZone(
+          transportState.activeZoneId.value,
+          currentTimePeriod.value,
+          currentTransportMode.value
+        )
         if (!routes) {
           routeError.value = dataService.getRouteError(transportState.activeZoneId.value)
           currentCosts.value = new Map()
@@ -155,17 +162,21 @@ export const useMapDataStore = defineStore('mapData', () => {
         }
       }
 
-      // Get costs for current period
-      currentCosts.value = dataService.getRouteCosts(transportState.activeZoneId.value, currentTimePeriod.value)
+      // Get costs for current period and mode
+      currentCosts.value = dataService.getRouteCosts(
+        transportState.activeZoneId.value,
+        currentTimePeriod.value,
+        currentTransportMode.value
+      )
     } finally {
       isLoadingRoutes.value = false
     }
   })
 
   /**
-   * Recompute reachability when period changes
+   * Recompute reachability when period or transport mode changes
    */
-  watch(currentTimePeriod, () => {
+  watch([currentTimePeriod, currentTransportMode], () => {
     computeReachability()
   })
 
@@ -215,7 +226,8 @@ export const useMapDataStore = defineStore('mapData', () => {
       return dataService.getRouteDetails(
         transportState.activeZoneId.value,
         transportState.hoveredZoneId.value,
-        currentTimePeriod.value
+        currentTimePeriod.value,
+        currentTransportMode.value
       )
     }
 
@@ -263,6 +275,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     // State
     zones,
     currentTimePeriod,
+    currentTransportMode,
     currentCosts,
     timeBuckets,
     currentRouteDetails,

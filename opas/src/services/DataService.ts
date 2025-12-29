@@ -1,9 +1,9 @@
 import { decode } from '@msgpack/msgpack'
 // Import shared types from varikko
-import type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesData, TimePeriod } from 'varikko'
+import type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesData, TimePeriod, TransportMode } from 'varikko'
 
 // Re-export types for backwards compatibility
-export type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesData, TimePeriod }
+export type { Zone, TimeBucket, ZonesData, CompactLeg, CompactRoute, ZoneRoutesData, TimePeriod, TransportMode }
 
 // ============================================================================
 // Opas-specific types
@@ -49,10 +49,10 @@ class DataService {
   private baseUrl: string = '/data'
 
   /**
-   * Get cache key for a zone and period
+   * Get cache key for a zone, period, and mode
    */
-  private getCacheKey(zoneId: string, period: TimePeriod): string {
-    return `${zoneId}-${period}`
+  private getCacheKey(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): string {
+    return `${zoneId}-${period}-${mode}`
   }
 
   /**
@@ -155,11 +155,11 @@ class DataService {
   }
 
   /**
-   * Load routes for a specific zone and period
+   * Load routes for a specific zone, period, and transport mode
    * Returns null if routes not available, with error info in state
    */
-  async loadRoutesForZone(zoneId: string, period: TimePeriod): Promise<CompactRoute[] | null> {
-    const cacheKey = this.getCacheKey(zoneId, period)
+  async loadRoutesForZone(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): Promise<CompactRoute[] | null> {
+    const cacheKey = this.getCacheKey(zoneId, period, mode)
 
     // Check cache first
     if (this.routeCache.has(cacheKey)) {
@@ -169,17 +169,31 @@ class DataService {
     // Clear any previous error for this zone
     this.state.routeErrors.delete(zoneId)
 
-    const suffix = period === 'MORNING' ? 'morning' : period === 'EVENING' ? 'evening' : 'midnight'
+    // Map period to file suffix
+    const periodMap: Record<TimePeriod, string> = {
+      MORNING: 'M',
+      EVENING: 'E',
+      MIDNIGHT: 'N',
+    }
+    const periodSuffix = periodMap[period]
+    const modeSuffix = mode === 'WALK' ? '' : `-${mode.toLowerCase()}`
+    const filename = `${zoneId}-${periodSuffix}${modeSuffix}.msgpack`
 
     try {
-      const response = await fetch(`${this.baseUrl}/routes/${zoneId}-${suffix}.msgpack`)
+      const response = await fetch(`${this.baseUrl}/routes/${filename}`)
 
       if (!response.ok) {
         if (response.status === 404) {
+          // If bicycle routes not found, gracefully fall back to walk mode
+          if (mode === 'BICYCLE') {
+            console.warn(`Bicycle routes not available for zone ${zoneId}. Falling back to walk mode.`)
+            return this.loadRoutesForZone(zoneId, period, 'WALK')
+          }
+
           this.state.routeErrors.set(zoneId, {
             type: 'routes_not_found',
-            message: `Routes for zone ${zoneId} (${period}) not found`,
-            details: 'This zone may not have been exported yet. Run "varikko export" to update.',
+            message: `Routes for zone ${zoneId} (${period}, ${mode}) not found`,
+            details: 'This zone may not have been exported yet. Run "varikko routes" to calculate routes.',
           })
         } else {
           this.state.routeErrors.set(zoneId, {
@@ -217,12 +231,12 @@ class DataService {
   }
 
   /**
-   * Get route costs (duration map) for a zone and period
+   * Get route costs (duration map) for a zone, period, and mode
    * Returns empty map if routes not loaded
    */
-  getRouteCosts(zoneId: string, period: TimePeriod): Map<string, number> {
+  getRouteCosts(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): Map<string, number> {
     const costs = new Map<string, number>()
-    const cacheKey = this.getCacheKey(zoneId, period)
+    const cacheKey = this.getCacheKey(zoneId, period, mode)
     const routes = this.routeCache.get(cacheKey)
 
     if (!routes) {
@@ -239,10 +253,10 @@ class DataService {
   }
 
   /**
-   * Get route details between two zones
+   * Get route details between two zones for a specific transport mode
    */
-  getRouteDetails(fromId: string, toId: string, period: TimePeriod): CompactRoute | null {
-    const cacheKey = this.getCacheKey(fromId, period)
+  getRouteDetails(fromId: string, toId: string, period: TimePeriod, mode: TransportMode = 'WALK'): CompactRoute | null {
+    const cacheKey = this.getCacheKey(fromId, period, mode)
     const routes = this.routeCache.get(cacheKey)
     if (!routes) {
       return null

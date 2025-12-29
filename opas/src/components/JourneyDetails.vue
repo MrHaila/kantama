@@ -24,6 +24,8 @@ const getTransportIcon = (mode: string): string => {
   switch (mode.toLowerCase()) {
     case 'walk':
       return '🚶'
+    case 'bicycle':
+      return '🚴'
     case 'bus':
       return '🚌'
     case 'tram':
@@ -43,6 +45,8 @@ const getModeLabel = (mode: string): string => {
   switch (mode.toLowerCase()) {
     case 'walk':
       return 'Walk'
+    case 'bicycle':
+      return 'Bike'
     case 'bus':
       return 'Bus'
     case 'tram':

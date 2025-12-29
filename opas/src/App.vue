@@ -27,6 +27,17 @@ function setPeriod(period: TimePeriod): void {
   store.currentTimePeriod = period
 }
 
+// Routing mode options (WALK vs BICYCLE)
+type RoutingMode = 'WALK' | 'BICYCLE'
+const routingModes: { value: RoutingMode; label: string; icon: string }[] = [
+  { value: 'WALK', label: 'Walk', icon: '🚶' },
+  { value: 'BICYCLE', label: 'Bike', icon: '🚴' },
+]
+
+function setRoutingMode(mode: RoutingMode): void {
+  store.currentTransportMode = mode
+}
+
 // Transport mode options
 type TransportMode = 'public' | 'bike' | 'car'
 const transportModes: { value: TransportMode; label: string; disabled: boolean }[] = [
@@ -75,6 +86,25 @@ onMounted(() => {
           @click="setTransportMode(mode.value)"
         >
           {{ mode.label }}
+        </button>
+      </div>
+
+      <!-- Routing Mode Toggle (Walk vs Bicycle) -->
+      <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
+        <button
+          v-for="mode in routingModes"
+          :key="mode.value"
+          class="px-4 py-2 font-sans text-xs tracking-widest uppercase transition-colors flex items-center gap-2"
+          :class="
+            store.currentTransportMode === mode.value
+              ? 'bg-vintage-dark text-vintage-cream'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+          "
+          :title="`Use ${mode.label.toLowerCase()} for routing`"
+          @click="setRoutingMode(mode.value)"
+        >
+          <span>{{ mode.icon }}</span>
+          <span>{{ mode.label }}</span>
         </button>
       </div>
 

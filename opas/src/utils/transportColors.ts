@@ -3,6 +3,7 @@
  */
 export const modeColors: Record<string, string> = {
   WALK: '#8B7355',
+  BICYCLE: '#00A651',
   BUS: '#007AC9',
   TRAM: '#00985F',
   SUBWAY: '#FF4200',
