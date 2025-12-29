@@ -4,7 +4,6 @@ import * as d3 from 'd3-geo';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
-import { CITY_CODES } from './types';
 import type { StandardZone, ZoneData } from './types';
 import polylabel from 'polylabel';
 import { getWaterMask, clipZoneWithWater } from './coastline';
@@ -400,11 +399,11 @@ export async function processZonesMultiCity(
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
 
-  // Load water mask for coastline clipping (required for Espoo zones)
+  // Load water mask for coastline clipping (required for all coastal zones)
   const waterMask = await getWaterMask();
   if (!waterMask) {
     throw new Error(
-      `Water shapefile missing or failed to process. Required for Espoo zone coastline clipping.`
+      `Water shapefile missing or failed to process. Required for zone coastline clipping.`
     );
   }
 
@@ -429,17 +428,14 @@ export async function processZonesMultiCity(
         return null;
       }
 
-      // Apply water clipping for Espoo zones to follow coastline
+      // Apply water clipping to follow coastline (for all regions)
       let processedGeometry = cleanedGeometry;
-      if (zone.cityCode === CITY_CODES.ESPOO) {
-        // Only clip Polygon or MultiPolygon geometries (zones should always be these types)
-        if (cleanedGeometry.type === 'Polygon' || cleanedGeometry.type === 'MultiPolygon') {
-          const clipped = clipZoneWithWater(cleanedGeometry, waterMask);
-          if (clipped) {
-            processedGeometry = clipped;
-          }
-          // If clipping returns null, keep original (shouldn't happen for valid zones)
+      if (cleanedGeometry.type === 'Polygon' || cleanedGeometry.type === 'MultiPolygon') {
+        const clipped = clipZoneWithWater(cleanedGeometry, waterMask);
+        if (clipped) {
+          processedGeometry = clipped;
         }
+        // If clipping returns null, keep original (shouldn't happen for valid zones)
       }
 
       // Calculate pole of inaccessibility (guaranteed inside point)
