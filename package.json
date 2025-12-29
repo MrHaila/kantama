@@ -14,7 +14,9 @@
     "varikko:dev": "pnpm --filter varikko dev",
     "varikko:build": "pnpm --filter varikko build",
     "varikko:test": "pnpm --filter varikko test",
-    "varikko:lint": "pnpm --filter varikko lint"
+    "varikko:lint": "pnpm --filter varikko lint",
+    "opas:test": "pnpm --filter opas test",
+    "opas:test:ui": "pnpm --filter opas test:ui"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

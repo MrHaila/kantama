@@ -57,6 +57,46 @@ Run all commands via `pnpm`:
 - **`pnpm format`**: Format code with Prettier
 - **`pnpm test`**: Run unit tests
 
+## E2E Testing
+
+Tests live in `tests/e2e/` and use Playwright.
+
+**Commands:**
+
+- `pnpm test` — Run all tests headless
+- `pnpm test:ui` — Interactive UI with watch mode (recommended for TDD)
+- `pnpm test:headed` — Run tests in visible browser
+
+**Element Location Rules:**
+
+⚠️ **Always use `data-testid` attributes.** Other locator strategies are forbidden.
+
+```typescript
+// ✅ CORRECT
+await page.getByTestId('zone-map')
+await page.getByTestId('info-panel')
+
+// ❌ WRONG - Never use these
+await page.locator('.zone-map')           // CSS class
+await page.locator('svg')                 // Element type
+await page.getByText('Helsinki')          // Text content
+await page.locator('#app')                // ID selector
+```
+
+**Adding test IDs to components:**
+
+```vue
+<template>
+  <div data-testid="zone-map">...</div>
+</template>
+```
+
+**Naming conventions:**
+
+- Use kebab-case: `data-testid="info-panel"`
+- Be descriptive: `data-testid="zone-travel-time"` not `data-testid="time"`
+- For lists, use suffixes: `data-testid="zone-item-00100"` (with zone ID)
+
 ## Patterns
 
 1. **Layered Architecture**: Separate static background from interactive layers for better performance

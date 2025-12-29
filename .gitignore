@@ -4,3 +4,4 @@ node_modules
 # SQLite WAL files
 *.db-shm
 *.db-wal
+opas/test-results/.last-run.json

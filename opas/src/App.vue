@@ -46,7 +46,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen w-full bg-vintage-cream relative">
+  <div data-testid="app-root" class="min-h-screen w-full bg-vintage-cream relative">
     <!-- Fixed Page Title - Background layer -->
     <div class="fixed top-6 left-6 z-10 pointer-events-none">
       <h1 class="text-3xl md:text-4xl font-sans font-bold text-vintage-dark/80 tracking-tighter uppercase">
