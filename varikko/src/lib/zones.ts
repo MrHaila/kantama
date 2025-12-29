@@ -31,6 +31,22 @@ const WFS_URL =
 
 const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
 
+/**
+ * Blacklist of zone IDs that should be permanently excluded from processing.
+ * These zones have been identified as having routing failures or other issues
+ * that prevent them from being included in the route network.
+ *
+ * Zones:
+ * - HEL-312 (Vattuniemi): All routing attempts fail with ERROR status
+ * - HEL-461 (Pajamäki): All routing attempts fail with ERROR status
+ * - VAN-Vaarala (Vaarala): All routing attempts fail with ERROR status
+ */
+const ZONE_BLACKLIST: Set<string> = new Set([
+  'HEL-312',
+  'HEL-461',
+  'VAN-Vaarala',
+]);
+
 interface FeatureProperties {
   postinumeroalue?: string;
   posti_alue?: string;
@@ -381,6 +397,7 @@ export async function downloadZonesMultiCity(
 
 export interface ProcessingStats {
   total: number;
+  blacklisted: number;
   insidePointFailed: number;
   geometryInvalid: number;
   outsideVisibleArea: number;
@@ -408,6 +425,7 @@ export async function processZonesMultiCity(
 
   const stats: ProcessingStats = {
     total: standardZones.length,
+    blacklisted: 0,
     insidePointFailed: 0,
     geometryInvalid: 0,
     outsideVisibleArea: 0,
@@ -419,6 +437,12 @@ export async function processZonesMultiCity(
     .map((zone) => {
       // Generate zone ID with city prefix
       const id = generateZoneId(zone.cityCode, zone.originalId);
+
+      // Check if zone is blacklisted
+      if (ZONE_BLACKLIST.has(id)) {
+        stats.blacklisted++;
+        return null;
+      }
 
       // Clean geometry first (needed for inside point calculation)
       const cleanedGeometry = cleanGeometry(zone.geometry);
@@ -503,6 +527,7 @@ export async function fetchZonesMultiCity(
   // Log filtering summary
   console.log('\n--- Zone Filtering Summary ---');
   console.log(`Total fetched:        ${stats.total}`);
+  console.log(`Blacklisted:          ${stats.blacklisted} (excluded - routing failures)`);
   console.log(`Outside visible area: ${stats.outsideVisibleArea} (filtered out)`);
   console.log(`Invalid geometry:     ${stats.geometryInvalid} (filtered out)`);
   console.log(`Inside point failed:  ${stats.insidePointFailed} (filtered out)`);
@@ -567,6 +592,7 @@ export async function fetchZones(
     cities: ['WFS'],
     filteringStats: {
       total: geojson.features.length,
+      blacklisted: 0,
       insidePointFailed: 0,
       geometryInvalid: 0,
       outsideVisibleArea: 0,

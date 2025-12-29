@@ -112,6 +112,7 @@ export interface FetchMetadata {
   cities: string[];
   filteringStats: {
     total: number;
+    blacklisted: number;
     insidePointFailed: number;
     geometryInvalid: number;
     outsideVisibleArea: number;
