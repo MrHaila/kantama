@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { encode, decode } from '@msgpack/msgpack';
 import {
   Zone,
@@ -28,6 +29,8 @@ import {
 // Path Configuration
 // ============================================================================
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const DEFAULT_DATA_DIR = path.join(__dirname, '../../../opas/public/data');
 
 let dataDirectory = DEFAULT_DATA_DIR;
