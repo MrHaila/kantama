@@ -1,14 +1,20 @@
 import { Command } from 'commander';
-import Database from 'better-sqlite3';
-import { openDB, getDBStats, getDBPath, getRecentErrors } from './lib/db';
-import { fetchZones, initializeSchema } from './lib/zones';
+import { fetchZonesMultiCity } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
-import { clearData, getCounts } from './lib/clearing';
 import { calculateTimeBuckets } from './lib/time-buckets';
 import { processMaps } from './lib/maps';
-import { exportAll, getExportStats } from './lib/export';
+import { validateData } from './lib/validate';
 import { createProgressEmitter } from './lib/events';
+import {
+  readZones,
+  readPipelineState,
+  getAllZoneIds,
+  countRoutesByStatus,
+  readManifest,
+  getDataDirectory,
+} from './lib/datastore';
+import { RouteStatus, TimePeriod } from './shared/types';
 import * as fmt from './lib/cli-format';
 import readline from 'readline';
 import fs from 'fs';
@@ -27,44 +33,62 @@ export interface CLICommand {
 }
 
 /**
- * Display comprehensive database status
+ * Display comprehensive data status
  */
-function showStatus(db: Database.Database): void {
-  const dbPath = getDBPath();
-  const stats = getDBStats(db);
+function showStatus(): void {
+  const dataDir = getDataDirectory();
 
-  // Get database file info
-  let dbSize = 'Unknown';
-  let dbModified = 'Unknown';
+  // Get data directory info
+  let totalSize = 0;
+  let zonesSize = 0;
+  let routesSize = 0;
+
   try {
-    const fileStats = fs.statSync(dbPath);
-    dbSize = fmt.formatBytes(fileStats.size);
-    dbModified = fmt.formatTimestamp(fileStats.mtime);
+    const zonesPath = path.join(dataDir, 'zones.json');
+    if (fs.existsSync(zonesPath)) {
+      zonesSize = fs.statSync(zonesPath).size;
+      totalSize += zonesSize;
+    }
+
+    const routesDir = path.join(dataDir, 'routes');
+    if (fs.existsSync(routesDir)) {
+      const files = fs.readdirSync(routesDir);
+      for (const file of files) {
+        const filePath = path.join(routesDir, file);
+        routesSize += fs.statSync(filePath).size;
+      }
+      totalSize += routesSize;
+    }
   } catch {
-    // File might not exist yet
+    // Files might not exist yet
   }
 
   // Header
   console.log('');
-  console.log(fmt.boxTop(60, 'VARIKKO DATABASE STATUS'));
+  console.log(fmt.boxTop(60, 'VARIKKO DATA STATUS'));
   console.log('');
 
-  // Database Overview
-  console.log(fmt.header('DATABASE', '💾'));
-  console.log(fmt.keyValue('  Path:', dbPath, 18));
-  console.log(fmt.keyValue('  Size:', dbSize, 18));
-  console.log(fmt.keyValue('  Last Modified:', dbModified, 18));
+  // Data Directory Overview
+  console.log(fmt.header('DATA DIRECTORY', '💾'));
+  console.log(fmt.keyValue('  Path:', dataDir, 18));
+  console.log(fmt.keyValue('  Zones file:', fmt.formatBytes(zonesSize), 18));
+  console.log(fmt.keyValue('  Routes files:', fmt.formatBytes(routesSize), 18));
+  console.log(fmt.keyValue('  Total size:', fmt.formatBytes(totalSize), 18));
   console.log('');
 
   // Zones Status
+  const zonesData = readZones();
+  const zoneCount = zonesData ? zonesData.zones.length : 0;
+  const pipelineState = readPipelineState();
+
   console.log(fmt.header('ZONES', '📍'));
-  if (stats.zones === 0) {
+  if (zoneCount === 0) {
     console.log(fmt.muted('  No zones fetched yet'));
     console.log(fmt.suggestion('  Run \'varikko fetch\' to fetch postal code zones'));
   } else {
-    console.log(fmt.keyValue('  Total Zones:', stats.zones, 18));
-    if (stats.lastRun?.timestamp) {
-      const lastFetch = new Date(stats.lastRun.timestamp);
+    console.log(fmt.keyValue('  Total Zones:', zoneCount, 18));
+    if (pipelineState?.lastFetch?.timestamp) {
+      const lastFetch = new Date(pipelineState.lastFetch.timestamp);
       console.log(fmt.keyValue('  Last Fetch:', fmt.formatTimestamp(lastFetch), 18));
     }
   }
@@ -72,85 +96,84 @@ function showStatus(db: Database.Database): void {
 
   // Routes Status
   console.log(fmt.header('ROUTES', '🚌'));
-  if (stats.routes.total === 0) {
+  const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
+  let totalOk = 0;
+  let totalPending = 0;
+  let totalNoRoute = 0;
+  let totalError = 0;
+
+  for (const period of periods) {
+    const counts = countRoutesByStatus(period);
+    totalOk += counts[RouteStatus.OK];
+    totalPending += counts[RouteStatus.PENDING];
+    totalNoRoute += counts[RouteStatus.NO_ROUTE];
+    totalError += counts[RouteStatus.ERROR];
+  }
+
+  const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
+
+  if (totalRoutes === 0) {
     console.log(fmt.muted('  No routes calculated yet'));
-    if (stats.zones > 0) {
+    if (zoneCount > 0) {
       console.log(fmt.suggestion('  Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
     }
   } else {
-    const totalPerPeriod = stats.routes.total / 3; // 3 periods: MORNING, EVENING, MIDNIGHT
-    console.log(fmt.keyValue('  Total Routes:', `${stats.routes.total.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
+    const totalPerPeriod = totalRoutes / 3;
+    console.log(fmt.keyValue('  Total Routes:', `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
 
     // Calculate percentages
-    const okPct = stats.routes.total > 0 ? ((stats.routes.ok / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const pendingPct = stats.routes.total > 0 ? ((stats.routes.pending / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const noRoutePct = stats.routes.total > 0 ? ((stats.routes.no_route / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const errorPct = stats.routes.total > 0 ? ((stats.routes.error / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
+    const pendingPct = totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
+    const noRoutePct = totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
+    const errorPct = totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
 
-    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${stats.routes.ok.toLocaleString()} (${okPct}%)`, 18));
+    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${totalOk.toLocaleString()} (${okPct}%)`, 18));
 
-    if (stats.routes.pending > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${stats.routes.pending.toLocaleString()} (${pendingPct}%)`, 18));
+    if (totalPending > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${totalPending.toLocaleString()} (${pendingPct}%)`, 18));
     }
 
-    if (stats.routes.no_route > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${stats.routes.no_route.toLocaleString()} (${noRoutePct}%)`, 18));
+    if (totalNoRoute > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`, 18));
     }
 
-    if (stats.routes.error > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${stats.routes.error.toLocaleString()} (${errorPct}%)`, 18));
+    if (totalError > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${totalError.toLocaleString()} (${errorPct}%)`, 18));
     }
   }
   console.log('');
 
   // Time Buckets Status
+  const bucketCount = zonesData ? zonesData.timeBuckets.length : 0;
+
   console.log(fmt.header('TIME BUCKETS', '🗺️'));
-  if (stats.timeBuckets.calculated) {
+  if (bucketCount === 6) {
     console.log(fmt.successMessage('  Calculated (6 buckets)'));
-  } else if (stats.timeBuckets.count > 0) {
-    console.log(fmt.warningMessage(`  Partially calculated (${stats.timeBuckets.count}/6 buckets)`));
+  } else if (bucketCount > 0) {
+    console.log(fmt.warningMessage(`  Partially calculated (${bucketCount}/6 buckets)`));
     console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
   } else {
     console.log(fmt.muted('  Not calculated yet'));
-    if (stats.routes.ok > 0) {
+    if (totalOk > 0) {
       console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
     }
   }
   console.log('');
 
-  // Recent Errors (if any)
-  if (stats.routes.error > 0) {
-    const errors = getRecentErrors(db, 5);
-    console.log(fmt.header('RECENT ERRORS', '⚠️'));
-    console.log(fmt.muted(`  Showing ${Math.min(5, errors.length)} of ${stats.routes.error.toLocaleString()} total errors`));
-    console.log('');
-    errors.forEach((err) => {
-      try {
-        const legsData = JSON.parse(err.legs);
-        const errorMsg = legsData.error || 'Unknown error';
-        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
-        console.log(`    ${fmt.error(errorMsg)}`);
-      } catch {
-        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
-      }
-    });
-    console.log('');
-  }
-
   // Next Steps
   console.log(fmt.header('NEXT STEPS', '💡'));
   const suggestions: string[] = [];
 
-  if (stats.zones === 0) {
+  if (zoneCount === 0) {
     suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
-  } else if (stats.routes.total === 0) {
+  } else if (totalRoutes === 0) {
     suggestions.push('Run \'varikko geocode\' to geocode zones');
     suggestions.push('Run \'varikko routes\' to calculate transit routes');
-  } else if (stats.routes.pending > 0) {
+  } else if (totalPending > 0) {
     suggestions.push('Run \'varikko routes\' to calculate pending routes');
-  } else if (!stats.timeBuckets.calculated && stats.routes.ok > 0) {
+  } else if (bucketCount !== 6 && totalOk > 0) {
     suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
-  } else if (stats.timeBuckets.calculated) {
+  } else if (bucketCount === 6) {
     suggestions.push('All data calculated! Ready for visualization');
   }
 
