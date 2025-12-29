@@ -67,8 +67,8 @@ function getRoutesDir(): string {
  * Get path to a specific route file
  */
 function getRoutePath(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): string {
-  // Use single-letter abbreviations: M, E, N
-  const periodSuffix = period.charAt(0);
+  // Use full lowercase period names for file naming
+  const periodSuffix = period.toLowerCase();
   // Add mode suffix for non-WALK modes (backward compatible)
   const modeSuffix = mode === 'WALK' ? '' : `-${mode.toLowerCase()}`;
   return path.join(getRoutesDir(), `${zoneId}-${periodSuffix}${modeSuffix}.msgpack`);

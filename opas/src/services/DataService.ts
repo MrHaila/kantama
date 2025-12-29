@@ -169,13 +169,8 @@ class DataService {
     // Clear any previous error for this zone
     this.state.routeErrors.delete(zoneId)
 
-    // Map period to file suffix
-    const periodMap: Record<TimePeriod, string> = {
-      MORNING: 'M',
-      EVENING: 'E',
-      MIDNIGHT: 'N',
-    }
-    const periodSuffix = periodMap[period]
+    // Map period to file suffix (use full lowercase names)
+    const periodSuffix = period.toLowerCase()
     const modeSuffix = mode === 'WALK' ? '' : `-${mode.toLowerCase()}`
     const filename = `${zoneId}-${periodSuffix}${modeSuffix}.msgpack`
 
