@@ -169,7 +169,7 @@ class DataService {
     // Clear any previous error for this zone
     this.state.routeErrors.delete(zoneId)
 
-    const suffix = period === 'MORNING' ? 'morning' : period === 'EVENING' ? 'evening' : 'midnight'
+    const suffix = period === 'MORNING' ? 'M' : period === 'EVENING' ? 'E' : 'N'
 
     try {
       const response = await fetch(`${this.baseUrl}/routes/${zoneId}-${suffix}.msgpack`)

@@ -538,34 +538,64 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       let lastProgress = 0;
       let lastPeriod = '';
+      let lastUpdateTime = 0;
+      let progressStartTime = startTime;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Starting route calculation...'));
+          progressStartTime = Date.now();
+          // Show initial progress immediately
+          const total = event.total || 0;
+          const bar = fmt.progressBar(0, total, { width: 30 });
+          fmt.writeProgress(`${bar} ${fmt.dim('initializing...')}`);
         } else if (event.type === 'progress') {
           const current = event.current || 0;
           const total = event.total || 0;
           const metadata = event.metadata || {};
+          const now = Date.now();
 
-          // Show period change
+          // Show period change (print on new line, then continue progress)
           if (metadata.period && metadata.period !== lastPeriod) {
+            if (lastPeriod) {
+              fmt.endProgress();
+            }
             console.log(fmt.dim(`  Processing ${metadata.period}...`));
             lastPeriod = metadata.period;
           }
 
           const progress = total ? Math.floor((current / total) * 100) : 0;
-          if (progress >= lastProgress + 5 || current === total) {
+          // Update every 1% or every 500ms or at completion
+          const shouldUpdate = progress > lastProgress || (now - lastUpdateTime) >= 500 || current === total;
+          
+          if (shouldUpdate) {
+            const elapsed = now - progressStartTime;
+            const elapsedStr = fmt.formatDuration(elapsed);
+            
+            // Calculate ETA based on progress
+            let etaStr = '';
+            if (current > 0 && current < total) {
+              const rate = current / elapsed; // items per ms
+              const remaining = total - current;
+              const etaMs = remaining / rate;
+              etaStr = ` ETA: ${fmt.formatDuration(etaMs)}`;
+            }
+            
             const bar = fmt.progressBar(current, total, { width: 30 });
             const stats = fmt.formatRouteStats({
               ok: metadata.ok,
               noRoute: metadata.noRoute,
               errors: metadata.errors,
             });
-            console.log(`${bar} ${stats}`);
+            const timeInfo = fmt.dim(` [${elapsedStr}${etaStr}]`);
+            fmt.writeProgress(`${bar} ${stats}${timeInfo}`);
             lastProgress = progress;
+            lastUpdateTime = now;
           }
         } else if (event.type === 'complete') {
+          fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
+          fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
