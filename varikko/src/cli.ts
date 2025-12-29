@@ -198,51 +198,16 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
   // Default (no subcommand) → show status
   program.action(() => {
-    const db = openDB();
-    try {
-      showStatus(db);
-    } finally {
-      db.close();
-    }
+    showStatus();
   });
 
   // Subcommands (non-interactive mode)
 
-  // Schema initialization command
-  program
-    .command('init')
-    .description('Initialize database schema (DESTRUCTIVE - drops existing data)')
-    .option('-f, --force', 'Skip confirmation prompt')
-    .action((options) => {
-      const db = openDB();
-
-      try {
-        if (!options.force) {
-          console.log('⚠️  WARNING: This will DROP all existing data in the database!');
-          console.log('Run with --force flag to confirm: varikko init --force');
-          process.exit(0);
-        }
-
-        console.log('Initializing database schema...');
-        initializeSchema(db);
-        console.log('✓ Database schema initialized successfully');
-        console.log('\nYou can now run workflows like:');
-        console.log('  varikko fetch --test');
-        console.log('  varikko geocode');
-      } catch (error) {
-        console.error('Error initializing schema:', error);
-        process.exit(1);
-      } finally {
-        db.close();
-      }
-    });
-
   program
     .command('fetch')
-    .description('Fetch postal code zones from WFS')
+    .description('Fetch postal code zones from multi-city sources')
     .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -278,7 +243,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = await fetchZones(db, {
+        const result = await fetchZonesMultiCity({
           limit: options.limit,
           emitter,
         });
@@ -301,8 +266,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -311,7 +274,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .description('Geocode zones to routing addresses')
     .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -356,7 +318,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = await geocodeZones(db, {
+        const result = await geocodeZones({
           limit: options.limit,
           apiKey,
           emitter,
@@ -382,7 +344,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
           console.log(fmt.header('ERRORS', '⚠️'));
           console.log(fmt.dim(`  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`));
           result.errors.slice(0, 3).forEach((err) => {
-            console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.id}: ${err.error}`));
+            console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.zoneId}: ${err.error}`));
           });
         }
 
@@ -395,8 +357,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -407,7 +367,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -487,7 +446,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = await buildRoutes(db, {
+        const result = await buildRoutes({
           period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
           zones: options.zones,
           limit: options.limit,
@@ -528,130 +487,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
-      }
-    });
-
-  program
-    .command('clear')
-    .description('Clear or reset data')
-    .option('-f, --force', 'Skip confirmation prompt')
-    .option('--routes', 'Reset routes to PENDING only')
-    .option('--places', 'Clear places and routes')
-    .option('--metadata', 'Clear metadata only')
-    .option('--time-buckets', 'Clear time buckets only')
-    .action(async (options) => {
-      const db = openDB();
-
-      try {
-        const { routes, places, metadata, timeBuckets } = options;
-        const clearAll = !routes && !places && !metadata && !timeBuckets;
-
-        // Get current counts
-        const counts = getCounts(db);
-
-        // Build target description
-        let targetMsg = 'ALL data (routes, places, metadata, time_buckets)';
-        const targets: string[] = [];
-        if (!clearAll) {
-          if (routes) targets.push('routes (reset to PENDING)');
-          if (places) targets.push('places and routes');
-          if (metadata) targets.push('metadata');
-          if (timeBuckets) targets.push('time_buckets');
-          targetMsg = targets.join(', ');
-        } else {
-          targets.push('routes', 'places', 'metadata', 'time_buckets');
-        }
-
-        // Header
-        console.log('');
-        console.log(fmt.header('CLEAR DATA', '🗑️'));
-        console.log('');
-
-        // Show current state
-        console.log(fmt.bold('Current database state:'));
-        console.log(fmt.keyValue('  Places:', counts.places.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Routes:', counts.routes.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Metadata:', counts.metadata.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Time Buckets:', counts.timeBuckets.toLocaleString(), 18));
-        console.log('');
-
-        console.log(fmt.bold('Target:'));
-        console.log(fmt.dim(`  ${targetMsg}`));
-        console.log('');
-
-        // Confirmation prompt
-        if (!options.force) {
-          const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
-          });
-
-          const answer = await new Promise<string>((resolve) => {
-            rl.question(fmt.warning(`⚠️  Clear ${targetMsg}? (y/N) `), (ans) => {
-              rl.close();
-              resolve(ans);
-            });
-          });
-
-          if (answer.toLowerCase() !== 'y') {
-            console.log(fmt.dim('Aborted.'));
-            console.log('');
-            db.close();
-            process.exit(0);
-          }
-        }
-
-        const emitter = createProgressEmitter();
-
-        emitter.on('progress', (event) => {
-          if (event.type === 'start') {
-            console.log(fmt.infoMessage(`Clearing ${targetMsg}...`));
-          } else if (event.type === 'progress') {
-            if (event.message) console.log(fmt.dim(event.message));
-          } else if (event.type === 'complete') {
-            console.log(fmt.successMessage(event.message || 'Complete'));
-          } else if (event.type === 'error') {
-            console.error(fmt.errorMessage(event.message || 'Error'));
-            if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
-          }
-        });
-
-        const result = clearData(db, {
-          routes,
-          places,
-          metadata,
-          timeBuckets,
-          emitter,
-        });
-
-        console.log('');
-        console.log(fmt.divider(50));
-        console.log(fmt.bold('DELETED'));
-        console.log(fmt.divider(50));
-        if (result.deleted.places !== undefined) {
-          console.log(fmt.keyValue('Places:', result.deleted.places.toLocaleString(), 15));
-        }
-        if (result.deleted.routes !== undefined) {
-          const note = routes && !places ? ' (reset to PENDING)' : '';
-          console.log(fmt.keyValue('Routes:', `${result.deleted.routes.toLocaleString()}${note}`, 15));
-        }
-        if (result.deleted.metadata !== undefined) {
-          console.log(fmt.keyValue('Metadata:', result.deleted.metadata.toLocaleString(), 15));
-        }
-        if (result.deleted.timeBuckets !== undefined) {
-          console.log(fmt.keyValue('Time Buckets:', result.deleted.timeBuckets.toLocaleString(), 15));
-        }
-        console.log('');
-      } catch (error) {
-        console.error('');
-        console.error(fmt.errorMessage('Clear operation failed'));
-        console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
-        console.error('');
-        process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -660,7 +495,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .description('Calculate heatmap time buckets')
     .option('-f, --force', 'Force recalculation even if already calculated')
     .action((options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -685,7 +519,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = calculateTimeBuckets(db, {
+        const result = calculateTimeBuckets({
           force: options.force,
           emitter,
         });
@@ -720,54 +554,25 @@ export async function parseCLI(): Promise<CLICommand | null> {
           console.error('');
           process.exit(1);
         }
-      } finally {
-        db.close();
       }
     });
 
   program
-    .command('export')
-    .description('Export data to optimized format for opas')
-    .option('-o, --output <dir>', 'Output directory', '../opas/public')
-    .option('--dry-run', 'Show export statistics without writing files')
-    .action((options) => {
-      const db = openDB();
+    .command('validate')
+    .description('Validate data integrity and regenerate manifest')
+    .action(() => {
       const emitter = createProgressEmitter();
-      const startTime = Date.now();
 
       // Header
       console.log('');
-      console.log(fmt.header('EXPORTING DATA', '📦'));
-      console.log('');
-
-      if (options.dryRun) {
-        // Just show statistics
-        const stats = getExportStats(db);
-        console.log(fmt.bold('Export Statistics (dry run):'));
-        console.log(fmt.keyValue('  Zones:', stats.zones.toLocaleString(), 20));
-        console.log(fmt.keyValue('  Calculated Routes:', stats.routes.toLocaleString(), 20));
-        console.log(fmt.keyValue('  Est. zones.json:', fmt.formatBytes(stats.estimatedZonesSize), 20));
-        console.log(fmt.keyValue('  Est. route files:', fmt.formatBytes(stats.estimatedRoutesSize), 20));
-        console.log('');
-        console.log(fmt.suggestion('Run without --dry-run to export files'));
-        console.log('');
-        db.close();
-        return;
-      }
-
-      const outputDir = path.resolve(process.cwd(), options.output);
-      console.log(fmt.keyValue('Output:', outputDir, 15));
+      console.log(fmt.header('VALIDATING DATA', '✓'));
       console.log('');
 
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
-          console.log(fmt.infoMessage('Exporting data...'));
+          console.log(fmt.infoMessage('Validating data files...'));
         } else if (event.type === 'progress') {
-          if (event.current && event.total) {
-            console.log(fmt.progressBar(event.current, event.total, { width: 30 }) + ' ' + (event.message || ''));
-          } else if (event.message) {
-            console.log(fmt.dim(event.message));
-          }
+          if (event.message) console.log(fmt.dim(event.message));
         } else if (event.type === 'complete') {
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
@@ -777,38 +582,52 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = exportAll(db, { outputDir, emitter });
-        const duration = Date.now() - startTime;
+        const result = validateData({ emitter });
 
         console.log('');
         console.log(fmt.divider(50));
-        console.log(fmt.bold('EXPORT COMPLETE'));
+        console.log(fmt.bold('VALIDATION RESULTS'));
         console.log(fmt.divider(50));
-        console.log(fmt.keyValue('zones.json:', result.zonesFile, 20));
-        console.log(fmt.keyValue('Route files:', result.routeFiles.toLocaleString(), 20));
-        console.log(fmt.keyValue('Total size:', fmt.formatBytes(result.totalSize), 20));
-        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 20));
+        console.log(fmt.keyValue('Status:', result.valid ? fmt.success('VALID') : fmt.error('INVALID'), 20));
+        console.log(fmt.keyValue('Zones:', result.stats.zones.toLocaleString(), 20));
+        console.log(fmt.keyValue('Route files:', result.stats.routeFiles.toLocaleString(), 20));
+        console.log(fmt.keyValue('Total routes:', result.stats.totalRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('OK routes:', result.stats.okRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('Pending routes:', result.stats.pendingRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('Total size:', fmt.formatBytes(result.stats.totalSize), 20));
 
         if (result.errors.length > 0) {
           console.log('');
-          console.log(fmt.warningMessage(`${result.errors.length} errors occurred during export`));
-          result.errors.slice(0, 3).forEach((err) => {
-            console.log(fmt.dim(`  ${fmt.symbols.bullet} ${err}`));
+          console.log(fmt.header('ERRORS', '⚠️'));
+          result.errors.forEach((err) => {
+            console.log(fmt.error(`  ${fmt.symbols.bullet} ${err}`));
           });
         }
 
+        if (result.warnings.length > 0) {
+          console.log('');
+          console.log(fmt.header('WARNINGS', '⚡'));
+          result.warnings.slice(0, 5).forEach((warn) => {
+            console.log(fmt.warning(`  ${fmt.symbols.bullet} ${warn}`));
+          });
+          if (result.warnings.length > 5) {
+            console.log(fmt.dim(`  ... and ${result.warnings.length - 5} more warnings`));
+          }
+        }
+
         console.log('');
-        console.log(fmt.successMessage('Data exported successfully!'));
-        console.log(fmt.suggestion('opas will now load data from the new format'));
+        if (result.valid) {
+          console.log(fmt.successMessage('Data validation passed!'));
+        } else {
+          console.log(fmt.errorMessage('Data validation failed'));
+        }
         console.log('');
       } catch (error) {
         console.error('');
-        console.error(fmt.errorMessage('Export failed'));
+        console.error(fmt.errorMessage('Validation failed'));
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -873,14 +692,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
   program
     .command('status')
-    .description('Show database status')
+    .description('Show data status')
     .action(() => {
-      const db = openDB();
-      try {
-        showStatus(db);
-      } finally {
-        db.close();
-      }
+      showStatus();
     });
 
   await program.parseAsync();
