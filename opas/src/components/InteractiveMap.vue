@@ -5,8 +5,10 @@ import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
+import LayerControls from './LayerControls.vue'
 import ZonePolygon from './ZonePolygon.vue'
 import { decodePolyline } from '../utils/polyline'
+import { useLayerVisibility } from '../composables/useLayerVisibility'
 
 // Type for ZonePolygon component instance
 type ZonePolygonInstance = InstanceType<typeof ZonePolygon>
@@ -41,6 +43,13 @@ const { showRoads, roadColor, roadWidth, showRailways, railwayColor, railwayWidt
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
+const { layerVisibility } = useLayerVisibility()
+
+const shouldShowZoneColors = computed(() => layerVisibility.zoneColors)
+const shouldShowTransit = computed(() => showTransit && layerVisibility.transit)
+const shouldShowZoneBorders = computed(() => layerVisibility.zoneBorders)
+const shouldShowRoads = computed(() => showRoads && layerVisibility.infrastructure)
+const shouldShowRailways = computed(() => showRailways && layerVisibility.infrastructure)
 
 // Store references to ZonePolygon components
 const zoneRefs = ref<Map<string, ZonePolygonInstance>>(new Map())
@@ -281,7 +290,10 @@ onUnmounted(() => {
 
 <template>
   <div data-testid="interactive-map" class="relative w-full aspect-square">
-    <HeatmapLegend />
+    <div class="fixed top-5 right-5 z-[1000] flex flex-col gap-3">
+      <HeatmapLegend />
+      <LayerControls />
+    </div>
     <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <svg
         data-testid="interactive-map-svg"
@@ -303,10 +315,12 @@ onUnmounted(() => {
             :key="zone.id"
             :ref="(el) => registerZoneRef(zone.id, el)"
             :zone="zone"
+            :show-fill="shouldShowZoneColors"
+            :show-stroke="shouldShowZoneBorders"
           />
         </g>
         <!-- Transit layer - on top of zones, under borders -->
-        <g v-if="showTransit" class="transit-layer pointer-events-none">
+        <g v-if="shouldShowTransit" class="transit-layer pointer-events-none">
           <path
             v-for="(d, index) in transitPaths"
             :key="`transit-${index}`"
@@ -319,7 +333,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
-        <g v-if="showRoads" class="road-layer pointer-events-none">
+        <g v-if="shouldShowRoads" class="road-layer pointer-events-none">
           <path
             v-for="(d, index) in roadPaths"
             :key="`road-${index}`"
@@ -333,7 +347,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Railways layer - on top of roads, under borders -->
-        <g v-if="showRailways" class="railway-layer pointer-events-none">
+        <g v-if="shouldShowRailways" class="railway-layer pointer-events-none">
           <path
             v-for="(d, index) in railwayPaths"
             :key="`railway-${index}`"
@@ -387,7 +401,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Routing reference points for each zone (always visible) -->
-        <g class="routing-points">
+        <g v-if="shouldShowZoneBorders" class="routing-points">
           <circle
             v-for="zone in zones"
             :key="`ref-${zone.id}`"

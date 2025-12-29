@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, ref, watch, computed } from 'vue'
 import { layerService, type LayerId, type ThemeName } from '../services/LayerService'
+import { useLayerVisibility } from '../composables/useLayerVisibility'
 
 interface Props {
   theme?: ThemeName
@@ -8,6 +9,11 @@ interface Props {
 }
 
 const { theme = 'morning', layers = ['water'] } = defineProps<Props>()
+const { layerVisibility } = useLayerVisibility()
+
+const shouldShowBackgroundLayers = computed(() => {
+  return layerVisibility.background || layerVisibility.infrastructure
+})
 
 const containerRef = ref<HTMLElement | null>(null)
 const viewBox = ref<string>('')
@@ -31,8 +37,14 @@ async function loadLayers() {
     svg.setAttribute('viewBox', viewBox.value)
     svg.setAttribute('class', 'w-full h-auto')
 
+    // Filter layers based on visibility settings (only water layer is used here)
+    const filteredLayers = layers.filter(layerId => {
+      if (layerId === 'water') return layerVisibility.background
+      return true
+    })
+
     // Load and append each requested layer in z-index order
-    const sortedLayers = [...layers].sort((a, b) => {
+    const sortedLayers = [...filteredLayers].sort((a, b) => {
       const aIndex = manifest.layers.find((l) => l.id === a)?.zIndex ?? 0
       const bIndex = manifest.layers.find((l) => l.id === b)?.zIndex ?? 0
       return aIndex - bIndex
@@ -57,11 +69,6 @@ async function loadLayers() {
           if (themeStyles.strokeWidth !== undefined) {
             layerGroup.setAttribute('stroke-width', themeStyles.strokeWidth.toString())
           }
-          // Special handling for ferry routes - use dashed lines
-          if (layerId === 'ferries') {
-            layerGroup.setAttribute('stroke-dasharray', '5,3')
-            layerGroup.setAttribute('stroke-linecap', 'round')
-          }
         }
 
         // Import and append to main SVG
@@ -82,8 +89,8 @@ onMounted(() => {
   loadLayers()
 })
 
-// Reload when theme or layers change
-watch([() => theme, () => layers], () => {
+// Reload when theme, layers, or visibility settings change
+watch([() => theme, () => layers, () => layerVisibility.background], () => {
   loadLayers()
 })
 </script>

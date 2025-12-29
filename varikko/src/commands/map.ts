@@ -35,7 +35,6 @@ export async function action(): Promise<void> {
       console.log(fmt.successMessage('layers/water.svg'));
       console.log(fmt.successMessage('layers/roads.svg'));
       console.log(fmt.successMessage('layers/railways.svg'));
-      console.log(fmt.successMessage('layers/ferries.svg'));
       console.log(fmt.successMessage('layers/manifest.json'));
       console.log('');
       console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));

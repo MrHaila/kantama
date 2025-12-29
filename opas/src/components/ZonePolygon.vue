@@ -6,9 +6,14 @@ import { useMapDataStore } from '../stores/mapData'
 
 interface Props {
   zone: Zone
+  showFill?: boolean
+  showStroke?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showFill: true,
+  showStroke: true,
+})
 
 const store = useMapDataStore()
 
@@ -38,13 +43,18 @@ defineExpose({
 
 // Computed states
 const isActive = computed(() => store.transportState.activeZoneId === props.zone.id)
-const fillOpacity = computed(() => (isActive.value ? 0 : 1))
+const fillOpacity = computed(() => {
+  if (!props.showFill) return 0
+  return isActive.value ? 0 : 1
+})
+const strokeWidth = computed(() => props.showStroke ? 2 : 0)
 
 // CSS variables for dynamic styling
 const styleVars = computed(() => ({
   '--zone-color': currentColor.value,
   '--animation-delay': `${currentDelay.value}ms`,
   '--fill-opacity': fillOpacity.value,
+  '--stroke-width': strokeWidth.value,
 }))
 
 // Handle zone interactions - integrated into component
@@ -79,7 +89,7 @@ function handleMouseLeave() {
   fill: var(--zone-color);
   fill-opacity: var(--fill-opacity, 1);
   stroke: var(--color-vintage-dark);
-  stroke-width: 2;
+  stroke-width: var(--stroke-width, 2);
   transition:
     fill 150ms ease-in-out var(--animation-delay),
     stroke-width 200ms ease-in-out,

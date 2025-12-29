@@ -30,7 +30,6 @@ const LAYERS = [
   { name: 'water', file: 'L4L_VesiAlue.shp', type: 'polygon' },
   { name: 'roads', file: 'L4L_TieViiva.shp', type: 'line' },
   { name: 'railways', file: 'L4L_RautatieViiva.shp', type: 'line' },
-  { name: 'ferries', file: 'L4L_VesiliikenneViiva.shp', type: 'line' },
 ];
 
 // Coordinate systems

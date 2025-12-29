@@ -4,7 +4,7 @@
  */
 
 export type MapThemeName = 'morning' | 'evening' | 'midnight'
-export type LayerId = 'water' | 'roads' | 'railways' | 'ferries' | 'transit-M' | 'transit-E' | 'transit-N'
+export type LayerId = 'water' | 'roads' | 'railways' | 'transit-M' | 'transit-E' | 'transit-N'
 
 export interface LayerStyles {
   fill?: string
@@ -29,7 +29,6 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#cccccc', strokeWidth: 1.0 },
       roads: { stroke: '#8b7355', strokeWidth: 0.5 },
       railways: { stroke: '#4a5568', strokeWidth: 1.2 },
-      ferries: { stroke: '#3182ce', strokeWidth: 1.0 },
     },
   },
   evening: {
@@ -42,7 +41,6 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#cccccc', strokeWidth: 1.0 },
       roads: { stroke: '#a67c52', strokeWidth: 0.5 },
       railways: { stroke: '#5a5568', strokeWidth: 1.2 },
-      ferries: { stroke: '#87CEEB', strokeWidth: 1.0 },
     },
   },
   midnight: {
@@ -55,7 +53,6 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#a78bfa', strokeWidth: 1.0 },
       roads: { stroke: '#9b8b6b', strokeWidth: 0.6 },
       railways: { stroke: '#9ca3af', strokeWidth: 1.2 },
-      ferries: { stroke: '#87CEEB', strokeWidth: 1.0 },
     },
   },
 }

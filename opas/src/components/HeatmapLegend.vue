@@ -67,14 +67,10 @@ const legendItems = computed<LegendItem[]>(() => {
 
 <style scoped>
 .heatmap-legend {
-  position: fixed;
-  top: 20px;
-  right: 20px;
   background: v-bind('currentTheme.background');
   border: 2px solid #264653;
   padding: 16px;
   box-shadow: 4px 4px 0px rgba(38, 70, 83, 1);
-  z-index: 1000;
   min-width: 140px;
 }
 
