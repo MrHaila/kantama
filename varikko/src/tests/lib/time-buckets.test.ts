@@ -1,61 +1,91 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import Database from 'better-sqlite3';
 import { calculateTimeBuckets } from '../../lib/time-buckets.js';
 import { ProgressEmitter } from '../../lib/events.js';
-import { createTestDB } from '../helpers/db.js';
+import { createTestDataStore, seedTestData } from '../helpers/datastore';
+import { readZones, readPipelineState } from '../../lib/datastore';
+import { TimePeriod, RouteStatus } from '../../shared/types';
 
 describe('calculateTimeBuckets', () => {
-  let db: Database.Database;
-  let cleanup: () => void;
+  let testDataStore: ReturnType<typeof createTestDataStore>;
 
   beforeEach(() => {
-    const result = createTestDB();
-    db = result.db;
-    cleanup = result.cleanup;
+    testDataStore = createTestDataStore();
   });
 
   afterEach(() => {
-    cleanup();
+    testDataStore.cleanup();
   });
 
-  function insertTestRoutes(durations: number[]) {
-    const numPlaces = Math.max(10, Math.ceil(Math.sqrt(durations.length / 3)));
+  function seedTestRoutes(durations: number[]) {
+    const numZones = Math.max(10, Math.ceil(Math.sqrt(durations.length / 3)));
 
-    const insertPlace = db.prepare(`
-      INSERT INTO places (id, name, lat, lon, routing_lat, routing_lon, geometry, svg_path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    const zones = Array.from({ length: numZones }, (_, i) => ({
+      id: `00${100 + i}`,
+      name: `Zone ${i}`,
+      city: 'Helsinki',
+      routingPoint: [60.0 + i * 0.01, 24.0 + i * 0.01] as [number, number],
+      geometry: { type: 'Point' as const, coordinates: [24.0 + i * 0.01, 60.0 + i * 0.01] },
+      svgPath: 'M 0 0 L 10 10',
+    }));
 
-    for (let i = 0; i < numPlaces; i++) {
-      insertPlace.run(
-        `00${100 + i}`,
-        `Zone ${i}`,
-        60.0 + i * 0.01,
-        24.0 + i * 0.01,
-        60.0 + i * 0.01,
-        24.0 + i * 0.01,
-        JSON.stringify({ type: 'Point', coordinates: [24.0 + i * 0.01, 60.0 + i * 0.01] }),
-        'M 0 0 L 10 10'
-      );
-    }
+    const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
+    const routes: Array<{
+      fromId: string;
+      toId: string;
+      period: TimePeriod;
+      routes: Array<{
+        toId: string;
+        duration: number;
+        transfers: number;
+        status: RouteStatus;
+        legs: any[];
+      }>;
+    }> = [];
 
-    const insertRoute = db.prepare(`
-      INSERT INTO routes (from_id, to_id, time_period, status, duration)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-
-    const periods = ['MORNING', 'EVENING', 'MIDNIGHT'];
+    // Group routes by fromId and period
+    const routeMap = new Map<string, Map<TimePeriod, any[]>>();
 
     durations.forEach((duration, index) => {
-      const fromIndex = Math.floor(index / (numPlaces * 3)) % numPlaces;
-      const toIndex = (fromIndex + 1 + Math.floor(index / 3)) % numPlaces;
+      const fromIndex = Math.floor(index / (numZones * 3)) % numZones;
+      const toIndex = (fromIndex + 1 + Math.floor(index / 3)) % numZones;
       const periodIndex = index % 3;
 
       const fromId = `00${100 + fromIndex}`;
       const toId = `00${100 + toIndex}`;
       const period = periods[periodIndex];
 
-      insertRoute.run(fromId, toId, period, 'OK', duration);
+      if (!routeMap.has(fromId)) {
+        routeMap.set(fromId, new Map());
+      }
+      const periodMap = routeMap.get(fromId)!;
+      if (!periodMap.has(period)) {
+        periodMap.set(period, []);
+      }
+      periodMap.get(period)!.push({
+        toId,
+        duration,
+        transfers: 0,
+        status: RouteStatus.OK,
+        legs: [],
+      });
+    });
+
+    // Convert to route file format
+    for (const [fromId, periodMap] of routeMap) {
+      for (const [period, routeList] of periodMap) {
+        routes.push({
+          fromId,
+          toId: fromId, // Not used in file format
+          period,
+          routes: routeList,
+        });
+      }
+    }
+
+    seedTestData({
+      zones,
+      timeBuckets: [],
+      routes,
     });
   }
 
@@ -82,9 +112,9 @@ describe('calculateTimeBuckets', () => {
         5100,
         5400, // 80, 85, 90 min
       ];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      const result = calculateTimeBuckets(db);
+      const result = calculateTimeBuckets();
 
       expect(result.timeBuckets).toHaveLength(6);
 
@@ -108,31 +138,27 @@ describe('calculateTimeBuckets', () => {
       });
     });
 
-    it('should store buckets in database', () => {
+    it('should store buckets in zones.json', () => {
       const durations = [600, 1200, 1800];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      calculateTimeBuckets(db);
+      calculateTimeBuckets();
 
-      const storedBuckets = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
-        count: number;
-      };
-      expect(storedBuckets.count).toBe(6);
+      const zonesData = readZones();
+      expect(zonesData).toBeDefined();
+      expect(zonesData?.timeBuckets).toHaveLength(6);
 
       // Verify metadata stored
-      const metadata = db
-        .prepare("SELECT value FROM metadata WHERE key = 'time_buckets_calculated_at'")
-        .get() as { value: string } | undefined;
-
-      expect(metadata).toBeDefined();
-      expect(metadata!.value).toBeTruthy();
+      const pipelineState = readPipelineState();
+      expect(pipelineState?.timeBucketsCalculatedAt).toBeDefined();
+      expect(pipelineState?.timeBucketsCalculatedAt).toBeTruthy();
     });
 
     it('should assign colors from palette', () => {
       const durations = [600];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      const result = calculateTimeBuckets(db);
+      const result = calculateTimeBuckets();
 
       const expectedColors = [
         '#1b9e77', // Vibrant Green - 0-15min (Fastest/Good)
@@ -152,46 +178,44 @@ describe('calculateTimeBuckets', () => {
   describe('error handling', () => {
     it('should throw error if no successful routes exist', () => {
       expect(() => {
-        calculateTimeBuckets(db);
+        calculateTimeBuckets();
       }).toThrow('No successful routes found');
     });
 
     it('should throw error if buckets already exist (without force)', () => {
       const durations = [600];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
       // First calculation
-      calculateTimeBuckets(db);
+      calculateTimeBuckets();
 
       // Second calculation without force should fail
       expect(() => {
-        calculateTimeBuckets(db);
+        calculateTimeBuckets();
       }).toThrow('Time buckets already exist');
     });
 
     it('should recalculate if force=true', () => {
       const durations = [600];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
       // First calculation
-      calculateTimeBuckets(db);
+      calculateTimeBuckets();
 
       // Second calculation with force should succeed
       expect(() => {
-        calculateTimeBuckets(db, { force: true });
+        calculateTimeBuckets({ force: true });
       }).not.toThrow();
 
-      const storedBuckets = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
-        count: number;
-      };
-      expect(storedBuckets.count).toBe(6);
+      const zonesData = readZones();
+      expect(zonesData?.timeBuckets).toHaveLength(6);
     });
   });
 
   describe('progress reporting', () => {
     it('should emit progress events', () => {
       const durations = [600, 1200];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
       const emitter = new ProgressEmitter();
       const events: string[] = [];
@@ -200,7 +224,7 @@ describe('calculateTimeBuckets', () => {
         events.push(event.type);
       });
 
-      calculateTimeBuckets(db, { emitter });
+      calculateTimeBuckets({ emitter });
 
       expect(events).toContain('start');
       expect(events).toContain('progress');
@@ -218,7 +242,7 @@ describe('calculateTimeBuckets', () => {
       });
 
       expect(() => {
-        calculateTimeBuckets(db, { emitter });
+        calculateTimeBuckets({ emitter });
       }).toThrow();
 
       expect(errorEmitted).toBe(true);
@@ -236,9 +260,9 @@ describe('calculateTimeBuckets', () => {
         4500, // Exactly 75 min
         5400, // Exactly 90 min
       ];
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      const result = calculateTimeBuckets(db);
+      const result = calculateTimeBuckets();
 
       // Verify all buckets were created
       expect(result.timeBuckets).toHaveLength(6);
@@ -255,9 +279,9 @@ describe('calculateTimeBuckets', () => {
 
     it('should handle very short routes', () => {
       const durations = [60, 120, 180]; // 1, 2, 3 minutes
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      const result = calculateTimeBuckets(db);
+      const result = calculateTimeBuckets();
 
       const bucket1 = result.timeBuckets[0];
       expect(bucket1.min).toBe(0);
@@ -266,9 +290,9 @@ describe('calculateTimeBuckets', () => {
 
     it('should handle very long routes in last bucket', () => {
       const durations = [6000, 7200, 9000]; // 100, 120, 150 minutes
-      insertTestRoutes(durations);
+      seedTestRoutes(durations);
 
-      const result = calculateTimeBuckets(db);
+      const result = calculateTimeBuckets();
 
       const bucket6 = result.timeBuckets[5];
       expect(bucket6.min).toBe(4500); // 75 min
