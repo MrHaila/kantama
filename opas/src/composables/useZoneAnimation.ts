@@ -7,20 +7,21 @@ export interface ZoneAnimationOptions {
 }
 
 export function useZoneAnimation(
-  targetColorGetter: () => string,
-  delayMs: number = 0,
+  initialColor: string,
   options: ZoneAnimationOptions = {}
 ) {
-  const currentColor = ref(targetColorGetter())
+  const currentColor = ref(initialColor)
   const isAnimating = ref(false)
+  const currentDelay = ref(0)
 
-  const { duration = 300, onComplete } = options
+  const { duration = 150, onComplete } = options
 
   /**
    * Start animation to new color after specified delay
    */
-  function startAnimation(newColor: string) {
+  function startAnimation(newColor: string, delayMs: number = 0) {
     isAnimating.value = true
+    currentDelay.value = delayMs
 
     // Apply delay before starting color transition
     setTimeout(() => {
@@ -45,6 +46,7 @@ export function useZoneAnimation(
   return {
     currentColor,
     isAnimating,
+    currentDelay,
     startAnimation,
     setColorImmediate,
   }

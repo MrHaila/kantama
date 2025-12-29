@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, ref } from 'vue'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
@@ -7,6 +7,9 @@ import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
 import ZonePolygon from './ZonePolygon.vue'
 import { decodePolyline } from '../utils/polyline'
+
+// Type for ZonePolygon component instance
+type ZonePolygonInstance = InstanceType<typeof ZonePolygon>
 import { modeColors } from '../utils/transportColors'
 import { layerService } from '../services/LayerService'
 
@@ -16,10 +19,88 @@ interface Props {
   roadWidth?: number
 }
 
-const { showRoads = true, roadColor, roadWidth } = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showRoads: true,
+  roadColor: undefined,
+  roadWidth: 0.5,
+})
+
+const { showRoads, roadColor, roadWidth } = props
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
+
+// Store references to ZonePolygon components
+const zoneRefs = ref<Map<string, ZonePolygonInstance>>(new Map())
+
+// Function to register zone component references
+function registerZoneRef(id: string, el: unknown) {
+  const component = el as ZonePolygonInstance | null
+  if (component) {
+    zoneRefs.value.set(id, component)
+  } else {
+    zoneRefs.value.delete(id)
+  }
+}
+
+/**
+ * Update all zone colors with staggered animation
+ */
+function updateZoneColors(animate: boolean = true) {
+  if (!zones.value) return
+
+  zones.value.forEach((zone) => {
+    const component = zoneRefs.value.get(zone.id)
+    if (!component) return
+
+    const newColor = store.getZoneColor(zone.id)
+
+    if (!animate) {
+      component.updateColorImmediate(newColor)
+      return
+    }
+
+    // Calculate animation delay based on screen distance from active zone
+    let delayMs = 0
+    if (store.transportState.activeZoneId) {
+      const activeZone = zones.value.find((z) => z.id === store.transportState.activeZoneId)
+      if (activeZone) {
+        const p1 = latLonToSvg(activeZone.routingPoint[0], activeZone.routingPoint[1])
+        const p2 = latLonToSvg(zone.routingPoint[0], zone.routingPoint[1])
+
+        if (p1 && p2) {
+          // Euclidean distance in SVG/screen pixels
+          const distance = Math.sqrt(Math.pow(p2[0] - p1[0], 2) + Math.pow(p2[1] - p1[1], 2))
+          // Make faster
+          delayMs = Math.round(distance / 6)
+        }
+      }
+    }
+
+    component.changeColor(newColor, delayMs)
+  })
+}
+
+// Watch for state changes that should trigger color updates
+watch(
+  () => [store.transportState.activeZoneId, store.transportState.overlayMode, store.reachabilityScores],
+  () => {
+    updateZoneColors(true)
+  },
+  { deep: true }
+)
+
+// Initial colors without animation after data is loaded
+watch(
+  () => zones.value,
+  (newZones) => {
+    if (newZones && newZones.length > 0) {
+      // Small delay to ensure refs are populated
+      setTimeout(() => updateZoneColors(false), 0)
+    }
+  },
+  { immediate: true }
+)
 
 // Road paths loaded from layer service
 const roadPaths = ref<string[]>([])
@@ -172,8 +253,13 @@ onUnmounted(() => {
         </defs>
 
         <g class="zones-layer">
-          <!-- Render all zones with independent animation -->
-          <ZonePolygon v-for="zone in zones" :key="zone.id" :zone="zone" />
+          <!-- Render all zones with independent animation controlled by parent -->
+          <ZonePolygon
+            v-for="zone in zones"
+            :key="zone.id"
+            :ref="(el) => registerZoneRef(zone.id, el)"
+            :zone="zone"
+          />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
         <g v-if="showRoads" class="road-layer pointer-events-none">
