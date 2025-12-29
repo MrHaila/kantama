@@ -188,17 +188,33 @@ function showStatus(): void {
 
   // Time Buckets Status
   const bucketCount = zonesData ? zonesData.timeBuckets.length : 0;
+  const timeBucketsTimestamp = pipelineState?.timeBucketsCalculatedAt;
+  const routeCalculationTimestamp = pipelineState?.lastRouteCalculation?.timestamp;
+
+  // Check if time buckets are stale (calculated before routes)
+  const bucketsAreStale = timeBucketsTimestamp && routeCalculationTimestamp &&
+    new Date(timeBucketsTimestamp) < new Date(routeCalculationTimestamp);
 
   console.log(fmt.header('TIME BUCKETS', '🗺️'));
+  console.log(fmt.keyValue('  Status:', bucketCount === 6
+    ? bucketsAreStale ? fmt.warning('Stale') : fmt.success('Calculated')
+    : bucketCount > 0
+      ? fmt.warning(`Partial (${bucketCount}/6)`)
+      : fmt.muted('Not calculated'), 18));
+
   if (bucketCount === 6) {
-    console.log(fmt.successMessage('  Calculated (6 buckets)'));
+    console.log(fmt.keyValue('  Buckets:', '6 time ranges for heatmap', 18));
+    if (bucketsAreStale) {
+      console.log(fmt.warningMessage('  ⚠ Outdated - routes updated after buckets calculated'));
+      console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
+    }
   } else if (bucketCount > 0) {
-    console.log(fmt.warningMessage(`  Partially calculated (${bucketCount}/6 buckets)`));
+    console.log(fmt.keyValue('  Buckets:', `${bucketCount}/6 (incomplete)`, 18));
     console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
   } else {
-    console.log(fmt.muted('  Not calculated yet'));
+    console.log(fmt.muted('  Required for heatmap visualization'));
     if (grandTotalOk > 0) {
-      console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
+      console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate buckets'));
     }
   }
   console.log('');
@@ -229,6 +245,8 @@ function showStatus(): void {
       suggestions.push('Run \'varikko routes\' to calculate transit routes');
     } else if (grandTotalPending > 0) {
       suggestions.push('Run \'varikko routes\' to calculate pending routes');
+    } else if (bucketsAreStale) {
+      suggestions.push('Run \'varikko time-buckets --force\' to recalculate stale buckets');
     } else if (bucketCount !== 6 && grandTotalOk > 0) {
       suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
     } else if (bucketCount === 6) {
@@ -277,7 +295,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.header('FETCHING POSTAL CODE ZONES', '🌍'));
       console.log('');
       console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
-      console.log(fmt.keyValue('Sources:', 'Helsinki, Espoo, Vantaa WFS', 15));
+      console.log(fmt.keyValue('Sources:', 'Helsinki, Espoo, Vantaa, Kauniainen WFS', 15));
       console.log('');
 
       let lastProgress = 0;
@@ -285,14 +303,16 @@ export async function parseCLI(): Promise<CLICommand | null> {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Fetching zones...'));
         } else if (event.type === 'progress') {
-          // Show progress bar for significant updates
+          // Show city name and progress bar
           if (event.current && event.total) {
             const progress = Math.floor((event.current / event.total) * 100);
             if (progress >= lastProgress + 10 || event.current === event.total) {
               console.log(fmt.progressBar(event.current, event.total, { width: 30 }));
               lastProgress = progress;
             }
-          } else if (event.message) {
+          }
+          // Always show message if available
+          if (event.message) {
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
@@ -517,6 +537,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       }
 
       let lastProgress = 0;
+      let lastPeriod = '';
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Starting route calculation...'));
@@ -524,6 +545,12 @@ export async function parseCLI(): Promise<CLICommand | null> {
           const current = event.current || 0;
           const total = event.total || 0;
           const metadata = event.metadata || {};
+
+          // Show period change
+          if (metadata.period && metadata.period !== lastPeriod) {
+            console.log(fmt.dim(`  Processing ${metadata.period}...`));
+            lastPeriod = metadata.period;
+          }
 
           const progress = total ? Math.floor((current / total) * 100) : 0;
           if (progress >= lastProgress + 5 || current === total) {

@@ -266,7 +266,9 @@ async function processPeriod(
   mode: TransportMode = 'WALK',
   zones?: number,
   limit?: number,
-  emitter?: ProgressEmitter
+  emitter?: ProgressEmitter,
+  progressOffset: number = 0,
+  totalTasks: number = 0
 ): Promise<{ processed: number; ok: number; noRoute: number; errors: number }> {
   const targetTime = TIME_MAPPING[period] || '08:30:00';
 
@@ -322,7 +324,7 @@ async function processPeriod(
       errorCount++;
       completed++;
       if (emitter) {
-        emitter.emitProgress('build_routes', completed, tasks.length, undefined, {
+        emitter.emitProgress('build_routes', progressOffset + completed, totalTasks || tasks.length, undefined, {
           period,
           ok: okCount,
           noRoute: noRouteCount,
@@ -376,7 +378,7 @@ async function processPeriod(
 
     // Emit progress updates
     if (emitter) {
-      emitter.emitProgress('build_routes', completed, tasks.length, undefined, {
+      emitter.emitProgress('build_routes', progressOffset + completed, totalTasks || tasks.length, undefined, {
         period,
         ok: okCount,
         noRoute: noRouteCount,
@@ -511,9 +513,32 @@ export async function buildRoutes(
     ])
   );
 
+  // Count total tasks across all periods for cumulative progress
+  let totalTasksAllPeriods = 0;
+  const taskCountPerPeriod: Record<string, number> = {};
+
+  for (const p of periodsToRun) {
+    const allZoneIds = getAllZoneIds();
+    let selectedZones = allZoneIds;
+    if (zones) {
+      selectedZones = [...allZoneIds].sort(() => Math.random() - 0.5).slice(0, zones);
+    }
+
+    let pendingCount = 0;
+    for (const fromId of selectedZones) {
+      const routesData = readZoneRoutes(fromId, p, mode);
+      if (!routesData) continue;
+      pendingCount += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+    }
+
+    const periodTasks = limit ? Math.min(pendingCount, limit) : pendingCount;
+    taskCountPerPeriod[p] = periodTasks;
+    totalTasksAllPeriods += periodTasks;
+  }
+
   // Emit start event
   if (emitter) {
-    emitter.emitStart('build_routes', undefined, undefined, {
+    emitter.emitStart('build_routes', totalTasksAllPeriods, undefined, {
       periods: periodsToRun,
       isLocal: config.isLocal,
       concurrency: config.concurrency,
@@ -528,6 +553,7 @@ export async function buildRoutes(
   let totalNoRoute = 0;
   let totalErrors = 0;
   let totalPending = 0;
+  let cumulativeProgress = 0;
 
   for (const p of periodsToRun) {
     const result = await processPeriod(
@@ -537,23 +563,28 @@ export async function buildRoutes(
       mode,
       zones,
       limit,
-      emitter
+      emitter,
+      cumulativeProgress,
+      totalTasksAllPeriods
     );
 
     totalProcessed += result.processed;
     totalOk += result.ok;
     totalNoRoute += result.noRoute;
     totalErrors += result.errors;
+    cumulativeProgress += result.processed;
   }
 
-  // Count remaining pending routes
-  for (const p of periodsToRun) {
-    const allZoneIds = getAllZoneIds();
-    for (const zoneId of allZoneIds) {
-      const routesData = readZoneRoutes(zoneId, p, mode);
-      if (!routesData) continue;
+  // Count remaining pending routes (skip for limited runs - too slow)
+  if (!zones && !limit) {
+    for (const p of periodsToRun) {
+      const allZoneIds = getAllZoneIds();
+      for (const zoneId of allZoneIds) {
+        const routesData = readZoneRoutes(zoneId, p, mode);
+        if (!routesData) continue;
 
-      totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+        totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+      }
     }
   }
 
