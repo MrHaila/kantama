@@ -63,7 +63,8 @@ function getRoutesDir(): string {
  * Get path to a specific route file
  */
 function getRoutePath(zoneId: string, period: TimePeriod): string {
-  const periodSuffix = period.toLowerCase();
+  // Use single-letter abbreviations: M, E, N
+  const periodSuffix = period.charAt(0);
   return path.join(getRoutesDir(), `${zoneId}-${periodSuffix}.msgpack`);
 }
 
