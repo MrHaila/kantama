@@ -64,10 +64,14 @@ export interface CompactRoute {
 
 export type TimePeriod = 'MORNING' | 'EVENING' | 'MIDNIGHT';
 
+/** Transport mode for routing */
+export type TransportMode = 'WALK' | 'BICYCLE';
+
 /** Per-zone route file structure (minimized keys, one file per period) */
 export interface ZoneRoutesData {
   f: string; // fromId
   p: string; // period (M, E, N)
+  m?: TransportMode; // mode (optional for backward compatibility, defaults to WALK)
   r: CompactRoute[]; // routes
 }
 

@@ -10,6 +10,7 @@ import {
 } from './datastore';
 import {
   TimePeriod,
+  TransportMode,
   CompactRoute,
   CompactLeg,
   RouteStatus,
@@ -52,6 +53,7 @@ export interface OTPConfig {
 
 export interface BuildRoutesOptions {
   period?: 'MORNING' | 'EVENING' | 'MIDNIGHT';
+  mode?: TransportMode;
   zones?: number;
   limit?: number;
   emitter?: ProgressEmitter;
@@ -75,6 +77,22 @@ const TIME_MAPPING: Record<string, string> = {
   EVENING: '17:30:00',
   MIDNIGHT: '23:30:00',
 };
+
+/** Transport mode configuration for OTP queries */
+const TRANSPORT_MODE_CONFIG = {
+  WALK: {
+    modes: '[{mode: WALK}, {mode: TRANSIT}]',
+    bikeSpeed: null,
+    bikeSwitchTime: null,
+    bikeSwitchCost: null,
+  },
+  BICYCLE: {
+    modes: '[{mode: BICYCLE}, {mode: TRANSIT}]',
+    bikeSpeed: 5.0, // m/s (~18 km/h, reasonable city cycling speed)
+    bikeSwitchTime: 120, // seconds to park/unpark bike
+    bikeSwitchCost: 600, // 10-min penalty to discourage frequent switches
+  },
+} as const;
 
 // ============================================================================
 // Helper Functions
@@ -123,9 +141,19 @@ export async function fetchRoute(
   toLat: number,
   toLon: number,
   targetTime: string,
-  config: OTPConfig
+  config: OTPConfig,
+  mode: TransportMode = 'WALK'
 ): Promise<RouteResult> {
   const targetDate = getNextTuesday();
+  const modeConfig = TRANSPORT_MODE_CONFIG[mode];
+
+  // Build optional bike parameters
+  const bikeParams =
+    mode === 'BICYCLE'
+      ? `bikeSpeed: ${modeConfig.bikeSpeed}
+       bikeSwitchTime: ${modeConfig.bikeSwitchTime}
+       bikeSwitchCost: ${modeConfig.bikeSwitchCost}`
+      : '';
 
   const query = `
     {
@@ -135,6 +163,8 @@ export async function fetchRoute(
         date: "${targetDate}"
         time: "${targetTime}"
         numItineraries: 3
+        transportModes: ${modeConfig.modes}
+        ${bikeParams}
       ) {
         itineraries {
           duration
@@ -155,16 +185,17 @@ export async function fetchRoute(
   `;
 
   try {
-    const response = await axios.post(
-      config.url,
-      { query },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-      }
-    );
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    };
+
+    // Add API key for remote OTP server
+    if (config.apiKey) {
+      headers['digitransit-subscription-key'] = config.apiKey;
+    }
+
+    const response = await axios.post(config.url, { query }, { headers });
 
     if (response.data.errors) {
       const error = response.data.errors[0];
@@ -232,6 +263,7 @@ async function processPeriod(
   period: TimePeriod,
   placeMap: Map<string, { id: string; lat: number; lon: number }>,
   config: OTPConfig,
+  mode: TransportMode = 'WALK',
   zones?: number,
   limit?: number,
   emitter?: ProgressEmitter
@@ -252,7 +284,7 @@ async function processPeriod(
   const pendingRoutes: Array<{ from_id: string; to_id: string }> = [];
 
   for (const fromId of selectedZones) {
-    const routesData = readZoneRoutes(fromId, period);
+    const routesData = readZoneRoutes(fromId, period, mode);
     if (!routesData) continue;
 
     for (const route of routesData.r) {
@@ -305,7 +337,7 @@ async function processPeriod(
       await new Promise((r) => setTimeout(r, Math.random() * config.rateLimitDelay));
     }
 
-    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime, config);
+    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime, config, mode);
 
     // Create updated route
     let updatedRoute: CompactRoute;
@@ -354,14 +386,14 @@ async function processPeriod(
 
     // Flush updates periodically (every 50 routes or at end)
     if (completed % 50 === 0 || completed === tasks.length) {
-      flushRouteUpdates(routeUpdates, period);
+      flushRouteUpdates(routeUpdates, period, mode);
     }
   };
 
   await Promise.all(tasks.map((t) => concurrencyLimit(() => runTask(t))));
 
   // Final flush of any remaining updates
-  flushRouteUpdates(routeUpdates, period);
+  flushRouteUpdates(routeUpdates, period, mode);
 
   return {
     processed: completed,
@@ -376,12 +408,13 @@ async function processPeriod(
  */
 function flushRouteUpdates(
   routeUpdates: Map<string, Map<string, CompactRoute>>,
-  period: TimePeriod
+  period: TimePeriod,
+  mode: TransportMode = 'WALK'
 ): void {
   for (const [fromId, updates] of routeUpdates.entries()) {
     if (updates.size === 0) continue;
 
-    const routesData = readZoneRoutes(fromId, period);
+    const routesData = readZoneRoutes(fromId, period, mode);
     if (!routesData) continue;
 
     // Apply updates
@@ -393,7 +426,7 @@ function flushRouteUpdates(
     }
 
     // Write back to file
-    writeZoneRoutes(fromId, period, routesData);
+    writeZoneRoutes(fromId, period, routesData, mode);
 
     // Clear processed updates
     updates.clear();
@@ -445,6 +478,7 @@ export async function buildRoutes(
 ): Promise<BuildRoutesResult> {
   const {
     period,
+    mode = 'WALK',
     zones,
     limit,
     emitter,
@@ -500,6 +534,7 @@ export async function buildRoutes(
       p,
       placeMap,
       config,
+      mode,
       zones,
       limit,
       emitter
@@ -515,7 +550,7 @@ export async function buildRoutes(
   for (const p of periodsToRun) {
     const allZoneIds = getAllZoneIds();
     for (const zoneId of allZoneIds) {
-      const routesData = readZoneRoutes(zoneId, p);
+      const routesData = readZoneRoutes(zoneId, p, mode);
       if (!routesData) continue;
 
       totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
