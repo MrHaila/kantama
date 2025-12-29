@@ -1,8 +1,9 @@
-import type Database from 'better-sqlite3';
 import type { ProgressEmitter } from './events';
 import axios from 'axios';
 import { CITY_NAME_MAP } from './types';
 import * as turf from '@turf/turf';
+import { readZones, writeZones, updatePipelineMetadata } from './datastore';
+import type { GeocodingMetadata } from '../shared/types';
 
 const GEOCODING_API = 'https://api.digitransit.fi/geocoding/v1/search';
 const REVERSE_GEOCODING_API = 'https://api.digitransit.fi/geocoding/v1/reverse';
@@ -51,40 +52,8 @@ export interface GeocodeResult {
   insideZone?: boolean; // Whether point is inside zone polygon
 }
 
-interface Place {
-  id: string;
-  name: string;
-  lat: number;
-  lon: number;
-  city?: string;
-  name_se?: string;
-  geometry: string; // GeoJSON geometry as string
-}
-
-/**
- * Ensure database schema has geocoding columns
- * Non-destructive migration - adds columns if missing
- */
-export function ensureGeocodingSchema(db: Database.Database): void {
-  const columns = db.prepare('PRAGMA table_info(places)').all() as Array<{ name: string }>;
-  const columnNames = columns.map((c) => c.name);
-
-  if (!columnNames.includes('routing_lat')) {
-    db.prepare('ALTER TABLE places ADD COLUMN routing_lat REAL').run();
-  }
-
-  if (!columnNames.includes('routing_lon')) {
-    db.prepare('ALTER TABLE places ADD COLUMN routing_lon REAL').run();
-  }
-
-  if (!columnNames.includes('routing_source')) {
-    db.prepare('ALTER TABLE places ADD COLUMN routing_source TEXT').run();
-  }
-
-  if (!columnNames.includes('geocoding_error')) {
-    db.prepare('ALTER TABLE places ADD COLUMN geocoding_error TEXT').run();
-  }
-}
+// Geocoding no longer needs to track individual zone errors in files
+// Errors are tracked in pipeline metadata
 
 /**
  * Extract city from zone ID
@@ -151,7 +120,11 @@ export async function geocodeZone(
           const polygon = turf.feature(geometry);
 
           const isInside = turf.booleanPointInPolygon(point, polygon);
-          const distance = turf.distance(turf.point([poiLon, poiLat]), point, { units: 'meters' });
+          const distance = turf.distance(
+            turf.point([poiLon, poiLat]),
+            point,
+            { units: 'meters' }
+          );
 
           if (isInside) {
             return {
@@ -169,7 +142,11 @@ export async function geocodeZone(
         const feature = response.data.features[0];
         const [lon, lat] = feature.geometry.coordinates;
         const point = turf.point([lon, lat]);
-        const distance = turf.distance(turf.point([poiLon, poiLat]), point, { units: 'meters' });
+        const distance = turf.distance(
+          turf.point([poiLon, poiLat]),
+          point,
+          { units: 'meters' }
+        );
 
         return {
           success: true,
@@ -207,44 +184,38 @@ export async function geocodeZone(
  * Update zone with geocoding results
  * Falls back to POI (inside point) if geocoding failed
  */
-export function updateZoneRouting(
-  db: Database.Database,
+/**
+ * Update zone routing point in zones.json
+ */
+function updateZoneRouting(
   zoneId: string,
   result: GeocodeResult,
   fallbackLat: number,
   fallbackLon: number
-): void {
-  const updatePlace = db.prepare(`
-    UPDATE places
-    SET routing_lat = ?,
-        routing_lon = ?,
-        routing_source = ?,
-        geocoding_error = ?
-    WHERE id = ?
-  `);
+): { error?: string } {
+  const zonesData = readZones();
+  if (!zonesData) {
+    throw new Error('No zones data found');
+  }
+
+  const zone = zonesData.zones.find((z) => z.id === zoneId);
+  if (!zone) {
+    throw new Error(`Zone ${zoneId} not found`);
+  }
 
   if (result.success && result.lat && result.lon) {
-    // Add metadata to source: distance and validation status
-    let source = result.source || 'reverse:unknown';
-    if (result.distance !== undefined) {
-      source += `:${result.distance}m`;
-    }
+    // Update routing point with geocoded coordinates
+    zone.routingPoint = [result.lat, result.lon];
+
+    // Return error if point is outside zone
     if (result.insideZone === false) {
-      // Already marked with :outside suffix, but add warning to error column
-      const warning = `Point outside zone (${result.distance}m from POI)`;
-      updatePlace.run(result.lat, result.lon, source, warning, zoneId);
-    } else {
-      updatePlace.run(result.lat, result.lon, source, null, zoneId);
+      return { error: `Point outside zone (${result.distance}m from POI)` };
     }
+    return {};
   } else {
-    // Fallback to POI (inside point)
-    updatePlace.run(
-      fallbackLat,
-      fallbackLon,
-      'fallback:inside_point',
-      result.error || null,
-      zoneId
-    );
+    // Fallback to existing routing point (inside point)
+    // Note: routing point already exists from initial fetch, no change needed
+    return { error: result.error || 'Geocoding failed' };
   }
 }
 
@@ -259,7 +230,6 @@ function sleep(ms: number): Promise<void> {
  * Geocode all zones (main entry point)
  */
 export async function geocodeZones(
-  db: Database.Database,
   options: GeocodeOptions
 ): Promise<{
   success: number;
@@ -270,30 +240,16 @@ export async function geocodeZones(
 }> {
   const { limit, emitter, apiKey } = options;
 
-  // Ensure schema has geocoding columns
-  ensureGeocodingSchema(db);
+  // Read zones from file storage
+  const zonesData = readZones();
+  if (!zonesData) {
+    throw new Error('No zones data found - run fetch first');
+  }
 
-  // Get all zones including geometry for validation
-  // Use COALESCE for optional columns that may not exist in all schemas
-  let zones = db
-    .prepare(
-      `
-    SELECT
-      id,
-      name,
-      lat,
-      lon,
-      geometry,
-      city,
-      name_se
-    FROM places
-    ORDER BY id
-  `
-    )
-    .all() as Place[];
+  let zonesToGeocode = zonesData.zones;
 
   if (limit) {
-    zones = zones.slice(0, limit);
+    zonesToGeocode = zonesToGeocode.slice(0, limit);
   }
 
   const results = {
@@ -301,53 +257,76 @@ export async function geocodeZones(
     failed: 0,
     insideZone: 0,
     outsideZone: 0,
-    errors: [] as Array<{ id: string; error: string }>,
+    errors: [] as Array<{ zoneId: string; error: string }>,
   };
 
-  emitter?.emitStart('geocode_zones', zones.length, 'Starting reverse geocoding from POI...');
+  emitter?.emitStart('geocode_zones', zonesToGeocode.length, 'Starting reverse geocoding from POI...');
 
-  for (let i = 0; i < zones.length; i++) {
-    const zone = zones[i];
+  // Note: We don't have geometry in the Zone type anymore
+  // Geocoding now only updates routing points based on reverse geocoding
+  // without geometry validation (geometry was only used during initial processing)
 
-    // Parse geometry for validation
-    const geometry = JSON.parse(zone.geometry);
+  for (let i = 0; i < zonesToGeocode.length; i++) {
+    const zone = zonesToGeocode[i];
 
-    // Use reverse geocoding from POI (lat/lon are inside points)
-    const result = await geocodeZone(zone.lat, zone.lon, geometry, apiKey);
+    // Use reverse geocoding from POI (routingPoint is inside point)
+    const result = await geocodeZone(zone.routingPoint[0], zone.routingPoint[1], null, apiKey);
 
-    updateZoneRouting(db, zone.id, result, zone.lat, zone.lon);
+    const updateResult = updateZoneRouting(
+      zone.id,
+      result,
+      zone.routingPoint[0],
+      zone.routingPoint[1]
+    );
 
     if (result.success) {
       results.success++;
-      if (result.insideZone) {
+      if (result.insideZone !== false) {
+        // If insideZone is true or undefined (no geometry to check), count as inside
         results.insideZone++;
       } else {
         results.outsideZone++;
       }
     } else {
       results.failed++;
+    }
+
+    if (updateResult.error) {
       results.errors.push({
-        id: zone.id,
-        error: result.error || 'Unknown error',
+        zoneId: zone.id,
+        error: updateResult.error,
       });
     }
 
     emitter?.emitProgress(
       'geocode_zones',
       i + 1,
-      zones.length,
+      zonesToGeocode.length,
       `Geocoded ${zone.id} (${zone.name})`
     );
 
     // Rate limiting - wait before next request (except for last one)
-    if (i < zones.length - 1) {
+    if (i < zonesToGeocode.length - 1) {
       await sleep(RATE_LIMIT_DELAY);
     }
   }
 
+  // Write updated zones back to file
+  writeZones(zonesData);
+
+  // Store pipeline metadata
+  const metadata: GeocodingMetadata = {
+    timestamp: new Date().toISOString(),
+    processed: zonesToGeocode.length,
+    successful: results.success,
+    failed: results.failed,
+    errors: results.errors,
+  };
+  updatePipelineMetadata('lastGeocoding', metadata);
+
   emitter?.emitComplete(
     'geocode_zones',
-    `Geocoded ${results.success}/${zones.length} zones (${results.insideZone} inside, ${results.outsideZone} outside, ${results.failed} fallbacks)`
+    `Geocoded ${results.success}/${zonesToGeocode.length} zones (${results.insideZone} inside, ${results.outsideZone} outside, ${results.failed} fallbacks)`
   );
 
   return results;

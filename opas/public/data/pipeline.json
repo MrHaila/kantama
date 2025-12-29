@@ -1,0 +1,1071 @@
+{
+  "lastRouteCalculation": {
+    "timestamp": "2025-12-29T12:04:14.313Z",
+    "periods": [
+      "MORNING",
+      "EVENING",
+      "MIDNIGHT"
+    ],
+    "processed": 0,
+    "OK": 0,
+    "NO_ROUTE": 0,
+    "ERROR": 0,
+    "PENDING": 0
+  },
+  "lastGeocoding": {
+    "timestamp": "2025-12-29T12:05:40.881Z",
+    "processed": 262,
+    "successful": 0,
+    "failed": 262,
+    "errors": [
+      {
+        "zoneId": "HEL-101",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-232",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-456",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-090",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-475",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-284",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-305",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-173",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-452",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-455",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-112",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-306",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-434",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-150",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-494",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-471",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-384",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-463",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-070",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-301",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-304",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-500",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-283",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-281",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-331",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-361",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-364",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-220",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-030",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-050",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-174",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-122",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-342",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-352",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-293",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-260",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-270",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-341",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-457",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-473",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-202",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-382",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-294",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-413",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-171",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-312",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-204",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-111",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-591",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-465",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-411",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-213",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-121",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-381",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-420",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-545",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-546",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-492",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-320",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-180",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-231",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-203",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-162",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-303",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-432",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-480",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-461",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-102",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-440",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-010",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-334",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-333",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-335",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-250",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-402",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-161",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-401",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-548",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-302",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-103",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-060",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-383",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-392",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-362",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-415",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-493",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-172",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-291",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-532",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-311",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-474",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-285",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-433",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-541",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-431",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-286",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-451",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-520",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-370",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-211",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-491",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-336",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-287",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-453",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-292",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-412",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-314",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-464",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-212",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-550",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-363",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-020",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-531",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-544",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-313",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-104",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-495",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-354",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-414",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-190",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-386",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-549",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-560",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-240",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-403",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-040",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-462",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-130",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-113",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-391",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-351",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-140",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-454",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-201",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-542",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-547",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-332",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-510",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-282",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-472",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-353",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-080",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "HEL-385",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Ylästö",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Pakkala",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Lentokenttä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Ruskeasanta",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Jokiniemi",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Kivistö",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Päiväkumpu",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Havukoski",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Koivukylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Hiekkaharju",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Länsimäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Korso",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Hakunila",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Rajakylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Luhtaanmäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Vapaala",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Vestra",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Mikkola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Vierumäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Martinlaakso",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Kuninkaanmäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Kiila",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Matari",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Varisto",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Seutula",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Vantaanlaakso",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Piispankylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Hämevaara",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Simonkylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Helsingin pitäjän kirkonkylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Linnainen",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Myllymäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Rekola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Koivuhaka",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Lapinkylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Myyrmäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Ojanko",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Viinikkala",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Sotunki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Tikkurila",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Metsola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Hämeenkylä",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Länsisalmi",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Hakkila",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Itä-hakkila",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Petikko",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Asola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Kuninkaala",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Viertola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Kaivoksela",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Jokivarsi",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Nikinmäki",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Veromies",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Askisto",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Ilola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Tammisto",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Keimola",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "VAN-Vaarala",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-713",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-715",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-711",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-712",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-143",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-141",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-152",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-111",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-131",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-241",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-215",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-332",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-321",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-214",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-323",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-322",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-432",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-313",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-442",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-451",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-415",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-316",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-714",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-116",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-117",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-132",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-151",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-632",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-633",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-113",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-251",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-242",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-252",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-161",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-433",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-213",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-222",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-314",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-231",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-315",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-721",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-723",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-722",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-114",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-133",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-142",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-115",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-112",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-118",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-631",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-616",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-614",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-612",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-211",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-331",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-212",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-311",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-312",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-232",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "ESP-441",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      },
+      {
+        "zoneId": "KAU-001",
+        "error": "TypeError: Cannot read properties of null (reading 'type')"
+      }
+    ]
+  }
+}

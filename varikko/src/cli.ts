@@ -1,14 +1,20 @@
 import { Command } from 'commander';
-import Database from 'better-sqlite3';
-import { openDB, getDBStats, getDBPath, getRecentErrors } from './lib/db';
-import { fetchZones, initializeSchema } from './lib/zones';
+import { fetchZonesMultiCity } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
-import { clearData, getCounts } from './lib/clearing';
 import { calculateTimeBuckets } from './lib/time-buckets';
 import { processMaps } from './lib/maps';
-import { exportAll, getExportStats } from './lib/export';
+import { validateData } from './lib/validate';
 import { createProgressEmitter } from './lib/events';
+import {
+  readZones,
+  readPipelineState,
+  getAllZoneIds,
+  countRoutesByStatus,
+  readManifest,
+  getDataDirectory,
+} from './lib/datastore';
+import { RouteStatus, TimePeriod } from './shared/types';
 import * as fmt from './lib/cli-format';
 import readline from 'readline';
 import fs from 'fs';
@@ -27,44 +33,62 @@ export interface CLICommand {
 }
 
 /**
- * Display comprehensive database status
+ * Display comprehensive data status
  */
-function showStatus(db: Database.Database): void {
-  const dbPath = getDBPath();
-  const stats = getDBStats(db);
+function showStatus(): void {
+  const dataDir = getDataDirectory();
 
-  // Get database file info
-  let dbSize = 'Unknown';
-  let dbModified = 'Unknown';
+  // Get data directory info
+  let totalSize = 0;
+  let zonesSize = 0;
+  let routesSize = 0;
+
   try {
-    const fileStats = fs.statSync(dbPath);
-    dbSize = fmt.formatBytes(fileStats.size);
-    dbModified = fmt.formatTimestamp(fileStats.mtime);
+    const zonesPath = path.join(dataDir, 'zones.json');
+    if (fs.existsSync(zonesPath)) {
+      zonesSize = fs.statSync(zonesPath).size;
+      totalSize += zonesSize;
+    }
+
+    const routesDir = path.join(dataDir, 'routes');
+    if (fs.existsSync(routesDir)) {
+      const files = fs.readdirSync(routesDir);
+      for (const file of files) {
+        const filePath = path.join(routesDir, file);
+        routesSize += fs.statSync(filePath).size;
+      }
+      totalSize += routesSize;
+    }
   } catch {
-    // File might not exist yet
+    // Files might not exist yet
   }
 
   // Header
   console.log('');
-  console.log(fmt.boxTop(60, 'VARIKKO DATABASE STATUS'));
+  console.log(fmt.boxTop(60, 'VARIKKO DATA STATUS'));
   console.log('');
 
-  // Database Overview
-  console.log(fmt.header('DATABASE', '💾'));
-  console.log(fmt.keyValue('  Path:', dbPath, 18));
-  console.log(fmt.keyValue('  Size:', dbSize, 18));
-  console.log(fmt.keyValue('  Last Modified:', dbModified, 18));
+  // Data Directory Overview
+  console.log(fmt.header('DATA DIRECTORY', '💾'));
+  console.log(fmt.keyValue('  Path:', dataDir, 18));
+  console.log(fmt.keyValue('  Zones file:', fmt.formatBytes(zonesSize), 18));
+  console.log(fmt.keyValue('  Routes files:', fmt.formatBytes(routesSize), 18));
+  console.log(fmt.keyValue('  Total size:', fmt.formatBytes(totalSize), 18));
   console.log('');
 
   // Zones Status
+  const zonesData = readZones();
+  const zoneCount = zonesData ? zonesData.zones.length : 0;
+  const pipelineState = readPipelineState();
+
   console.log(fmt.header('ZONES', '📍'));
-  if (stats.zones === 0) {
+  if (zoneCount === 0) {
     console.log(fmt.muted('  No zones fetched yet'));
-    console.log(fmt.suggestion("  Run 'varikko fetch' to fetch postal code zones"));
+    console.log(fmt.suggestion('  Run \'varikko fetch\' to fetch postal code zones'));
   } else {
-    console.log(fmt.keyValue('  Total Zones:', stats.zones, 18));
-    if (stats.lastRun?.timestamp) {
-      const lastFetch = new Date(stats.lastRun.timestamp);
+    console.log(fmt.keyValue('  Total Zones:', zoneCount, 18));
+    if (pipelineState?.lastFetch?.timestamp) {
+      const lastFetch = new Date(pipelineState.lastFetch.timestamp);
       console.log(fmt.keyValue('  Last Fetch:', fmt.formatTimestamp(lastFetch), 18));
     }
   }
@@ -72,135 +96,84 @@ function showStatus(db: Database.Database): void {
 
   // Routes Status
   console.log(fmt.header('ROUTES', '🚌'));
-  if (stats.routes.total === 0) {
+  const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
+  let totalOk = 0;
+  let totalPending = 0;
+  let totalNoRoute = 0;
+  let totalError = 0;
+
+  for (const period of periods) {
+    const counts = countRoutesByStatus(period);
+    totalOk += counts[RouteStatus.OK];
+    totalPending += counts[RouteStatus.PENDING];
+    totalNoRoute += counts[RouteStatus.NO_ROUTE];
+    totalError += counts[RouteStatus.ERROR];
+  }
+
+  const totalRoutes = totalOk + totalPending + totalNoRoute + totalError;
+
+  if (totalRoutes === 0) {
     console.log(fmt.muted('  No routes calculated yet'));
-    if (stats.zones > 0) {
-      console.log(
-        fmt.suggestion("  Run 'varikko geocode' then 'varikko routes' to calculate routes")
-      );
+    if (zoneCount > 0) {
+      console.log(fmt.suggestion('  Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
     }
   } else {
-    const totalPerPeriod = stats.routes.total / 3; // 3 periods: MORNING, EVENING, MIDNIGHT
-    console.log(
-      fmt.keyValue(
-        '  Total Routes:',
-        `${stats.routes.total.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`,
-        18
-      )
-    );
+    const totalPerPeriod = totalRoutes / 3;
+    console.log(fmt.keyValue('  Total Routes:', `${totalRoutes.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
 
     // Calculate percentages
-    const okPct =
-      stats.routes.total > 0 ? ((stats.routes.ok / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const pendingPct =
-      stats.routes.total > 0
-        ? ((stats.routes.pending / stats.routes.total) * 100).toFixed(1)
-        : '0.0';
-    const noRoutePct =
-      stats.routes.total > 0
-        ? ((stats.routes.no_route / stats.routes.total) * 100).toFixed(1)
-        : '0.0';
-    const errorPct =
-      stats.routes.total > 0 ? ((stats.routes.error / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const okPct = totalRoutes > 0 ? ((totalOk / totalRoutes) * 100).toFixed(1) : '0.0';
+    const pendingPct = totalRoutes > 0 ? ((totalPending / totalRoutes) * 100).toFixed(1) : '0.0';
+    const noRoutePct = totalRoutes > 0 ? ((totalNoRoute / totalRoutes) * 100).toFixed(1) : '0.0';
+    const errorPct = totalRoutes > 0 ? ((totalError / totalRoutes) * 100).toFixed(1) : '0.0';
 
-    console.log(
-      fmt.keyValue(
-        '  ' + fmt.symbols.success + ' Calculated:',
-        `${stats.routes.ok.toLocaleString()} (${okPct}%)`,
-        18
-      )
-    );
+    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${totalOk.toLocaleString()} (${okPct}%)`, 18));
 
-    if (stats.routes.pending > 0) {
-      console.log(
-        fmt.keyValue(
-          '  ' + fmt.symbols.pending + ' Pending:',
-          `${stats.routes.pending.toLocaleString()} (${pendingPct}%)`,
-          18
-        )
-      );
+    if (totalPending > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${totalPending.toLocaleString()} (${pendingPct}%)`, 18));
     }
 
-    if (stats.routes.no_route > 0) {
-      console.log(
-        fmt.keyValue(
-          '  ' + fmt.symbols.noRoute + ' No Route:',
-          `${stats.routes.no_route.toLocaleString()} (${noRoutePct}%)`,
-          18
-        )
-      );
+    if (totalNoRoute > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${totalNoRoute.toLocaleString()} (${noRoutePct}%)`, 18));
     }
 
-    if (stats.routes.error > 0) {
-      console.log(
-        fmt.keyValue(
-          '  ' + fmt.symbols.error + ' Errors:',
-          `${stats.routes.error.toLocaleString()} (${errorPct}%)`,
-          18
-        )
-      );
+    if (totalError > 0) {
+      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${totalError.toLocaleString()} (${errorPct}%)`, 18));
     }
   }
   console.log('');
 
   // Time Buckets Status
+  const bucketCount = zonesData ? zonesData.timeBuckets.length : 0;
+
   console.log(fmt.header('TIME BUCKETS', '🗺️'));
-  if (stats.timeBuckets.calculated) {
+  if (bucketCount === 6) {
     console.log(fmt.successMessage('  Calculated (6 buckets)'));
-  } else if (stats.timeBuckets.count > 0) {
-    console.log(
-      fmt.warningMessage(`  Partially calculated (${stats.timeBuckets.count}/6 buckets)`)
-    );
-    console.log(fmt.suggestion("  Run 'varikko time-buckets --force' to recalculate"));
+  } else if (bucketCount > 0) {
+    console.log(fmt.warningMessage(`  Partially calculated (${bucketCount}/6 buckets)`));
+    console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
   } else {
     console.log(fmt.muted('  Not calculated yet'));
-    if (stats.routes.ok > 0) {
-      console.log(fmt.suggestion("  Run 'varikko time-buckets' to generate heatmap buckets"));
+    if (totalOk > 0) {
+      console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
     }
   }
   console.log('');
-
-  // Recent Errors (if any)
-  if (stats.routes.error > 0) {
-    const errors = getRecentErrors(db, 5);
-    console.log(fmt.header('RECENT ERRORS', '⚠️'));
-    console.log(
-      fmt.muted(
-        `  Showing ${Math.min(5, errors.length)} of ${stats.routes.error.toLocaleString()} total errors`
-      )
-    );
-    console.log('');
-    errors.forEach((err) => {
-      try {
-        const legsData = JSON.parse(err.legs);
-        const errorMsg = legsData.error || 'Unknown error';
-        console.log(
-          fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`)
-        );
-        console.log(`    ${fmt.error(errorMsg)}`);
-      } catch {
-        console.log(
-          fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`)
-        );
-      }
-    });
-    console.log('');
-  }
 
   // Next Steps
   console.log(fmt.header('NEXT STEPS', '💡'));
   const suggestions: string[] = [];
 
-  if (stats.zones === 0) {
-    suggestions.push("Run 'varikko fetch' to fetch postal code zones");
-  } else if (stats.routes.total === 0) {
-    suggestions.push("Run 'varikko geocode' to geocode zones");
-    suggestions.push("Run 'varikko routes' to calculate transit routes");
-  } else if (stats.routes.pending > 0) {
-    suggestions.push("Run 'varikko routes' to calculate pending routes");
-  } else if (!stats.timeBuckets.calculated && stats.routes.ok > 0) {
-    suggestions.push("Run 'varikko time-buckets' to generate heatmap buckets");
-  } else if (stats.timeBuckets.calculated) {
+  if (zoneCount === 0) {
+    suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
+  } else if (totalRoutes === 0) {
+    suggestions.push('Run \'varikko geocode\' to geocode zones');
+    suggestions.push('Run \'varikko routes\' to calculate transit routes');
+  } else if (totalPending > 0) {
+    suggestions.push('Run \'varikko routes\' to calculate pending routes');
+  } else if (bucketCount !== 6 && totalOk > 0) {
+    suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
+  } else if (bucketCount === 6) {
     suggestions.push('All data calculated! Ready for visualization');
   }
 
@@ -225,51 +198,16 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
   // Default (no subcommand) → show status
   program.action(() => {
-    const db = openDB();
-    try {
-      showStatus(db);
-    } finally {
-      db.close();
-    }
+    showStatus();
   });
 
   // Subcommands (non-interactive mode)
 
-  // Schema initialization command
-  program
-    .command('init')
-    .description('Initialize database schema (DESTRUCTIVE - drops existing data)')
-    .option('-f, --force', 'Skip confirmation prompt')
-    .action((options) => {
-      const db = openDB();
-
-      try {
-        if (!options.force) {
-          console.log('⚠️  WARNING: This will DROP all existing data in the database!');
-          console.log('Run with --force flag to confirm: varikko init --force');
-          process.exit(0);
-        }
-
-        console.log('Initializing database schema...');
-        initializeSchema(db);
-        console.log('✓ Database schema initialized successfully');
-        console.log('\nYou can now run workflows like:');
-        console.log('  varikko fetch --test');
-        console.log('  varikko geocode');
-      } catch (error) {
-        console.error('Error initializing schema:', error);
-        process.exit(1);
-      } finally {
-        db.close();
-      }
-    });
-
   program
     .command('fetch')
-    .description('Fetch postal code zones from WFS')
+    .description('Fetch postal code zones from multi-city sources')
     .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -277,41 +215,35 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.header('FETCHING POSTAL CODE ZONES', '🌍'));
       console.log('');
-      console.log(
-        fmt.keyValue(
-          'Mode:',
-          options.limit ? `Limited (${options.limit} zones)` : 'Full dataset',
-          15
-        )
-      );
+      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
       console.log(fmt.keyValue('Sources:', 'Helsinki, Espoo, Vantaa WFS', 15));
       console.log('');
 
-      let progressStarted = false;
+      let lastProgress = 0;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Fetching zones...'));
         } else if (event.type === 'progress') {
+          // Show progress bar for significant updates
           if (event.current && event.total) {
-            progressStarted = true;
-            fmt.writeProgress(fmt.progressBar(event.current, event.total, { width: 30 }));
+            const progress = Math.floor((event.current / event.total) * 100);
+            if (progress >= lastProgress + 10 || event.current === event.total) {
+              console.log(fmt.progressBar(event.current, event.total, { width: 30 }));
+              lastProgress = progress;
+            }
           } else if (event.message) {
-            if (progressStarted) fmt.endProgress();
-            progressStarted = false;
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
-          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
-          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
       });
 
       try {
-        const result = await fetchZones(db, {
+        const result = await fetchZonesMultiCity({
           limit: options.limit,
           emitter,
         });
@@ -323,14 +255,10 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.bold('SUMMARY'));
         console.log(fmt.divider(50));
         console.log(fmt.successMessage(`Fetched ${result.zoneCount.toLocaleString()} zones`));
-        console.log(
-          fmt.successMessage(`Created ${result.routeCount.toLocaleString()} route combinations`)
-        );
+        console.log(fmt.successMessage(`Created ${result.routeCount.toLocaleString()} route combinations`));
         console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
         console.log('');
-        console.log(
-          fmt.suggestion("Next: Run 'varikko geocode' to geocode zones to routing addresses")
-        );
+        console.log(fmt.suggestion('Next: Run \'varikko geocode\' to geocode zones to routing addresses'));
         console.log('');
       } catch (error) {
         console.error('');
@@ -338,8 +266,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -348,7 +274,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .description('Geocode zones to routing addresses')
     .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -359,16 +284,8 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.header('GEOCODING ZONES', '📍'));
       console.log('');
       console.log(fmt.keyValue('API:', 'Digitransit Geocoding API', 15));
-      console.log(
-        fmt.keyValue('Auth:', apiKey ? fmt.success('Authenticated') : fmt.warning('No API key'), 15)
-      );
-      console.log(
-        fmt.keyValue(
-          'Mode:',
-          options.limit ? `Limited (${options.limit} zones)` : 'Full dataset',
-          15
-        )
-      );
+      console.log(fmt.keyValue('Auth:', apiKey ? fmt.success('Authenticated') : fmt.warning('No API key'), 15));
+      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
       console.log('');
 
       if (!apiKey) {
@@ -378,31 +295,30 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log('');
       }
 
-      let progressStarted = false;
+      let lastProgress = 0;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Geocoding zones...'));
         } else if (event.type === 'progress') {
           if (event.current && event.total) {
-            progressStarted = true;
-            fmt.writeProgress(fmt.progressBar(event.current, event.total, { width: 30 }));
+            const progress = Math.floor((event.current / event.total) * 100);
+            if (progress >= lastProgress + 10 || event.current === event.total) {
+              console.log(fmt.progressBar(event.current, event.total, { width: 30 }));
+              lastProgress = progress;
+            }
           } else if (event.message) {
-            if (progressStarted) fmt.endProgress();
-            progressStarted = false;
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
-          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
-          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
       });
 
       try {
-        const result = await geocodeZones(db, {
+        const result = await geocodeZones({
           limit: options.limit,
           apiKey,
           emitter,
@@ -417,35 +333,23 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.divider(50));
         console.log(fmt.bold('SUMMARY'));
         console.log(fmt.divider(50));
-        console.log(
-          fmt.successMessage(
-            `Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`
-          )
-        );
+        console.log(fmt.successMessage(`Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`));
         if (result.failed > 0) {
-          console.log(
-            fmt.warningMessage(
-              `Geometric fallback: ${result.failed.toLocaleString()} zones (${failedPct}%)`
-            )
-          );
+          console.log(fmt.warningMessage(`Geometric fallback: ${result.failed.toLocaleString()} zones (${failedPct}%)`));
         }
         console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
 
         if (result.errors.length > 0) {
           console.log('');
           console.log(fmt.header('ERRORS', '⚠️'));
-          console.log(
-            fmt.dim(
-              `  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`
-            )
-          );
+          console.log(fmt.dim(`  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`));
           result.errors.slice(0, 3).forEach((err) => {
-            console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.id}: ${err.error}`));
+            console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.zoneId}: ${err.error}`));
           });
         }
 
         console.log('');
-        console.log(fmt.suggestion("Next: Run 'varikko routes' to calculate transit routes"));
+        console.log(fmt.suggestion('Next: Run \'varikko routes\' to calculate transit routes'));
         console.log('');
       } catch (error) {
         console.error('');
@@ -453,8 +357,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -465,7 +367,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
     .action(async (options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -495,17 +396,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.header('CALCULATING ROUTES', '🚌'));
       console.log('');
-      console.log(
-        fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15)
-      );
+      console.log(fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15));
       console.log(fmt.keyValue('Concurrency:', `${config.concurrency} requests`, 15));
-      console.log(
-        fmt.keyValue(
-          'Period:',
-          options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)',
-          15
-        )
-      );
+      console.log(fmt.keyValue('Period:', options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)', 15));
 
       let modeDesc = 'Full dataset';
       if (options.zones && options.limit) {
@@ -524,38 +417,37 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log('');
       }
 
-      let progressStarted = false;
+      let lastProgress = 0;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Starting route calculation...'));
         } else if (event.type === 'progress') {
-          progressStarted = true;
           const current = event.current || 0;
           const total = event.total || 0;
           const metadata = event.metadata || {};
 
-          const bar = fmt.progressBar(current, total, { width: 30 });
-          const stats = fmt.formatRouteStats({
-            ok: metadata.ok,
-            noRoute: metadata.noRoute,
-            errors: metadata.errors,
-          });
-          fmt.writeProgress(`${bar} ${stats}`);
+          const progress = total ? Math.floor((current / total) * 100) : 0;
+          if (progress >= lastProgress + 5 || current === total) {
+            const bar = fmt.progressBar(current, total, { width: 30 });
+            const stats = fmt.formatRouteStats({
+              ok: metadata.ok,
+              noRoute: metadata.noRoute,
+              errors: metadata.errors,
+            });
+            console.log(`${bar} ${stats}`);
+            lastProgress = progress;
+          }
         } else if (event.type === 'complete') {
-          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
-          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
       });
 
       try {
-        const result = await buildRoutes(db, {
-          period: options.period
-            ? (options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT')
-            : undefined,
+        const result = await buildRoutes({
+          period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
           zones: options.zones,
           limit: options.limit,
           emitter,
@@ -570,9 +462,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.keyValue('Total processed:', result.processed.toLocaleString(), 20));
         console.log(fmt.successMessage(`Successful: ${result.ok.toLocaleString()} routes`));
         if (result.noRoute > 0) {
-          console.log(
-            fmt.warningMessage(`No route found: ${result.noRoute.toLocaleString()} routes`)
-          );
+          console.log(fmt.warningMessage(`No route found: ${result.noRoute.toLocaleString()} routes`));
         }
         if (result.errors > 0) {
           console.log(fmt.errorMessage(`Errors: ${result.errors.toLocaleString()} routes`));
@@ -581,7 +471,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
         console.log('');
         if (result.ok > 0) {
-          console.log(fmt.suggestion("Next: Run 'varikko time-buckets' to calculate heatmap data"));
+          console.log(fmt.suggestion('Next: Run \'varikko time-buckets\' to calculate heatmap data'));
         } else {
           console.log(fmt.warningMessage('No successful routes calculated'));
           if (config.isLocal) {
@@ -597,134 +487,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
-      }
-    });
-
-  program
-    .command('clear')
-    .description('Clear or reset data')
-    .option('-f, --force', 'Skip confirmation prompt')
-    .option('--routes', 'Reset routes to PENDING only')
-    .option('--places', 'Clear places and routes')
-    .option('--metadata', 'Clear metadata only')
-    .option('--time-buckets', 'Clear time buckets only')
-    .action(async (options) => {
-      const db = openDB();
-
-      try {
-        const { routes, places, metadata, timeBuckets } = options;
-        const clearAll = !routes && !places && !metadata && !timeBuckets;
-
-        // Get current counts
-        const counts = getCounts(db);
-
-        // Build target description
-        let targetMsg = 'ALL data (routes, places, metadata, time_buckets)';
-        const targets: string[] = [];
-        if (!clearAll) {
-          if (routes) targets.push('routes (reset to PENDING)');
-          if (places) targets.push('places and routes');
-          if (metadata) targets.push('metadata');
-          if (timeBuckets) targets.push('time_buckets');
-          targetMsg = targets.join(', ');
-        } else {
-          targets.push('routes', 'places', 'metadata', 'time_buckets');
-        }
-
-        // Header
-        console.log('');
-        console.log(fmt.header('CLEAR DATA', '🗑️'));
-        console.log('');
-
-        // Show current state
-        console.log(fmt.bold('Current database state:'));
-        console.log(fmt.keyValue('  Places:', counts.places.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Routes:', counts.routes.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Metadata:', counts.metadata.toLocaleString(), 18));
-        console.log(fmt.keyValue('  Time Buckets:', counts.timeBuckets.toLocaleString(), 18));
-        console.log('');
-
-        console.log(fmt.bold('Target:'));
-        console.log(fmt.dim(`  ${targetMsg}`));
-        console.log('');
-
-        // Confirmation prompt
-        if (!options.force) {
-          const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
-          });
-
-          const answer = await new Promise<string>((resolve) => {
-            rl.question(fmt.warning(`⚠️  Clear ${targetMsg}? (y/N) `), (ans) => {
-              rl.close();
-              resolve(ans);
-            });
-          });
-
-          if (answer.toLowerCase() !== 'y') {
-            console.log(fmt.dim('Aborted.'));
-            console.log('');
-            db.close();
-            process.exit(0);
-          }
-        }
-
-        const emitter = createProgressEmitter();
-
-        emitter.on('progress', (event) => {
-          if (event.type === 'start') {
-            console.log(fmt.infoMessage(`Clearing ${targetMsg}...`));
-          } else if (event.type === 'progress') {
-            if (event.message) console.log(fmt.dim(event.message));
-          } else if (event.type === 'complete') {
-            console.log(fmt.successMessage(event.message || 'Complete'));
-          } else if (event.type === 'error') {
-            console.error(fmt.errorMessage(event.message || 'Error'));
-            if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
-          }
-        });
-
-        const result = clearData(db, {
-          routes,
-          places,
-          metadata,
-          timeBuckets,
-          emitter,
-        });
-
-        console.log('');
-        console.log(fmt.divider(50));
-        console.log(fmt.bold('DELETED'));
-        console.log(fmt.divider(50));
-        if (result.deleted.places !== undefined) {
-          console.log(fmt.keyValue('Places:', result.deleted.places.toLocaleString(), 15));
-        }
-        if (result.deleted.routes !== undefined) {
-          const note = routes && !places ? ' (reset to PENDING)' : '';
-          console.log(
-            fmt.keyValue('Routes:', `${result.deleted.routes.toLocaleString()}${note}`, 15)
-          );
-        }
-        if (result.deleted.metadata !== undefined) {
-          console.log(fmt.keyValue('Metadata:', result.deleted.metadata.toLocaleString(), 15));
-        }
-        if (result.deleted.timeBuckets !== undefined) {
-          console.log(
-            fmt.keyValue('Time Buckets:', result.deleted.timeBuckets.toLocaleString(), 15)
-          );
-        }
-        console.log('');
-      } catch (error) {
-        console.error('');
-        console.error(fmt.errorMessage('Clear operation failed'));
-        console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
-        console.error('');
-        process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -733,7 +495,6 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .description('Calculate heatmap time buckets')
     .option('-f, --force', 'Force recalculation even if already calculated')
     .action((options) => {
-      const db = openDB();
       const emitter = createProgressEmitter();
       const startTime = Date.now();
 
@@ -758,7 +519,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       });
 
       try {
-        const result = calculateTimeBuckets(db, {
+        const result = calculateTimeBuckets({
           force: options.force,
           emitter,
         });
@@ -771,13 +532,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.divider(50));
 
         result.timeBuckets.forEach((bucket) => {
-          console.log(
-            fmt.keyValue(
-              `  Bucket ${bucket.number}:`,
-              `${bucket.label} ${fmt.dim('(' + bucket.color + ')')}`,
-              18
-            )
-          );
+          console.log(fmt.keyValue(`  Bucket ${bucket.number}:`, `${bucket.label} ${fmt.dim('(' + bucket.color + ')')}`, 18));
         });
 
         console.log('');
@@ -799,109 +554,80 @@ export async function parseCLI(): Promise<CLICommand | null> {
           console.error('');
           process.exit(1);
         }
-      } finally {
-        db.close();
       }
     });
 
   program
-    .command('export')
-    .description('Export data to optimized format for opas')
-    .option('-o, --output <dir>', 'Output directory', '../opas/public')
-    .option('--dry-run', 'Show export statistics without writing files')
-    .action((options) => {
-      const db = openDB();
+    .command('validate')
+    .description('Validate data integrity and regenerate manifest')
+    .action(() => {
       const emitter = createProgressEmitter();
-      const startTime = Date.now();
 
       // Header
       console.log('');
-      console.log(fmt.header('EXPORTING DATA', '📦'));
+      console.log(fmt.header('VALIDATING DATA', '✓'));
       console.log('');
 
-      if (options.dryRun) {
-        // Just show statistics
-        const stats = getExportStats(db);
-        console.log(fmt.bold('Export Statistics (dry run):'));
-        console.log(fmt.keyValue('  Zones:', stats.zones.toLocaleString(), 20));
-        console.log(fmt.keyValue('  Calculated Routes:', stats.routes.toLocaleString(), 20));
-        console.log(
-          fmt.keyValue('  Est. zones.json:', fmt.formatBytes(stats.estimatedZonesSize), 20)
-        );
-        console.log(
-          fmt.keyValue('  Est. route files:', fmt.formatBytes(stats.estimatedRoutesSize), 20)
-        );
-        console.log('');
-        console.log(fmt.suggestion('Run without --dry-run to export files'));
-        console.log('');
-        db.close();
-        return;
-      }
-
-      const outputDir = path.resolve(process.cwd(), options.output);
-      console.log(fmt.keyValue('Output:', outputDir, 15));
-      console.log('');
-
-      let progressStarted = false;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
-          console.log(fmt.infoMessage('Exporting data...'));
+          console.log(fmt.infoMessage('Validating data files...'));
         } else if (event.type === 'progress') {
-          if (event.current && event.total) {
-            progressStarted = true;
-            fmt.writeProgress(
-              fmt.progressBar(event.current, event.total, { width: 30 }) +
-                ' ' +
-                (event.message || '')
-            );
-          } else if (event.message) {
-            if (progressStarted) fmt.endProgress();
-            progressStarted = false;
-            console.log(fmt.dim(event.message));
-          }
+          if (event.message) console.log(fmt.dim(event.message));
         } else if (event.type === 'complete') {
-          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
-          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
       });
 
       try {
-        const result = exportAll(db, { outputDir, emitter });
-        const duration = Date.now() - startTime;
+        const result = validateData({ emitter });
 
         console.log('');
         console.log(fmt.divider(50));
-        console.log(fmt.bold('EXPORT COMPLETE'));
+        console.log(fmt.bold('VALIDATION RESULTS'));
         console.log(fmt.divider(50));
-        console.log(fmt.keyValue('zones.json:', result.zonesFile, 20));
-        console.log(fmt.keyValue('Route files:', result.routeFiles.toLocaleString(), 20));
-        console.log(fmt.keyValue('Total size:', fmt.formatBytes(result.totalSize), 20));
-        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 20));
+        console.log(fmt.keyValue('Status:', result.valid ? fmt.success('VALID') : fmt.error('INVALID'), 20));
+        console.log(fmt.keyValue('Zones:', result.stats.zones.toLocaleString(), 20));
+        console.log(fmt.keyValue('Route files:', result.stats.routeFiles.toLocaleString(), 20));
+        console.log(fmt.keyValue('Total routes:', result.stats.totalRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('OK routes:', result.stats.okRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('Pending routes:', result.stats.pendingRoutes.toLocaleString(), 20));
+        console.log(fmt.keyValue('Total size:', fmt.formatBytes(result.stats.totalSize), 20));
 
         if (result.errors.length > 0) {
           console.log('');
-          console.log(fmt.warningMessage(`${result.errors.length} errors occurred during export`));
-          result.errors.slice(0, 3).forEach((err) => {
-            console.log(fmt.dim(`  ${fmt.symbols.bullet} ${err}`));
+          console.log(fmt.header('ERRORS', '⚠️'));
+          result.errors.forEach((err) => {
+            console.log(fmt.error(`  ${fmt.symbols.bullet} ${err}`));
           });
         }
 
+        if (result.warnings.length > 0) {
+          console.log('');
+          console.log(fmt.header('WARNINGS', '⚡'));
+          result.warnings.slice(0, 5).forEach((warn) => {
+            console.log(fmt.warning(`  ${fmt.symbols.bullet} ${warn}`));
+          });
+          if (result.warnings.length > 5) {
+            console.log(fmt.dim(`  ... and ${result.warnings.length - 5} more warnings`));
+          }
+        }
+
         console.log('');
-        console.log(fmt.successMessage('Data exported successfully!'));
-        console.log(fmt.suggestion('opas will now load data from the new format'));
+        if (result.valid) {
+          console.log(fmt.successMessage('Data validation passed!'));
+        } else {
+          console.log(fmt.errorMessage('Data validation failed'));
+        }
         console.log('');
       } catch (error) {
         console.error('');
-        console.error(fmt.errorMessage('Export failed'));
+        console.error(fmt.errorMessage('Validation failed'));
         console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
         console.error('');
         process.exit(1);
-      } finally {
-        db.close();
       }
     });
 
@@ -966,14 +692,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
   program
     .command('status')
-    .description('Show database status')
+    .description('Show data status')
     .action(() => {
-      const db = openDB();
-      try {
-        showStatus(db);
-      } finally {
-        db.close();
-      }
+      showStatus();
     });
 
   await program.parseAsync();
