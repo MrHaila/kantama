@@ -21,13 +21,13 @@ describe('clearing', () => {
            VALUES (?, ?, ?, ?, ?, ?)`
         ).run('00200', 'Test Zone 2', 60.1799, 24.9484, '{}', 'M1,1');
 
-        db.prepare(
-          `INSERT INTO routes (from_id, to_id, time_period) VALUES (?, ?, ?)`
-        ).run('00100', '00200', 'MORNING');
+        db.prepare(`INSERT INTO routes (from_id, to_id, time_period) VALUES (?, ?, ?)`).run(
+          '00100',
+          '00200',
+          'MORNING'
+        );
 
-        db.prepare(
-          `INSERT INTO metadata (key, value) VALUES (?, ?)`
-        ).run('test_key', 'test_value');
+        db.prepare(`INSERT INTO metadata (key, value) VALUES (?, ?)`).run('test_key', 'test_value');
 
         db.prepare(
           `INSERT INTO time_buckets (bucket_number, min_duration, max_duration, color_hex, label) VALUES (?, ?, ?, ?, ?)`
@@ -207,12 +207,7 @@ describe('clearing', () => {
         emitStart: (stage: string, metadata?: Record<string, unknown>) => {
           events.push({ type: 'start', stage, message: JSON.stringify(metadata) });
         },
-        emitProgress: (
-          stage: string,
-          _current?: number,
-          _total?: number,
-          message?: string
-        ) => {
+        emitProgress: (stage: string, _current?: number, _total?: number, message?: string) => {
           events.push({ type: 'progress', stage, message });
         },
         emitComplete: (stage: string, message?: string) => {

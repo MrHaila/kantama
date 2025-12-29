@@ -63,12 +63,24 @@ describe('calculateTimeBuckets', () => {
     it('should create 6 fixed time buckets', () => {
       // Create routes with various durations
       const durations = [
-        300, 600, 900, // 5, 10, 15 min
-        1200, 1500, 1800, // 20, 25, 30 min
-        2100, 2400, 2700, // 35, 40, 45 min
-        3000, 3300, 3600, // 50, 55, 60 min
-        3900, 4200, 4500, // 65, 70, 75 min
-        4800, 5100, 5400, // 80, 85, 90 min
+        300,
+        600,
+        900, // 5, 10, 15 min
+        1200,
+        1500,
+        1800, // 20, 25, 30 min
+        2100,
+        2400,
+        2700, // 35, 40, 45 min
+        3000,
+        3300,
+        3600, // 50, 55, 60 min
+        3900,
+        4200,
+        4500, // 65, 70, 75 min
+        4800,
+        5100,
+        5400, // 80, 85, 90 min
       ];
       insertTestRoutes(durations);
 
@@ -217,7 +229,7 @@ describe('calculateTimeBuckets', () => {
     it('should handle routes at bucket boundaries correctly', () => {
       // Test exact boundary values
       const durations = [
-        900,  // Exactly 15 min - should be in bucket 1 or 2?
+        900, // Exactly 15 min - should be in bucket 1 or 2?
         1800, // Exactly 30 min
         2700, // Exactly 45 min
         3600, // Exactly 60 min

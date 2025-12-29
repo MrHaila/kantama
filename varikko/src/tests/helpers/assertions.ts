@@ -17,11 +17,7 @@ export function assertRecordCount(
 /**
  * Assert that all routes have specific status
  */
-export function assertAllRoutesStatus(
-  db: Database.Database,
-  status: string,
-  period?: string
-) {
+export function assertAllRoutesStatus(db: Database.Database, status: string, period?: string) {
   const query = period
     ? db.prepare('SELECT COUNT(*) as count FROM routes WHERE time_period = ? AND status != ?')
     : db.prepare('SELECT COUNT(*) as count FROM routes WHERE status != ?');
@@ -35,16 +31,16 @@ export function assertAllRoutesStatus(
 /**
  * Assert that zone has routing coordinates set
  */
-export function assertZoneHasRoutingCoords(
-  db: Database.Database,
-  zoneId: string
-) {
-  const zone = db.prepare('SELECT routing_lat, routing_lon, routing_source FROM places WHERE id = ?')
-    .get(zoneId) as {
-      routing_lat: number | null;
-      routing_lon: number | null;
-      routing_source: string | null;
-    } | undefined;
+export function assertZoneHasRoutingCoords(db: Database.Database, zoneId: string) {
+  const zone = db
+    .prepare('SELECT routing_lat, routing_lon, routing_source FROM places WHERE id = ?')
+    .get(zoneId) as
+    | {
+        routing_lat: number | null;
+        routing_lon: number | null;
+        routing_source: string | null;
+      }
+    | undefined;
 
   expect(zone).toBeDefined();
   if (!zone) {
@@ -71,7 +67,7 @@ export function assertTimeBucketsValid(db: Database.Database) {
   expect(buckets).toHaveLength(6);
 
   // Bucket numbers should be 1-6
-  expect(buckets.map(b => b.bucket_number)).toEqual([1, 2, 3, 4, 5, 6]);
+  expect(buckets.map((b) => b.bucket_number)).toEqual([1, 2, 3, 4, 5, 6]);
 
   // Verify fixed bucket boundaries
   const expectedBuckets = [
@@ -100,10 +96,14 @@ export function assertTimeBucketsValid(db: Database.Database) {
 /**
  * Compare two database snapshots (for regression testing)
  */
-export function assertDBMatches(actual: Record<string, unknown[]>, expected: Record<string, unknown[]>, options?: {
-  ignoredFields?: string[];
-  tables?: string[];
-}) {
+export function assertDBMatches(
+  actual: Record<string, unknown[]>,
+  expected: Record<string, unknown[]>,
+  options?: {
+    ignoredFields?: string[];
+    tables?: string[];
+  }
+) {
   const tables = options?.tables || ['places', 'routes', 'timeBuckets', 'metadata'];
   const ignored = options?.ignoredFields || ['created_at'];
 

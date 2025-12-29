@@ -230,17 +230,13 @@ describe('routing', () => {
         data: {
           data: {
             plan: {
-              itineraries: [
-                { duration: 1800, numberOfTransfers: 2, walkDistance: 500, legs: [] },
-              ],
+              itineraries: [{ duration: 1800, numberOfTransfers: 2, walkDistance: 500, legs: [] }],
             },
           },
         },
       };
 
-      vi.mocked(axios.post)
-        .mockRejectedValueOnce(error)
-        .mockResolvedValueOnce(mockSuccess);
+      vi.mocked(axios.post).mockRejectedValueOnce(error).mockResolvedValueOnce(mockSuccess);
 
       const result = await fetchRoute(60.17, 24.93, 60.18, 24.94, '08:30:00', mockConfig);
 
@@ -259,7 +255,9 @@ describe('routing', () => {
 
       try {
         // Insert test places
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -276,7 +274,12 @@ describe('routing', () => {
             data: {
               plan: {
                 itineraries: [
-                  { duration: 1800, numberOfTransfers: 2, walkDistance: 500, legs: [{ mode: 'BUS' }] },
+                  {
+                    duration: 1800,
+                    numberOfTransfers: 2,
+                    walkDistance: 500,
+                    legs: [{ mode: 'BUS' }],
+                  },
                 ],
               },
             },
@@ -295,7 +298,9 @@ describe('routing', () => {
         expect(result.errors).toBe(0);
 
         // Verify database updates
-        const routes = db.prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?').all('MORNING', 'OK') as unknown[];
+        const routes = db
+          .prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?')
+          .all('MORNING', 'OK') as unknown[];
         expect(routes).toHaveLength(2);
       } finally {
         cleanup();
@@ -307,7 +312,9 @@ describe('routing', () => {
 
       try {
         // Insert test places and routes
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -339,7 +346,9 @@ describe('routing', () => {
         expect(result.errors).toBe(0);
 
         // Verify database status
-        const routes = db.prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?').all('MORNING', 'NO_ROUTE') as unknown[];
+        const routes = db
+          .prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?')
+          .all('MORNING', 'NO_ROUTE') as unknown[];
         expect(routes).toHaveLength(1);
       } finally {
         cleanup();
@@ -351,7 +360,9 @@ describe('routing', () => {
 
       try {
         // Insert test places and routes
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -373,7 +384,9 @@ describe('routing', () => {
         expect(result.errors).toBe(1);
 
         // Verify database status
-        const routes = db.prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?').all('MORNING', 'ERROR') as unknown[];
+        const routes = db
+          .prepare('SELECT * FROM routes WHERE time_period = ? AND status = ?')
+          .all('MORNING', 'ERROR') as unknown[];
         expect(routes).toHaveLength(1);
       } finally {
         cleanup();
@@ -385,7 +398,9 @@ describe('routing', () => {
 
       try {
         // Insert test places
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -428,10 +443,21 @@ describe('routing', () => {
 
       try {
         // Insert test places (need more zones for 10 unique routes)
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         for (let i = 0; i < 12; i++) {
           const id = `00${100 + i}`;
-          insertPlace.run(id, `Test Zone ${i}`, 60.17 + i * 0.01, 24.93 + i * 0.01, '{}', 'M0,0', 60.17 + i * 0.01, 24.93 + i * 0.01);
+          insertPlace.run(
+            id,
+            `Test Zone ${i}`,
+            60.17 + i * 0.01,
+            24.93 + i * 0.01,
+            '{}',
+            'M0,0',
+            60.17 + i * 0.01,
+            24.93 + i * 0.01
+          );
         }
 
         // Insert 10 unique routes (varying from_id and to_id)
@@ -489,7 +515,9 @@ describe('routing', () => {
         });
 
         // Insert test data
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -533,7 +561,9 @@ describe('routing', () => {
 
       try {
         // Insert test places
-        const insertPlace = db.prepare('INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        const insertPlace = db.prepare(
+          'INSERT INTO places (id, name, lat, lon, geometry, svg_path, routing_lat, routing_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
         insertPlace.run('00100', 'Test Zone 1', 60.17, 24.93, '{}', 'M0,0', 60.17, 24.93);
         insertPlace.run('00200', 'Test Zone 2', 60.18, 24.94, '{}', 'M0,0', 60.18, 24.94);
 
@@ -563,7 +593,9 @@ describe('routing', () => {
         });
 
         // Verify metadata was stored
-        const metadata = db.prepare('SELECT value FROM metadata WHERE key = ?').get('last_route_calculation') as { value: string } | undefined;
+        const metadata = db
+          .prepare('SELECT value FROM metadata WHERE key = ?')
+          .get('last_route_calculation') as { value: string } | undefined;
         expect(metadata).toBeDefined();
 
         if (metadata) {

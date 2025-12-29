@@ -3,6 +3,7 @@
 ## Overview
 
 This document explains the two-layer coordinate system used for zones:
+
 1. **Inside points** (pole of inaccessibility) - guaranteed to be inside polygons, used for visualization
 2. **Routing points** (address-based) - refined via geocoding, used for routing calculations
 
@@ -17,6 +18,7 @@ Zones in this system are based on Finnish postal code polygons and statistical a
 - Valid geocoding lookups
 
 The reference point must:
+
 - Be inside the zone's polygon (not outside)
 - Be visually centered (representing the zone's "middle")
 - Fall on or near routeable addresses
@@ -34,6 +36,7 @@ The **pole of inaccessibility** algorithm calculates the most distant internal p
 - **Handles multi-polygons** (uses the largest polygon for zones with islands)
 
 This inside point is stored in `lat`/`lon` columns and used for:
+
 - Map visualization (markers, labels)
 - Base reference for reverse geocoding
 
@@ -183,6 +186,7 @@ The `routing_source` column contains detailed information about how the routing 
 - `fallback:inside_point` - Reverse geocoding failed, using POI as routing point
 
 The format is: `method:strategy:distance[:outside]`
+
 - **method**: `reverse` (reverse geocoding) or `fallback` (POI fallback)
 - **strategy**: radius and layer type (e.g., "address 500m", "venue 2km")
 - **distance**: distance from POI in meters (e.g., "45m", "832m")
@@ -199,6 +203,7 @@ The script uses **reverse geocoding** from the POI (pole of inaccessibility) coo
 5. **Include localities** - Try locality layer as last resort
 
 For each strategy, the script:
+
 - Requests up to 5 results from the API
 - **Validates each result** using polygon containment check
 - Returns the **first result that's inside the zone polygon**

@@ -531,11 +531,7 @@ describe('maps', () => {
       });
 
       // SVG should be written to .svg version of the TopoJSON path
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-        testSvgPath,
-        expect.any(String),
-        'utf-8'
-      );
+      expect(mockFs.writeFileSync).toHaveBeenCalledWith(testSvgPath, expect.any(String), 'utf-8');
     });
 
     it('should export layered SVG files', async () => {
@@ -706,8 +702,8 @@ describe('maps', () => {
         outputDir: testLayersDir,
       });
 
-      const waterSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
-        (call) => call[0].endsWith('water.svg')
+      const waterSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find((call) =>
+        call[0].endsWith('water.svg')
       )?.[1];
 
       expect(waterSvg).toContain('<svg viewBox=');
@@ -722,8 +718,8 @@ describe('maps', () => {
         outputDir: testLayersDir,
       });
 
-      const roadsSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
-        (call) => call[0].endsWith('roads.svg')
+      const roadsSvg = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find((call) =>
+        call[0].endsWith('roads.svg')
       )?.[1];
 
       expect(roadsSvg).toContain('<svg viewBox=');
@@ -738,8 +734,8 @@ describe('maps', () => {
         outputDir: testLayersDir,
       });
 
-      const manifest = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find(
-        (call) => call[0].endsWith('manifest.json')
+      const manifest = (mockFs.writeFileSync as ReturnType<typeof vi.fn>).mock.calls.find((call) =>
+        call[0].endsWith('manifest.json')
       )?.[1];
 
       const manifestObj = JSON.parse(manifest);
@@ -760,7 +756,6 @@ describe('maps', () => {
         zIndex: expect.any(Number),
       });
     });
-
 
     it('should throw error if TopoJSON file does not exist', async () => {
       mockFs.existsSync.mockReturnValue(false);

@@ -8,7 +8,8 @@ export class HelsinkiFetcher implements CityFetcher {
   cityName = 'Helsinki';
 
   async fetchFeatures(): Promise<Feature[]> {
-    const url = 'https://kartta.hel.fi/ws/geoserver/avoindata/wfs?' +
+    const url =
+      'https://kartta.hel.fi/ws/geoserver/avoindata/wfs?' +
       'service=WFS&version=2.0.0&request=GetFeature&' +
       'typeName=avoindata:Maavesi_osa_alueet&' +
       'outputFormat=application/json&srsName=EPSG:4326';
@@ -29,8 +30,8 @@ export class HelsinkiFetcher implements CityFetcher {
       geometry: feature.geometry,
       metadata: {
         area: props.pa,
-        sourceLayer: 'avoindata:Maavesi_osa_alueet'
-      }
+        sourceLayer: 'avoindata:Maavesi_osa_alueet',
+      },
     };
   }
 }
@@ -40,7 +41,8 @@ export class VantaaFetcher implements CityFetcher {
   cityName = 'Vantaa';
 
   async fetchFeatures(): Promise<Feature[]> {
-    const url = 'https://gis.vantaa.fi/geoserver/wfs?' +
+    const url =
+      'https://gis.vantaa.fi/geoserver/wfs?' +
       'service=WFS&version=2.0.0&request=GetFeature&' +
       'typeName=indeksit:kaupunginosat&' +
       'outputFormat=application/json&srsName=EPSG:4326';
@@ -63,8 +65,8 @@ export class VantaaFetcher implements CityFetcher {
       geometry: feature.geometry,
       metadata: {
         suuralue: props.suuralue,
-        sourceLayer: 'indeksit:kaupunginosat'
-      }
+        sourceLayer: 'indeksit:kaupunginosat',
+      },
     };
   }
 }
@@ -75,16 +77,17 @@ export class EspooFetcher implements CityFetcher {
 
   async fetchFeatures(): Promise<Feature[]> {
     // Using statistical areas for better granularity
-    const url = 'https://kartat.espoo.fi/teklaogcweb/wfs.ashx?' +
+    const url =
+      'https://kartat.espoo.fi/teklaogcweb/wfs.ashx?' +
       'service=WFS&version=1.1.0&request=GetFeature&typeName=kanta:TilastollinenAlue';
 
     const response = await axios.get(url);
     // Response is GML XML, need to parse it
     const allFeatures = parseGMLFeatureCollection(response.data);
-    
+
     // Filter to only include 'pienalue' (small areas)
     // Excludes 'suuralue' (compound areas like Suur-Tapiola) and 'tilastoalue'
-    return allFeatures.filter(f => f.properties?.tyyppi === 'pienalue');
+    return allFeatures.filter((f) => f.properties?.tyyppi === 'pienalue');
   }
 
   parseFeature(feature: Feature): StandardZone {
@@ -99,8 +102,8 @@ export class EspooFetcher implements CityFetcher {
       geometry: feature.geometry,
       metadata: {
         tyyppi: props.tyyppi,
-        sourceLayer: 'kanta:TilastollinenAlue'
-      }
+        sourceLayer: 'kanta:TilastollinenAlue',
+      },
     };
   }
 }
@@ -112,11 +115,12 @@ export class KauniainenFetcher implements CityFetcher {
   async fetchFeatures(): Promise<Feature[]> {
     // Kauniainen is small (10km²) - fetch entire municipality boundary
     // Using HSY's seutukartta for high resolution (120 points vs StatFi's 11 points)
-    const url = 'https://kartta.hsy.fi/geoserver/wfs?' +
+    const url =
+      'https://kartta.hsy.fi/geoserver/wfs?' +
       'service=WFS&version=2.0.0&request=GetFeature&' +
       'typeName=taustakartat_ja_aluejaot:seutukartta_kunta_2021&' +
       'outputFormat=application/json&srsName=EPSG:4326&' +
-      'CQL_FILTER=kunta=\'235\'';
+      "CQL_FILTER=kunta='235'";
 
     const response = await axios.get(url);
     return response.data.features;
@@ -135,8 +139,8 @@ export class KauniainenFetcher implements CityFetcher {
       geometry: feature.geometry,
       metadata: {
         kunta: props.kunta,
-        sourceLayer: 'taustakartat_ja_aluejaot:seutukartta_kunta_2021'
-      }
+        sourceLayer: 'taustakartat_ja_aluejaot:seutukartta_kunta_2021',
+      },
     };
   }
 }

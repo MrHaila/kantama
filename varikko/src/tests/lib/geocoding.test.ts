@@ -32,11 +32,9 @@ describe('geocoding - ensureGeocodingSchema', () => {
 
     ensureGeocodingSchema(testDB.db);
 
-    const columns = testDB.db
-      .prepare('PRAGMA table_info(places)')
-      .all() as Array<{ name: string }>;
+    const columns = testDB.db.prepare('PRAGMA table_info(places)').all() as Array<{ name: string }>;
 
-    expect(columns.map(c => c.name)).toEqual(
+    expect(columns.map((c) => c.name)).toEqual(
       expect.arrayContaining(['routing_lat', 'routing_lon', 'routing_source', 'geocoding_error'])
     );
   });
@@ -50,13 +48,15 @@ describe('geocoding - ensureGeocodingSchema', () => {
 describe('geocoding - geocodeZone', () => {
   const testGeometry = {
     type: 'Polygon',
-    coordinates: [[
-      [24.94, 60.16],
-      [24.96, 60.16],
-      [24.96, 60.18],
-      [24.94, 60.18],
-      [24.94, 60.16],
-    ]],
+    coordinates: [
+      [
+        [24.94, 60.16],
+        [24.96, 60.16],
+        [24.96, 60.18],
+        [24.94, 60.18],
+        [24.94, 60.16],
+      ],
+    ],
   };
 
   beforeEach(() => {
@@ -125,7 +125,7 @@ describe('geocoding - geocodeZone', () => {
       data: {
         features: [
           {
-            geometry: { coordinates: [24.9500, 60.1700] },  // Inside test polygon
+            geometry: { coordinates: [24.95, 60.17] }, // Inside test polygon
             properties: { name: 'Inside Address' },
           },
         ],
@@ -146,7 +146,7 @@ describe('geocoding - geocodeZone', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toBeTruthy();
-    expect(axios.get).toHaveBeenCalledTimes(5);  // All 5 radius strategies tried
+    expect(axios.get).toHaveBeenCalledTimes(5); // All 5 radius strategies tried
   });
 
   it('should handle network errors', async () => {
@@ -192,8 +192,8 @@ describe('geocoding - updateZoneRouting', () => {
   it('should update zone with geocoding results', () => {
     const result = {
       success: true,
-      lat: 60.1700,
-      lon: 24.9550,
+      lat: 60.17,
+      lon: 24.955,
       source: 'reverse:address 500m',
       distance: 45,
       insideZone: true,
@@ -204,11 +204,13 @@ describe('geocoding - updateZoneRouting', () => {
     assertZoneHasRoutingCoords(testDB.db, '00100');
 
     const zone = testDB.db
-      .prepare('SELECT routing_lat, routing_lon, routing_source, geocoding_error FROM places WHERE id = ?')
+      .prepare(
+        'SELECT routing_lat, routing_lon, routing_source, geocoding_error FROM places WHERE id = ?'
+      )
       .get('00100') as any;
 
-    expect(zone.routing_lat).toBeCloseTo(60.1700, 4);
-    expect(zone.routing_lon).toBeCloseTo(24.9550, 4);
+    expect(zone.routing_lat).toBeCloseTo(60.17, 4);
+    expect(zone.routing_lon).toBeCloseTo(24.955, 4);
     expect(zone.routing_source).toContain('reverse:address 500m');
     expect(zone.routing_source).toContain('45m');
     expect(zone.geocoding_error).toBeNull();
@@ -223,10 +225,12 @@ describe('geocoding - updateZoneRouting', () => {
     updateZoneRouting(testDB.db, '00100', result, 60.1653, 24.9497);
 
     const zone = testDB.db
-      .prepare('SELECT routing_lat, routing_lon, routing_source, geocoding_error FROM places WHERE id = ?')
+      .prepare(
+        'SELECT routing_lat, routing_lon, routing_source, geocoding_error FROM places WHERE id = ?'
+      )
       .get('00100') as any;
 
-    expect(zone.routing_lat).toBeCloseTo(60.1653, 4);  // Fallback to inside point (POI)
+    expect(zone.routing_lat).toBeCloseTo(60.1653, 4); // Fallback to inside point (POI)
     expect(zone.routing_lon).toBeCloseTo(24.9497, 4);
     expect(zone.routing_source).toBe('fallback:inside_point');
     expect(zone.geocoding_error).toBe('No results found');
@@ -279,7 +283,9 @@ describe('geocoding - geocodeZones (integration)', () => {
   it('should handle partial failures', async () => {
     // First zone succeeds, second zone fails all 5 attempts, rest succeed
     vi.mocked(axios.get)
-      .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
+      .mockResolvedValueOnce({
+        data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] },
+      })
       // Zone 2: fail all 5 radius strategies
       .mockResolvedValueOnce({ data: { features: [] } })
       .mockResolvedValueOnce({ data: { features: [] } })
@@ -287,9 +293,15 @@ describe('geocoding - geocodeZones (integration)', () => {
       .mockResolvedValueOnce({ data: { features: [] } })
       .mockResolvedValueOnce({ data: { features: [] } })
       // Remaining zones succeed
-      .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
-      .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } })
-      .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } });
+      .mockResolvedValueOnce({
+        data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] },
+      })
+      .mockResolvedValueOnce({
+        data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] },
+      })
+      .mockResolvedValueOnce({
+        data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] },
+      });
 
     const result = await geocodeZones(testDB.db, {
       limit: 5,
@@ -335,9 +347,9 @@ describe('geocoding - geocodeZones (integration)', () => {
       emitter: emitter as any,
     });
 
-    expect(progressEvents.some(e => e.type === 'start')).toBe(true);
-    expect(progressEvents.some(e => e.type === 'progress')).toBe(true);
-    expect(progressEvents.some(e => e.type === 'complete')).toBe(true);
-    expect(progressEvents.every(e => e.stage === 'geocode_zones')).toBe(true);
+    expect(progressEvents.some((e) => e.type === 'start')).toBe(true);
+    expect(progressEvents.some((e) => e.type === 'progress')).toBe(true);
+    expect(progressEvents.some((e) => e.type === 'complete')).toBe(true);
+    expect(progressEvents.every((e) => e.stage === 'geocode_zones')).toBe(true);
   });
 });

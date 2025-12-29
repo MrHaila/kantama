@@ -1,11 +1,9 @@
 <script setup lang="ts">
 import { useMapDataStore } from '../stores/mapData'
-import { storeToRefs } from 'pinia'
 import InfoPanel from './InfoPanel.vue'
 import JourneyPanel from './JourneyPanel.vue'
 
 const store = useMapDataStore()
-const { activeZoneId } = storeToRefs(store)
 </script>
 
 <template>
@@ -14,6 +12,6 @@ const { activeZoneId } = storeToRefs(store)
     <InfoPanel />
 
     <!-- JourneyPanel - only shown when zone is selected (above info) -->
-    <JourneyPanel v-if="activeZoneId" />
+    <JourneyPanel v-if="store.transportState.activeZoneId" />
   </div>
 </template>

@@ -3,6 +3,7 @@
 ## Current Architecture Analysis
 
 ### Current State
+
 - **Location**: `opas/src/components/InteractiveMap.vue` (lines 156-228)
 - **Rendering**: Single SVG with v-for loop rendering ~300 zone paths
 - **Color Logic**: Reactive `store.getZoneColor(zone.id)` based on travel time buckets
@@ -10,6 +11,7 @@
 - **Problem**: All zones animate simultaneously - no independent delays or timing control
 
 ### Current Animation Flow
+
 ```
 activeZoneId changes → getZoneColor() recalculates → all zones update → 300ms fade
 ```
@@ -28,6 +30,7 @@ After analyzing the requirements and codebase, I recommend a hybrid approach:
 4. **Keyframe animations** for complex effects
 
 ### Advantages
+
 ✅ Each zone controls its own animation timing
 ✅ Simple API: reactive props or methods
 ✅ CSS-based for performance
@@ -85,11 +88,14 @@ const styleVars = computed(() => ({
 }));
 
 // Watch for color changes and trigger animation
-watch(() => props.targetColor, (newColor, oldColor) => {
-  if (newColor !== oldColor) {
-    startAnimation(newColor);
+watch(
+  () => props.targetColor,
+  (newColor, oldColor) => {
+    if (newColor !== oldColor) {
+      startAnimation(newColor);
+    }
   }
-});
+);
 </script>
 
 <template>
@@ -131,8 +137,13 @@ watch(() => props.targetColor, (newColor, oldColor) => {
 
 /* Optional: Keyframe animation for special effects */
 @keyframes zone-pulse {
-  0%, 100% { fill-opacity: var(--fill-opacity, 1); }
-  50% { fill-opacity: 0.6; }
+  0%,
+  100% {
+    fill-opacity: var(--fill-opacity, 1);
+  }
+  50% {
+    fill-opacity: 0.6;
+  }
 }
 
 .zone-polygon.animating {
@@ -142,6 +153,7 @@ watch(() => props.targetColor, (newColor, oldColor) => {
 ```
 
 **Key Features**:
+
 - ✅ Independent animation timing via `--animation-delay`
 - ✅ CSS transitions for smooth color changes
 - ✅ Support for keyframe animations (pulse effect)
@@ -171,11 +183,7 @@ export function useZoneAnimation(
   const currentColor = ref(targetColorGetter());
   const isAnimating = ref(false);
 
-  const {
-    duration = 300,
-    easing = 'ease-in-out',
-    onComplete,
-  } = options;
+  const { duration = 300, easing = 'ease-in-out', onComplete } = options;
 
   /**
    * Start animation to new color after specified delay
@@ -221,6 +229,7 @@ export function useZoneAnimation(
 ```
 
 **Features**:
+
 - ✅ Manages color state and animation lifecycle
 - ✅ Delay support built-in
 - ✅ Callbacks for animation completion
@@ -234,6 +243,7 @@ export function useZoneAnimation(
 **File**: `opas/src/components/InteractiveMap.vue`
 
 **Changes**:
+
 - Replace v-for `<path>` with `<ZonePolygon>` components
 - Calculate stagger delays (optional)
 - Pass reactive colors and states
@@ -290,6 +300,7 @@ function getTravelTimeDelay(zoneId: string): number {
 ```
 
 **Delay Strategy Options**:
+
 1. **Index-based**: Simple sequential stagger
 2. **Travel time-based**: Zones animate in order of travel time (recommended)
 3. **Distance-based**: Ripple effect from active zone
@@ -312,11 +323,7 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
   const baseDelay = ref(30); // ms between zones
   const maxDelay = ref(1000); // maximum delay
 
-  function calculateDelay(
-    zoneId: string,
-    index: number,
-    travelTime: number | null
-  ): number {
+  function calculateDelay(zoneId: string, index: number, travelTime: number | null): number {
     switch (animationMode.value) {
       case 'sequential':
         return index * baseDelay.value;
@@ -348,6 +355,7 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
 ## Alternative Approaches Considered
 
 ### Option B: Keep v-for, Use Dynamic Styles
+
 **Pros**: Fewer component instances, simpler
 **Cons**: Less encapsulation, harder to manage per-zone state
 
@@ -356,7 +364,7 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
   v-for="(zone, index) in zones"
   :style="{
     '--animation-delay': `${index * 30}ms`,
-    fill: getZoneColor(zone.id)
+    fill: getZoneColor(zone.id),
   }"
   class="transition-all duration-300"
   style="transition-delay: var(--animation-delay)"
@@ -364,6 +372,7 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
 ```
 
 ### Option C: Vue TransitionGroup
+
 **Pros**: Built-in Vue feature
 **Cons**: Designed for enter/leave, not color changes; adds wrapper elements
 
@@ -374,22 +383,26 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
 ## Migration Strategy
 
 ### Phase 1: Create Infrastructure
+
 1. ✅ Create `composables/useZoneAnimation.ts`
 2. ✅ Create `components/ZonePolygon.vue`
 3. ✅ Add unit tests for composable
 
 ### Phase 2: Integration
+
 4. ✅ Update `InteractiveMap.vue` to use `<ZonePolygon>`
 5. ✅ Implement travel-time-based delay calculation
 6. ✅ Update CSS theme variables if needed
 
 ### Phase 3: Enhancement (Optional)
+
 7. ⬜ Create `stores/zoneAnimation.ts` for advanced controls
 8. ⬜ Add animation mode selector to UI
 9. ⬜ Support custom keyframe animations
 10. ⬜ Performance testing with 300+ zones
 
 ### Phase 4: Polish
+
 11. ✅ Remove old transition classes
 12. ✅ Update documentation
 13. ✅ Test across themes (vintage, etc.)
@@ -399,18 +412,21 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
 ## Performance Considerations
 
 ### Rendering ~300 Components
+
 - **Vue 3 performance**: Handles thousands of components efficiently
 - **Virtual DOM**: Only updates changed zones
 - **CSS transitions**: Hardware-accelerated
 - **Memory**: Minimal per-component overhead
 
 ### Optimization Strategies
+
 1. **Use `v-once`** for static zone paths if needed
 2. **Lazy loading**: Render zones in viewport first (future enhancement)
 3. **CSS containment**: `contain: layout style paint`
 4. **will-change**: Only during active animations
 
 ### Benchmark Expectations
+
 - Initial render: < 100ms for 300 zones
 - Color update: < 16ms per frame (60fps)
 - Memory: ~1-2MB for component instances
@@ -420,6 +436,7 @@ export const useZoneAnimationStore = defineStore('zoneAnimation', () => {
 ## API Examples
 
 ### Simple Color Update (All Zones)
+
 ```typescript
 // When active zone changes, colors update automatically via reactive props
 store.activeZoneId = 'zone-123';
@@ -428,6 +445,7 @@ store.activeZoneId = 'zone-123';
 ```
 
 ### Programmatic Animation Trigger
+
 ```vue
 <ZonePolygon
   :zone="zone"
@@ -438,13 +456,14 @@ store.activeZoneId = 'zone-123';
 ```
 
 ### Special Effect (Pulse on Hover)
+
 ```typescript
 // In ZonePolygon component
 const pulseClass = ref(false);
 
 function triggerPulse() {
   pulseClass.value = true;
-  setTimeout(() => pulseClass.value = false, 600);
+  setTimeout(() => (pulseClass.value = false), 600);
 }
 ```
 
@@ -453,21 +472,25 @@ function triggerPulse() {
 ## Testing Plan
 
 ### Unit Tests
+
 - ✅ `useZoneAnimation` composable delay timing
 - ✅ Color transition state management
 - ✅ Callback execution
 
 ### Component Tests
+
 - ✅ ZonePolygon renders correctly
 - ✅ Props update trigger animations
 - ✅ Events emit properly
 
 ### Integration Tests
+
 - ✅ InteractiveMap renders all zones
 - ✅ Zone selection triggers staggered animations
 - ✅ Animation delays match expected values
 
 ### Visual Tests
+
 - ✅ Smooth color transitions
 - ✅ No flickering or jank
 - ✅ Proper stagger timing
@@ -505,6 +528,7 @@ This refactoring will:
 ✅ Follow Vue 3 Composition API best practices
 
 The component-based approach offers the best balance of:
+
 - **Simplicity**: Easy to understand and maintain
 - **Flexibility**: Each zone controls its own animation
 - **Performance**: CSS-based, hardware-accelerated

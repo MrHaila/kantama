@@ -19,7 +19,6 @@ Total: 310 zones (increased from 279 postal codes)
 ### Core Components
 
 1. **types.ts** - Defines shared types and interfaces
-
    - `CityCode` - City identifier (HEL, VAN, ESP, KAU)
 
    - `StandardZone` - Standardized zone format
@@ -27,7 +26,6 @@ Total: 310 zones (increased from 279 postal codes)
    - `CityFetcher` - Interface for city-specific fetchers
 
 2. **city-fetchers.ts** - Implements city-specific data fetching
-
    - `HelsinkiFetcher` - Handles Helsinki WFS API
 
    - `VantaaFetcher` - Handles Vantaa WFS API
@@ -35,13 +33,11 @@ Total: 310 zones (increased from 279 postal codes)
    - `EspooFetcher` - Handles Espoo WFS API (GML format)
 
 3. **gml-parser.ts** - Parses Espoo's GML XML responses
-
    - Converts coordinates from EPSG:3879 to EPSG:4326
 
    - Handles Polygon and MultiPolygon geometries
 
 4. **zones.ts** - Updated with multi-city functions
-
    - `fetchZonesMultiCity()` - Main entry point
 
    - `downloadZonesMultiCity()` - Downloads from all cities
@@ -49,7 +45,6 @@ Total: 310 zones (increased from 279 postal codes)
    - `processZonesMultiCity()` - Processes zones with city prefixes
 
 5. **geocoding.ts** - Enhanced for multi-city support
-
    - Uses city-aware queries: "Zone Name, City"
 
    - Supports Swedish names for bilingual areas
@@ -59,6 +54,7 @@ Total: 310 zones (increased from 279 postal codes)
 Zones use a prefixed ID format: `{CITY_CODE}-{ORIGINAL_ID}`
 
 Examples:
+
 - `HEL-101` - Vilhonvuori, Helsinki
 - `VAN-51` - Ylästö, Vantaa
 - `ESP-1` - Kunnarla, Espoo
@@ -66,6 +62,7 @@ Examples:
 ## Database Schema Changes
 
 The `places` table now includes:
+
 - `city` - City name
 - `name_se` - Swedish name (optional)
 - `admin_level` - Administrative level
@@ -80,7 +77,7 @@ import { fetchZonesMultiCity } from './lib/zones';
 
 const result = await fetchZonesMultiCity(db, {
   limit: undefined, // or set to a number to limit zones
-  emitter: progressEmitter
+  emitter: progressEmitter,
 });
 ```
 
@@ -91,7 +88,7 @@ import { HelsinkiFetcher, VantaaFetcher, EspooFetcher } from './lib/city-fetcher
 
 const helsinki = new HelsinkiFetcher();
 const zones = await helsinki.fetchFeatures();
-const parsed = zones.map(z => helsinki.parseFeature(z));
+const parsed = zones.map((z) => helsinki.parseFeature(z));
 ```
 
 ## Data Sources
@@ -143,14 +140,16 @@ See the Migration Guide in AGENTS.md for detailed steps to migrate from postal c
 ## Testing
 
 Run with limited zones:
+
 ```bash
 pnpm dev fetch --limit 5
 ```
 
 Verify database content:
+
 ```sql
-SELECT city, COUNT(*) as count 
-FROM places 
+SELECT city, COUNT(*) as count
+FROM places
 GROUP BY city;
 ```
 

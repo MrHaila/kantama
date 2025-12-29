@@ -85,37 +85,40 @@ export function createTestDB(path: string = TEST_DB_PATH): TestDB {
 /**
  * Seed database with fixture data
  */
-export function seedDB(db: Database.Database, fixtures: {
-  places?: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lon: number;
-    geometry: object;
-    svg_path: string;
-    routing_lat?: number | null;
-    routing_lon?: number | null;
-    routing_source?: string | null;
-  }>;
-  routes?: Array<{
-    from_id: string;
-    to_id: string;
-    time_period: string;
-    duration?: number | null;
-    numberOfTransfers?: number | null;
-    walkDistance?: number | null;
-    legs?: object | null;
-    status?: string;
-  }>;
-  timeBuckets?: Array<{
-    bucket_number: number;
-    min_duration: number;
-    max_duration: number;
-    color_hex: string;
-    label: string;
-  }>;
-  metadata?: Record<string, unknown>;
-}): void {
+export function seedDB(
+  db: Database.Database,
+  fixtures: {
+    places?: Array<{
+      id: string;
+      name: string;
+      lat: number;
+      lon: number;
+      geometry: object;
+      svg_path: string;
+      routing_lat?: number | null;
+      routing_lon?: number | null;
+      routing_source?: string | null;
+    }>;
+    routes?: Array<{
+      from_id: string;
+      to_id: string;
+      time_period: string;
+      duration?: number | null;
+      numberOfTransfers?: number | null;
+      walkDistance?: number | null;
+      legs?: object | null;
+      status?: string;
+    }>;
+    timeBuckets?: Array<{
+      bucket_number: number;
+      min_duration: number;
+      max_duration: number;
+      color_hex: string;
+      label: string;
+    }>;
+    metadata?: Record<string, unknown>;
+  }
+): void {
   if (fixtures.places) {
     const insertPlace = db.prepare(`
       INSERT INTO places (id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer, routing_lat, routing_lon, routing_source)
@@ -126,14 +129,14 @@ export function seedDB(db: Database.Database, fixtures: {
       insertPlace.run(
         place.id,
         place.name,
-        null,  // city (fixtures don't have this)
-        null,  // name_se (fixtures don't have this)
-        null,  // admin_level (fixtures don't have this)
+        null, // city (fixtures don't have this)
+        null, // name_se (fixtures don't have this)
+        null, // admin_level (fixtures don't have this)
         place.lat,
         place.lon,
         JSON.stringify(place.geometry),
         place.svg_path,
-        null,  // source_layer (fixtures don't have this)
+        null, // source_layer (fixtures don't have this)
         place.routing_lat || null,
         place.routing_lon || null,
         place.routing_source || null

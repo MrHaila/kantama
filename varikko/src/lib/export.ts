@@ -38,7 +38,10 @@ export interface ExportResult {
 /**
  * Export zones to zones.json
  */
-export function exportZones(db: Database.Database, outputPath: string): { zones: number; size: number } {
+export function exportZones(
+  db: Database.Database,
+  outputPath: string
+): { zones: number; size: number } {
   const places = db
     .prepare(
       `
@@ -60,7 +63,9 @@ export function exportZones(db: Database.Database, outputPath: string): { zones:
   }[];
 
   const timeBuckets = db
-    .prepare('SELECT bucket_number, min_duration, max_duration, color_hex, label FROM time_buckets ORDER BY bucket_number')
+    .prepare(
+      'SELECT bucket_number, min_duration, max_duration, color_hex, label FROM time_buckets ORDER BY bucket_number'
+    )
     .all() as {
     bucket_number: number;
     min_duration: number;
@@ -103,45 +108,47 @@ function parseLegs(legsJson: string | null): CompactLeg[] | undefined {
     const legs = JSON.parse(legsJson);
     if (!Array.isArray(legs)) return undefined;
 
-    return legs.map((leg: {
-      mode?: string;
-      duration?: number;
-      distance?: number;
-      from?: { name?: string; lat?: number; lon?: number };
-      to?: { name?: string; lat?: number; lon?: number };
-      legGeometry?: { points?: string };
-      route?: { shortName?: string; longName?: string };
-    }) => {
-      const compactLeg: CompactLeg = {
-        m: String(leg.mode || 'WALK'),
-        d: Number(leg.duration || 0),
-      };
-
-      if (leg.distance) compactLeg.di = Number(leg.distance);
-      if (leg.from && typeof leg.from === 'object') {
-        compactLeg.f = {
-          n: String(leg.from.name || ''),
-          lt: leg.from.lat !== undefined ? Number(leg.from.lat) : undefined,
-          ln: leg.from.lon !== undefined ? Number(leg.from.lon) : undefined,
+    return legs.map(
+      (leg: {
+        mode?: string;
+        duration?: number;
+        distance?: number;
+        from?: { name?: string; lat?: number; lon?: number };
+        to?: { name?: string; lat?: number; lon?: number };
+        legGeometry?: { points?: string };
+        route?: { shortName?: string; longName?: string };
+      }) => {
+        const compactLeg: CompactLeg = {
+          m: String(leg.mode || 'WALK'),
+          d: Number(leg.duration || 0),
         };
-      }
-      if (leg.to && typeof leg.to === 'object') {
-        compactLeg.t = {
-          n: String(leg.to.name || ''),
-          lt: leg.to.lat !== undefined ? Number(leg.to.lat) : undefined,
-          ln: leg.to.lon !== undefined ? Number(leg.to.lon) : undefined,
-        };
-      }
-      if (leg.legGeometry?.points) {
-        compactLeg.g = String(leg.legGeometry.points);
-      }
-      if (leg.route) {
-        if (leg.route.shortName) compactLeg.sn = String(leg.route.shortName);
-        if (leg.route.longName) compactLeg.ln = String(leg.route.longName);
-      }
 
-      return compactLeg;
-    });
+        if (leg.distance) compactLeg.di = Number(leg.distance);
+        if (leg.from && typeof leg.from === 'object') {
+          compactLeg.f = {
+            n: String(leg.from.name || ''),
+            lt: leg.from.lat !== undefined ? Number(leg.from.lat) : undefined,
+            ln: leg.from.lon !== undefined ? Number(leg.from.lon) : undefined,
+          };
+        }
+        if (leg.to && typeof leg.to === 'object') {
+          compactLeg.t = {
+            n: String(leg.to.name || ''),
+            lt: leg.to.lat !== undefined ? Number(leg.to.lat) : undefined,
+            ln: leg.to.lon !== undefined ? Number(leg.to.lon) : undefined,
+          };
+        }
+        if (leg.legGeometry?.points) {
+          compactLeg.g = String(leg.legGeometry.points);
+        }
+        if (leg.route) {
+          if (leg.route.shortName) compactLeg.sn = String(leg.route.shortName);
+          if (leg.route.longName) compactLeg.ln = String(leg.route.longName);
+        }
+
+        return compactLeg;
+      }
+    );
   } catch {
     return undefined;
   }
@@ -249,7 +256,9 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
   fs.mkdirSync(routesDir, { recursive: true });
 
   // Get all zone IDs
-  const zones = db.prepare('SELECT id FROM places WHERE svg_path IS NOT NULL').all() as { id: string }[];
+  const zones = db.prepare('SELECT id FROM places WHERE svg_path IS NOT NULL').all() as {
+    id: string;
+  }[];
 
   emitter?.emitStart('export', zones.length + 1, 'Exporting data...');
 
@@ -272,11 +281,18 @@ export function exportAll(db: Database.Database, options: ExportOptions): Export
       totalSize += routeResult.size;
       routeFilesCount += 3; // morning, evening, midnight
     } catch (err) {
-      errors.push(`Failed to export routes for ${zone.id}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(
+        `Failed to export routes for ${zone.id}: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
 
     if ((i + 1) % 10 === 0 || i === zones.length - 1) {
-      emitter?.emitProgress('export', i + 2, zones.length + 1, `Exported ${i + 1}/${zones.length} zone routes`);
+      emitter?.emitProgress(
+        'export',
+        i + 2,
+        zones.length + 1,
+        `Exported ${i + 1}/${zones.length} zone routes`
+      );
     }
   }
 
@@ -317,8 +333,16 @@ export function getExportStats(db: Database.Database): {
   estimatedZonesSize: number;
   estimatedRoutesSize: number;
 } {
-  const zoneCount = (db.prepare('SELECT COUNT(*) as count FROM places WHERE svg_path IS NOT NULL').get() as { count: number }).count;
-  const routeCount = (db.prepare('SELECT COUNT(*) as count FROM routes WHERE status = ?').get('OK') as { count: number }).count;
+  const zoneCount = (
+    db.prepare('SELECT COUNT(*) as count FROM places WHERE svg_path IS NOT NULL').get() as {
+      count: number;
+    }
+  ).count;
+  const routeCount = (
+    db.prepare('SELECT COUNT(*) as count FROM routes WHERE status = ?').get('OK') as {
+      count: number;
+    }
+  ).count;
 
   // Rough estimates based on typical data sizes
   // zones.json: ~800 bytes per zone (mostly SVG path)

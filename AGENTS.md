@@ -1,6 +1,6 @@
 # Kantama
 
-An interactive map of temporal distances between places in Helsinki using public transit.
+An interactive map of temporal distances between places in the Helsinki metropolitan area using public transit.
 
 ## Architecture Overview
 
@@ -26,11 +26,11 @@ Most development work happens in **Opas** – improving the visualisation withou
 
 ## Sub-Projects
 
-| Directory  | Purpose                  | Details                                                         |
-| ---------- | ------------------------ | --------------------------------------------------------------- |
-| `otp/`     | OpenTripPlanner instance | Fetches HSL routing data, runs local Docker OTP server          |
-| `varikko/` | Data pipeline            | Calculates transit times between postal zones, stores in SQLite |
-| `opas/`    | Web frontend             | Vue 3 + D3.js interactive chrono-map visualisation              |
+| Directory  | Purpose                  | Details                                                                 |
+| ---------- | ------------------------ | ----------------------------------------------------------------------- |
+| `otp/`     | OpenTripPlanner instance | Fetches HSL routing data, runs local Docker OTP server                  |
+| `varikko/` | Data pipeline            | Calculates transit times between administrative zones, stores in SQLite |
+| `opas/`    | Web frontend             | Vue 3 + D3.js interactive chrono-map visualisation                      |
 
 See each sub-project's `AGENTS.md` for specific implementation details.
 
@@ -47,5 +47,24 @@ See each sub-project's `AGENTS.md` for specific implementation details.
 pnpm install
 
 # Common development (Opas only)
-cd opas && pnpm dev
+pnpm opas:dev
+```
+
+## Testing
+
+```bash
+# Run all tests (currently varikko only)
+pnpm test
+
+# Run varikko tests with UI
+pnpm varikko:test
+
+# Lint all sub-projects
+pnpm lint
+
+# Format all files
+pnpm format
+
+# Build all sub-projects
+pnpm build
 ```

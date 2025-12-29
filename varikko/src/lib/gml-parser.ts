@@ -3,9 +3,10 @@ import proj4 from 'proj4';
 import type { Feature, Geometry, Polygon, MultiPolygon, Position } from 'geojson';
 
 // Define EPSG:3879 (ETRS-GK25) - used by Espoo
-proj4.defs('EPSG:3879',
+proj4.defs(
+  'EPSG:3879',
   '+proj=tmerc +lat_0=0 +lon_0=25 +k=1 +x_0=25500000 +y_0=0 ' +
-  '+ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
+    '+ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs'
 );
 
 export function parseGMLFeatureCollection(gmlXml: string): Feature[] {
@@ -15,16 +16,18 @@ export function parseGMLFeatureCollection(gmlXml: string): Feature[] {
     textNodeName: '#text',
     isArray: (name) => {
       // These elements can appear multiple times
-      return name === 'gml:featureMember' || 
-             name === 'gml:pos' ||
-             name === 'kanta:sijainnit' ||
-             name === 'kanta:Sijainti';
-    }
+      return (
+        name === 'gml:featureMember' ||
+        name === 'gml:pos' ||
+        name === 'kanta:sijainnit' ||
+        name === 'kanta:Sijainti'
+      );
+    },
   });
 
   const parsed = parser.parse(gmlXml);
   const featureMembers = parsed['wfs:FeatureCollection']['gml:featureMember'];
-  
+
   if (!Array.isArray(featureMembers)) {
     return [];
   }
@@ -43,7 +46,7 @@ export function parseGMLFeatureCollection(gmlXml: string): Feature[] {
         features.push({
           type: 'Feature',
           geometry,
-          properties
+          properties,
         });
       }
     } catch {
@@ -62,7 +65,7 @@ function extractGeometry(feature: any): Geometry | null {
 
   // sijainnit can be an array or single object
   const sijainnitArray = Array.isArray(sijainnit) ? sijainnit : [sijainnit];
-  
+
   const polygons: Position[][][] = [];
 
   for (const sijaintiContainer of sijainnitArray) {
@@ -94,7 +97,7 @@ function parseGMLProperties(feature: any): any {
   return {
     tunnus: feature['kanta:tunnus'],
     nimi: feature['kanta:nimi'],
-    tyyppi: feature['kanta:tyyppi']
+    tyyppi: feature['kanta:tyyppi'],
   };
 }
 
@@ -150,7 +153,7 @@ function parsePolyhedralSurface(surface: any): Polygon | null {
 
   // LineStringSegment can be array or single object
   const segmentArray = Array.isArray(lineStringSegment) ? lineStringSegment : [lineStringSegment];
-  
+
   // Collect all gml:pos from all segments
   const allPosElements: string[] = [];
   for (const segment of segmentArray) {
@@ -182,7 +185,7 @@ function parsePolyhedralSurface(surface: any): Polygon | null {
 
   return {
     type: 'Polygon',
-    coordinates: [coords]
+    coordinates: [coords],
   };
 }
 
@@ -200,8 +203,7 @@ function parsePolygon(polygon: any): Polygon | null {
   // Handle individual gml:pos elements (Espoo format)
   else if (linearRing['gml:pos']) {
     coords = parsePosElements(linearRing['gml:pos']);
-  }
-  else {
+  } else {
     return null;
   }
 
@@ -216,7 +218,7 @@ function parsePolygon(polygon: any): Polygon | null {
 
   return {
     type: 'Polygon',
-    coordinates: [coords]
+    coordinates: [coords],
   };
 }
 
@@ -237,13 +239,13 @@ function parseMultiPolygon(multiPolygon: any): Polygon | MultiPolygon | null {
   if (polygons.length === 1) {
     return {
       type: 'Polygon',
-      coordinates: polygons[0]
+      coordinates: polygons[0],
     };
   }
 
   return {
     type: 'MultiPolygon',
-    coordinates: polygons
+    coordinates: polygons,
   };
 }
 
@@ -255,7 +257,7 @@ function parsePosList(posList: string): Position[] {
     if (i + 1 < coords.length) {
       const x = parseFloat(coords[i]);
       const y = parseFloat(coords[i + 1]);
-      
+
       if (!isNaN(x) && !isNaN(y)) {
         // Convert from EPSG:3879 to EPSG:4326 (WGS84)
         const [lon, lat] = proj4('EPSG:3879', 'EPSG:4326', [x, y]);
@@ -270,16 +272,16 @@ function parsePosList(posList: string): Position[] {
 // Parse individual gml:pos elements (used by Espoo WFS)
 function parsePosElements(posElements: string | string[]): Position[] {
   const positions: Position[] = [];
-  
+
   // Ensure we have an array
   const elements = Array.isArray(posElements) ? posElements : [posElements];
-  
+
   for (const pos of elements) {
     const coords = pos.trim().split(/\s+/);
     if (coords.length >= 2) {
       const x = parseFloat(coords[0]);
       const y = parseFloat(coords[1]);
-      
+
       if (!isNaN(x) && !isNaN(y)) {
         // Convert from EPSG:3879 to EPSG:4326 (WGS84)
         const [lon, lat] = proj4('EPSG:3879', 'EPSG:4326', [x, y]);

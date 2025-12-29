@@ -4,9 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint . --ext .js,.ts,.vue",
+    "lint": "pnpm -r lint",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "opas:dev": "pnpm --filter opas dev",
+    "opas:build": "pnpm --filter opas build",
+    "opas:lint": "pnpm --filter opas lint",
+    "varikko:dev": "pnpm --filter varikko dev",
+    "varikko:build": "pnpm --filter varikko build",
+    "varikko:test": "pnpm --filter varikko test",
+    "varikko:lint": "pnpm --filter varikko lint"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
