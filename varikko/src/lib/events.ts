@@ -14,7 +14,9 @@ export type WorkflowStage =
   | 'validate_data'
   | 'extract'
   | 'generate'
-  | 'generate_transit_layers';
+  | 'generate_transit_layers'
+  | 'simplify_routes'
+  | 'process';
 
 export interface ProgressEvent {
   stage: WorkflowStage;

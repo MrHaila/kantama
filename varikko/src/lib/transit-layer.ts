@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import type { ProgressEmitter } from './events';
 import { getAllZoneIds, readZoneRoutes } from './datastore';
 import { TimePeriod, RouteStatus, CompactLeg } from '../shared/types';
+import { decodePolyline, simplifyPath } from './polyline';
 import {
   MAP_CENTER,
   MAP_SCALE,
@@ -32,6 +33,7 @@ const LAYERS_DIR = path.join(__dirname, '../../../opas/public/layers');
 export interface TransitLayerOptions {
   periods: TimePeriod[];
   emitter?: ProgressEmitter;
+  tolerance?: number; // Douglas-Peucker tolerance (default: 0.0005 ≈ 56m)
 }
 
 export interface TransitLayerResult {
@@ -45,55 +47,6 @@ interface SegmentKey {
   points: [number, number][];
   count: number;
   modes: Set<string>;
-}
-
-// ============================================================================
-// Polyline Decoder (copied from opas/src/utils/polyline.ts)
-// ============================================================================
-
-/**
- * Decode Google Encoded Polyline format used by OTP
- * Based on: https://developers.google.com/maps/documentation/utilities/polylinealgorithm
- */
-function decodePolyline(encoded: string): [number, number][] {
-  const points: [number, number][] = [];
-  let index = 0;
-  let lat = 0;
-  let lon = 0;
-
-  while (index < encoded.length) {
-    // Decode latitude
-    let shift = 0;
-    let result = 0;
-    let byte: number;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const dlat = result & 1 ? ~(result >> 1) : result >> 1;
-    lat += dlat;
-
-    // Decode longitude
-    shift = 0;
-    result = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const dlon = result & 1 ? ~(result >> 1) : result >> 1;
-    lon += dlon;
-
-    // OTP uses precision of 5 decimal places
-    points.push([lat / 1e5, lon / 1e5]);
-  }
-
-  return points;
 }
 
 // ============================================================================
@@ -129,75 +82,11 @@ function latLonToSVG(lat: number, lon: number, projection: d3.GeoProjection): [n
 // ============================================================================
 
 /**
- * Simplify path using Douglas-Peucker algorithm
- * Reduces number of points while preserving visual shape
- *
- * @param points Array of [lat, lon] coordinates
- * @param tolerance Maximum distance threshold (default: 0.0001 ≈ 11m)
- */
-function simplifyPath(points: [number, number][], tolerance: number = 0.0001): [number, number][] {
-  if (points.length <= 2) return points;
-
-  // Find point with maximum distance from line segment
-  let maxDistance = 0;
-  let maxIndex = 0;
-  const start = points[0];
-  const end = points[points.length - 1];
-
-  for (let i = 1; i < points.length - 1; i++) {
-    const distance = perpendicularDistance(points[i], start, end);
-    if (distance > maxDistance) {
-      maxDistance = distance;
-      maxIndex = i;
-    }
-  }
-
-  // If max distance is greater than tolerance, recursively simplify
-  if (maxDistance > tolerance) {
-    const left = simplifyPath(points.slice(0, maxIndex + 1), tolerance);
-    const right = simplifyPath(points.slice(maxIndex), tolerance);
-
-    // Merge results (remove duplicate middle point)
-    return [...left.slice(0, -1), ...right];
-  } else {
-    // Max distance is less than tolerance - return just endpoints
-    return [start, end];
-  }
-}
-
-/**
- * Calculate perpendicular distance from point to line segment
- */
-function perpendicularDistance(
-  point: [number, number],
-  lineStart: [number, number],
-  lineEnd: [number, number]
-): number {
-  const [x, y] = point;
-  const [x1, y1] = lineStart;
-  const [x2, y2] = lineEnd;
-
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-
-  // Handle degenerate case where line segment is a point
-  if (dx === 0 && dy === 0) {
-    return Math.sqrt((x - x1) ** 2 + (y - y1) ** 2);
-  }
-
-  // Calculate perpendicular distance
-  const numerator = Math.abs(dy * x - dx * y + x2 * y1 - y2 * x1);
-  const denominator = Math.sqrt(dx ** 2 + dy ** 2);
-
-  return numerator / denominator;
-}
-
-/**
  * Normalize segment for deduplication
- * Rounds coordinates to 4 decimals (~11m precision) and ensures consistent direction
+ * Rounds coordinates and ensures consistent direction
  */
 function normalizeSegment(points: [number, number][]): string {
-  // Round to 4 decimal places to collapse precision errors
+  // Round to 4 decimals (~11m) to collapse minor variations
   const rounded = points.map(([lat, lon]) => [
     Math.round(lat * 10000) / 10000,
     Math.round(lon * 10000) / 10000,
@@ -207,7 +96,7 @@ function normalizeSegment(points: [number, number][]): string {
   const [start, end] = [rounded[0], rounded[rounded.length - 1]];
   const forward = start[0] < end[0] || (start[0] === end[0] && start[1] <= end[1]);
 
-  return JSON.stringify(forward ? rounded : rounded.reverse());
+  return JSON.stringify(forward ? rounded : rounded.slice().reverse());
 }
 
 /**
@@ -228,7 +117,7 @@ function calculateStrokeWidth(usageCount: number): number {
 /**
  * Extract and aggregate transit segments from all routes for a period
  */
-function extractSegments(period: TimePeriod, emitter?: ProgressEmitter): Map<string, SegmentKey> {
+function extractSegments(period: TimePeriod, tolerance: number, emitter?: ProgressEmitter): Map<string, SegmentKey> {
   const zoneIds = getAllZoneIds();
   const segmentMap = new Map<string, SegmentKey>();
 
@@ -247,9 +136,9 @@ function extractSegments(period: TimePeriod, emitter?: ProgressEmitter): Map<str
         // Filter: transit modes only (exclude WALK)
         if (leg.m === 'WALK' || !leg.g) continue;
 
-        // Decode and simplify FIRST, then normalize
+        // Process: decode → simplify → normalize
         const rawPoints = decodePolyline(leg.g);
-        const simplifiedPoints = simplifyPath(rawPoints, 0.0001); // ~11m tolerance
+        const simplifiedPoints = simplifyPath(rawPoints, tolerance);
         const key = normalizeSegment(simplifiedPoints);
 
         if (segmentMap.has(key)) {
@@ -333,7 +222,7 @@ ${paths.join('\n')}
  * @returns Results for each period generated
  */
 export function generateTransitLayer(options: TransitLayerOptions): TransitLayerResult[] {
-  const { periods, emitter } = options;
+  const { periods, emitter, tolerance = 0.0005 } = options;
   const results: TransitLayerResult[] = [];
   const projection = createProjection();
 
@@ -349,7 +238,7 @@ export function generateTransitLayer(options: TransitLayerOptions): TransitLayer
 
     // Step 1: Extract segments
     emitter?.emitProgress('generate', 1, 4, 'Extracting transit segments...');
-    const segmentMap = extractSegments(period, emitter);
+    const segmentMap = extractSegments(period, tolerance, emitter);
 
     // Step 2: Filter single-use segments
     emitter?.emitProgress('generate', 2, 4, 'Filtering single-use segments...');

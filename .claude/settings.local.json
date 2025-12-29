@@ -29,7 +29,9 @@
       "Bash(ls:*)",
       "Bash(pnpm --filter varikko exec tsc:*)",
       "Bash(pnpm --filter opas exec vue-tsc --noEmit)",
-      "Bash(pnpm --filter opas build:*)"
+      "Bash(pnpm --filter opas build:*)",
+      "Bash(pnpm varikko:*)",
+      "Bash(pnpm --filter varikko dev:*)"
     ],
     "deny": [],
     "ask": []

@@ -7,6 +7,7 @@ import type { TimePeriod } from '../shared/types';
 
 interface TransitLayerOptions {
   period: string;
+  tolerance?: number;
 }
 
 export function register(program: Command): void {
@@ -14,6 +15,7 @@ export function register(program: Command): void {
     .command('transit-layer')
     .description('Generate SVG visualization of transit route usage')
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT, ALL)', 'ALL')
+    .option('-t, --tolerance <number>', 'Simplification tolerance (default: 0.0005 ≈ 56m)', parseFloat)
     .action(action);
 }
 
@@ -25,11 +27,14 @@ export function action(options: TransitLayerOptions): void {
   const periods: TimePeriod[] =
     options.period === 'ALL' ? ['MORNING', 'EVENING', 'MIDNIGHT'] : [validatePeriod(options.period) as TimePeriod];
 
+  const tolerance = options.tolerance ?? 0.0005;
+
   // Header
   console.log('');
   console.log(fmt.header('GENERATING TRANSIT LAYERS', '🚇'));
   console.log('');
   console.log(fmt.keyValue('Periods:', periods.join(', '), 15));
+  console.log(fmt.keyValue('Tolerance:', `${tolerance} (~${Math.round(tolerance * 1e5)}m)`, 15));
   console.log('');
 
   emitter.on('progress', (event) => {
@@ -46,7 +51,7 @@ export function action(options: TransitLayerOptions): void {
   });
 
   try {
-    const results = generateTransitLayer({ periods, emitter });
+    const results = generateTransitLayer({ periods, tolerance, emitter });
 
     const duration = Date.now() - startTime;
 

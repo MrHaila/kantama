@@ -29,4 +29,5 @@ playwright-report/
 playwright/.cache/
 
 public/data
-playwright-report
+public/layers
+varikko.db
