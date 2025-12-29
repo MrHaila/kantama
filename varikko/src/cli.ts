@@ -34,6 +34,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
   commands.validate.register(program);
   commands.map.register(program);
   commands.reachability.register(program);
+  commands.transitLayer.register(program);
   commands.status.register(program);
 
   await program.parseAsync();

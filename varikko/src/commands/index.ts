@@ -10,3 +10,4 @@ export * as validate from './validate';
 export * as map from './map';
 export * as reachability from './reachability';
 export * as status from './status';
+export * as transitLayer from './transit-layer';

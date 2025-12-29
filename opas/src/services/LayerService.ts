@@ -117,31 +117,31 @@ class LayerService {
   }
 
   /**
+   * Extract paths from any layer for rendering
+   */
+  async getLayerPaths(layerId: LayerId): Promise<string[]> {
+    try {
+      const svg = await this.loadLayer(layerId)
+      const paths = svg.querySelectorAll('path')
+      return Array.from(paths).map((p) => p.getAttribute('d') || '')
+    } catch (error) {
+      console.error(`Failed to load ${layerId} paths:`, error)
+      return []
+    }
+  }
+
+  /**
    * Extract road paths from the roads layer for rendering
    */
   async getRoadPaths(): Promise<string[]> {
-    try {
-      const roadsSvg = await this.loadLayer('roads')
-      const paths = roadsSvg.querySelectorAll('path')
-      return Array.from(paths).map((p) => p.getAttribute('d') || '')
-    } catch (error) {
-      console.error('Failed to load road paths:', error)
-      return []
-    }
+    return this.getLayerPaths('roads')
   }
 
   /**
    * Extract railway paths from the railways layer for rendering
    */
   async getRailwayPaths(): Promise<string[]> {
-    try {
-      const railwaysSvg = await this.loadLayer('railways')
-      const paths = railwaysSvg.querySelectorAll('path')
-      return Array.from(paths).map((p) => p.getAttribute('d') || '')
-    } catch (error) {
-      console.error('Failed to load railway paths:', error)
-      return []
-    }
+    return this.getLayerPaths('railways')
   }
 
   /**

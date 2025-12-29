@@ -24,7 +24,12 @@
       "Bash(python3:*)",
       "Bash(pnpm --filter opas exec tsc:*)",
       "Bash(pnpm exec vue-tsc:*)",
-      "Bash(pnpm dev:*)"
+      "Bash(pnpm dev:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm --filter varikko exec tsc:*)",
+      "Bash(pnpm --filter opas exec vue-tsc --noEmit)",
+      "Bash(pnpm --filter opas build:*)"
     ],
     "deny": [],
     "ask": []

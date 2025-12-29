@@ -20,6 +20,9 @@ interface Props {
   showRailways?: boolean
   railwayColor?: string
   railwayWidth?: number
+  showTransit?: boolean
+  transitColor?: string
+  transitWidth?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -29,15 +32,23 @@ const props = withDefaults(defineProps<Props>(), {
   showRailways: true,
   railwayColor: undefined,
   railwayWidth: 1.2,
+  showTransit: true,
+  transitColor: undefined,
+  transitWidth: 1.0,
 })
 
-const { showRoads, roadColor, roadWidth, showRailways, railwayColor, railwayWidth } = props
+const { showRoads, roadColor, roadWidth, showRailways, railwayColor, railwayWidth, showTransit, transitColor, transitWidth } = props
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
 
 // Store references to ZonePolygon components
 const zoneRefs = ref<Map<string, ZonePolygonInstance>>(new Map())
+
+// Store transit, road, and railway paths
+const transitPaths = ref<string[]>([])
+const roadPaths = ref<string[]>([])
+const railwayPaths = ref<string[]>([])
 
 // Function to register zone component references
 function registerZoneRef(id: string, el: unknown) {
@@ -108,12 +119,6 @@ watch(
   { immediate: true }
 )
 
-// Road paths loaded from layer service
-const roadPaths = ref<string[]>([])
-
-// Railway paths loaded from layer service
-const railwayPaths = ref<string[]>([])
-
 // Zones without route data (for debugging visual)
 const zonesWithoutData = computed(() => {
   if (!zones.value) return []
@@ -133,6 +138,19 @@ const zonesWithoutData = computed(() => {
 
   return []
 })
+
+// Load transit paths from layer service
+async function loadTransitPaths() {
+  if (!showTransit) return
+
+  try {
+    const period = store.currentTimePeriod
+    const layerId = period === 'MORNING' ? 'transit-M' : period === 'EVENING' ? 'transit-E' : 'transit-N'
+    transitPaths.value = await layerService.getLayerPaths(layerId)
+  } catch (error) {
+    console.error('Failed to load transit paths:', error)
+  }
+}
 
 // Load road paths from layer service
 async function loadRoadPaths() {
@@ -237,7 +255,12 @@ const routeStops = computed(() => {
 
 // Load data on mount
 onMounted(async () => {
-  await Promise.all([store.loadData(), loadRoadPaths(), loadRailwayPaths()])
+  await Promise.all([store.loadData(), loadTransitPaths(), loadRoadPaths(), loadRailwayPaths()])
+})
+
+// Reload transit layer when period changes
+watch(() => store.currentTimePeriod, () => {
+  loadTransitPaths()
 })
 
 // ESC key handler to deselect zone
@@ -280,6 +303,19 @@ onUnmounted(() => {
             :key="zone.id"
             :ref="(el) => registerZoneRef(zone.id, el)"
             :zone="zone"
+          />
+        </g>
+        <!-- Transit layer - on top of zones, under borders -->
+        <g v-if="showTransit" class="transit-layer pointer-events-none">
+          <path
+            v-for="(d, index) in transitPaths"
+            :key="`transit-${index}`"
+            :d="d"
+            fill="none"
+            :stroke="transitColor"
+            :stroke-width="transitWidth"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
         </g>
         <!-- Roads layer - on top of zones, under borders -->

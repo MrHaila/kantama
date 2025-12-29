@@ -5,7 +5,7 @@ import InteractiveMap from './components/InteractiveMap.vue'
 import InfoPanelContainer from './components/InfoPanelContainer.vue'
 import { useAppState } from './composables/useAppState'
 import { useMapDataStore } from './stores/mapData'
-import type { MapThemeName } from './config/mapThemes'
+import { getLayerStyles, type MapThemeName } from './config/mapThemes'
 
 const { currentState, error, initialize } = useAppState()
 const store = useMapDataStore()
@@ -17,6 +17,19 @@ const currentTheme = computed<MapThemeName>(() => {
     return period as MapThemeName
   }
   return 'morning' // Default fallback
+})
+
+// Derive transit layer ID and styling from current period
+const transitLayerId = computed(() => {
+  const period = store.currentTimePeriod
+  if (period === 'MORNING') return 'transit-M'
+  if (period === 'EVENING') return 'transit-E'
+  if (period === 'MIDNIGHT') return 'transit-N'
+  return 'transit-M' // Default fallback
+})
+
+const transitStyles = computed(() => {
+  return getLayerStyles(currentTheme.value, transitLayerId.value)
 })
 
 // Period options
@@ -101,7 +114,10 @@ onMounted(() => {
           </div>
           <!-- Interactive Map Layer -->
           <div class="absolute inset-0">
-            <InteractiveMap />
+            <InteractiveMap
+              :transit-color="transitStyles.stroke"
+              :transit-width="transitStyles.strokeWidth"
+            />
           </div>
         </div>
       </div>

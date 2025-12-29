@@ -11,7 +11,10 @@ export type WorkflowStage =
   | 'generate_svg'
   | 'export_layers'
   | 'export'
-  | 'validate_data';
+  | 'validate_data'
+  | 'extract'
+  | 'generate'
+  | 'generate_transit_layers';
 
 export interface ProgressEvent {
   stage: WorkflowStage;
