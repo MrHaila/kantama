@@ -506,6 +506,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
     .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
     .option('-m, --mode <mode>', 'Transport mode (WALK, BICYCLE)', 'WALK')
+    .option('-r, --retry', 'Retry previously failed routes (ERROR status)')
     .action(async (options) => {
       const emitter = createProgressEmitter();
       const startTime = Date.now();
@@ -553,7 +554,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.keyValue('Transport:', transportMode, 15));
 
       let modeDesc = 'Full dataset';
-      if (options.zones && options.limit) {
+      if (options.retry) {
+        modeDesc = 'Retry failed routes';
+      } else if (options.zones && options.limit) {
         modeDesc = `${options.zones} zones, ${options.limit} routes`;
       } else if (options.zones) {
         modeDesc = `${options.zones} random origin zones`;
@@ -640,6 +643,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
           mode: transportMode as 'WALK' | 'BICYCLE',
           zones: options.zones,
           limit: options.limit,
+          retryFailed: options.retry,
           emitter,
         });
 

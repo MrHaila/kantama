@@ -56,6 +56,7 @@ export interface BuildRoutesOptions {
   mode?: TransportMode;
   zones?: number;
   limit?: number;
+  retryFailed?: boolean;
   emitter?: ProgressEmitter;
 }
 
@@ -266,6 +267,7 @@ async function processPeriod(
   mode: TransportMode = 'WALK',
   zones?: number,
   limit?: number,
+  retryFailed?: boolean,
   emitter?: ProgressEmitter,
   progressOffset: number = 0,
   totalTasks: number = 0
@@ -290,7 +292,7 @@ async function processPeriod(
     if (!routesData) continue;
 
     for (const route of routesData.r) {
-      if (route.s === RouteStatus.PENDING) {
+      if (route.s === RouteStatus.PENDING || (retryFailed && route.s === RouteStatus.ERROR)) {
         pendingRoutes.push({ from_id: fromId, to_id: route.i });
       }
     }
@@ -483,6 +485,7 @@ export async function buildRoutes(
     mode = 'WALK',
     zones,
     limit,
+    retryFailed,
     emitter,
   } = options;
 
@@ -563,6 +566,7 @@ export async function buildRoutes(
       mode,
       zones,
       limit,
+      retryFailed,
       emitter,
       cumulativeProgress,
       totalTasksAllPeriods
