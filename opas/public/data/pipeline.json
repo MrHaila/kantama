@@ -1,16 +1,14 @@
 {
   "lastRouteCalculation": {
-    "timestamp": "2025-12-29T12:04:14.313Z",
+    "timestamp": "2025-12-29T15:09:55.855Z",
     "periods": [
-      "MORNING",
-      "EVENING",
-      "MIDNIGHT"
+      "MORNING"
     ],
     "processed": 0,
     "OK": 0,
     "NO_ROUTE": 0,
     "ERROR": 0,
-    "PENDING": 0
+    "PENDING": 25
   },
   "lastGeocoding": {
     "timestamp": "2025-12-29T12:05:40.881Z",
