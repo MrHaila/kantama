@@ -19,11 +19,11 @@ The visualization is built as a layered map system:
   - Configurable vintage styling for different layers
   - Static rendering without zoom/pan interactions
 - **`InteractiveMap.vue`**: Handles interactive zone visualization
-  - Loads zone data from Varikko SQLite database
+  - Loads zone data from `public/data/` directory
   - Manages zone selection and travel time coloring
   - Previously handled zoom/pan (now removed for static approach)
 - **`InfoPanel.vue`**: Displays information about selected zones and travel times
-- **`DatabaseService.ts`**: Service for loading data from Varikko SQLite database
+- **`DataService.ts`**: Service for loading zones and routes from JSON/MessagePack files
 - **`mapData.ts`**: Pinia store managing map state and data
 
 ## Data Sources
@@ -32,7 +32,11 @@ The visualization is built as a layered map system:
   - Water areas: Polygon features for seas, lakes
   - Roads: Line features for road network
   - Coordinate system: WGS84 (EPSG:4326)
-- **`varikko.db`**: SQLite database with zones and calculated travel times
+- **`public/data/`**: Varikko-generated data files
+  - `zones.json`: Zone metadata and time buckets (JSON)
+  - `pipeline.json`: Pipeline execution metadata
+  - `manifest.json`: Data summary for frontend
+  - `routes/*.msgpack`: Pre-calculated routes (MessagePack binary format)
 
 ## Styling
 

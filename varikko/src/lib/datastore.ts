@@ -68,7 +68,12 @@ function getRoutesDir(): string {
  */
 function getRoutePath(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): string {
   // Use single-letter abbreviations: M, E, N
-  const periodSuffix = period.charAt(0);
+  const periodMap: Record<TimePeriod, string> = {
+    MORNING: 'M',
+    EVENING: 'E',
+    MIDNIGHT: 'N',
+  };
+  const periodSuffix = periodMap[period];
   // Add mode suffix for non-WALK modes (backward compatible)
   const modeSuffix = mode === 'WALK' ? '' : `-${mode.toLowerCase()}`;
   return path.join(getRoutesDir(), `${zoneId}-${periodSuffix}${modeSuffix}.msgpack`);
@@ -298,9 +303,15 @@ export function initializeRoutes(
           s: RouteStatus.PENDING,
         }));
 
+        const periodMap: Record<TimePeriod, string> = {
+          MORNING: 'M',
+          EVENING: 'E',
+          MIDNIGHT: 'N',
+        };
+
         const routesData: ZoneRoutesData = {
           f: fromId,
-          p: period.charAt(0), // M, E, or N
+          p: periodMap[period], // M, E, or N
           m: mode, // Include transport mode
           r: routes,
         };

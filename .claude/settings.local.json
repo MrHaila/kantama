@@ -23,7 +23,8 @@
       "Bash(sqlite3:*)",
       "Bash(python3:*)",
       "Bash(pnpm --filter opas exec tsc:*)",
-      "Bash(pnpm exec vue-tsc:*)"
+      "Bash(pnpm exec vue-tsc:*)",
+      "Bash(pnpm dev:*)"
     ],
     "deny": [],
     "ask": []

@@ -113,6 +113,27 @@ export async function geocodeZone(
       });
 
       if (response.data.features && response.data.features.length > 0) {
+        // If geometry is null, skip polygon validation
+        if (!geometry) {
+          const feature = response.data.features[0];
+          const [lon, lat] = feature.geometry.coordinates;
+          const point = turf.point([lon, lat]);
+          const distance = turf.distance(
+            turf.point([poiLon, poiLat]),
+            point,
+            { units: 'meters' }
+          );
+
+          return {
+            success: true,
+            lat,
+            lon,
+            source: `reverse:${strategy.description}`,
+            distance: Math.round(distance),
+            insideZone: undefined, // No geometry to validate
+          };
+        }
+
         // Try to find a result that's inside the zone polygon
         for (const feature of response.data.features) {
           const [lon, lat] = feature.geometry.coordinates;
@@ -189,9 +210,7 @@ export async function geocodeZone(
  */
 function updateZoneRouting(
   zoneId: string,
-  result: GeocodeResult,
-  fallbackLat: number,
-  fallbackLon: number
+  result: GeocodeResult
 ): { error?: string } {
   const zonesData = readZones();
   if (!zonesData) {
@@ -236,7 +255,7 @@ export async function geocodeZones(
   failed: number;
   insideZone: number;
   outsideZone: number;
-  errors: Array<{ id: string; error: string }>;
+  errors: Array<{ zoneId: string; error: string }>;
 }> {
   const { limit, emitter, apiKey } = options;
 
@@ -272,12 +291,7 @@ export async function geocodeZones(
     // Use reverse geocoding from POI (routingPoint is inside point)
     const result = await geocodeZone(zone.routingPoint[0], zone.routingPoint[1], null, apiKey);
 
-    const updateResult = updateZoneRouting(
-      zone.id,
-      result,
-      zone.routingPoint[0],
-      zone.routingPoint[1]
-    );
+    const updateResult = updateZoneRouting(zone.id, result);
 
     if (result.success) {
       results.success++;

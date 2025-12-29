@@ -175,7 +175,6 @@ export function validateData(options: ValidateOptions = {}): ValidationResult {
     }
 
     // Regenerate manifest
-    emitter?.emitProgress('validate_data', undefined, undefined, 'Regenerating manifest...');
     updateManifest();
 
     // Report results

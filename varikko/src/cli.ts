@@ -91,6 +91,32 @@ function showStatus(): void {
       const lastFetch = new Date(pipelineState.lastFetch.timestamp);
       console.log(fmt.keyValue('  Last Fetch:', fmt.formatTimestamp(lastFetch), 18));
     }
+
+    // Show geocoding status and errors
+    if (pipelineState?.lastGeocoding) {
+      const geocoding = pipelineState.lastGeocoding;
+      const successRate = geocoding.processed > 0
+        ? ((geocoding.successful / geocoding.processed) * 100).toFixed(1)
+        : '0.0';
+
+      if (geocoding.successful === geocoding.processed) {
+        console.log(fmt.keyValue('  Geocoding:', fmt.success(`${geocoding.successful}/${geocoding.processed} (${successRate}%)`), 18));
+      } else if (geocoding.failed === geocoding.processed) {
+        console.log(fmt.keyValue('  Geocoding:', fmt.error(`ALL FAILED (${geocoding.errors.length} errors)`), 18));
+        console.log(fmt.errorMessage('  ⚠ Geocoding completely failed - zones lack routing addresses'));
+        if (geocoding.errors.length > 0) {
+          console.log(fmt.dim(`  First error: ${geocoding.errors[0].error}`));
+        }
+      } else {
+        console.log(fmt.keyValue('  Geocoding:', fmt.warning(`${geocoding.successful}/${geocoding.processed} (${successRate}%)`), 18));
+        if (geocoding.failed > 0) {
+          console.log(fmt.warningMessage(`  ⚠ ${geocoding.failed} zones failed geocoding`));
+        }
+      }
+    } else if (zoneCount > 0) {
+      console.log(fmt.keyValue('  Geocoding:', fmt.warning('Not run yet'), 18));
+      console.log(fmt.suggestion('  Run \'varikko geocode\' to geocode zones'));
+    }
   }
   console.log('');
 
@@ -180,23 +206,41 @@ function showStatus(): void {
   // Next Steps
   console.log(fmt.header('NEXT STEPS', '💡'));
   const suggestions: string[] = [];
+  let hasBlockingErrors = false;
 
   if (zoneCount === 0) {
     suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
-  } else if (grandTotalRoutes === 0) {
-    suggestions.push('Run \'varikko geocode\' to geocode zones');
-    suggestions.push('Run \'varikko routes\' to calculate transit routes');
-  } else if (grandTotalPending > 0) {
-    suggestions.push('Run \'varikko routes\' to calculate pending routes');
-  } else if (bucketCount !== 6 && grandTotalOk > 0) {
-    suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
-  } else if (bucketCount === 6) {
-    suggestions.push('All data calculated! Ready for visualization');
+  } else {
+    // Check for geocoding errors that block progress
+    const geocoding = pipelineState?.lastGeocoding;
+    if (geocoding && geocoding.failed > 0) {
+      hasBlockingErrors = true;
+      console.log(fmt.errorMessage('  ⛔ BLOCKED: Geocoding has errors'));
+      console.log(fmt.dim(`  ${geocoding.failed} zones failed to geocode`));
+      if (geocoding.errors.length > 0) {
+        console.log(fmt.dim(`  First error: ${geocoding.errors[0].zoneId} - ${geocoding.errors[0].error}`));
+      }
+      console.log('');
+      suggestions.push('Fix geocoding errors and re-run \'varikko geocode\'');
+    } else if (!geocoding && grandTotalRoutes === 0) {
+      suggestions.push('Run \'varikko geocode\' to geocode zones');
+      suggestions.push('Run \'varikko routes\' to calculate transit routes');
+    } else if (grandTotalRoutes === 0) {
+      suggestions.push('Run \'varikko routes\' to calculate transit routes');
+    } else if (grandTotalPending > 0) {
+      suggestions.push('Run \'varikko routes\' to calculate pending routes');
+    } else if (bucketCount !== 6 && grandTotalOk > 0) {
+      suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
+    } else if (bucketCount === 6) {
+      suggestions.push('All data calculated! Ready for visualization');
+    }
   }
 
-  if (suggestions.length > 0) {
+  if (suggestions.length > 0 && !hasBlockingErrors) {
     console.log(fmt.numberedList(suggestions, 2));
-  } else {
+  } else if (suggestions.length > 0) {
+    console.log(fmt.numberedList(suggestions, 2));
+  } else if (!hasBlockingErrors) {
     console.log(fmt.muted('  No actions needed'));
   }
   console.log('');
@@ -350,21 +394,46 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.divider(50));
         console.log(fmt.bold('SUMMARY'));
         console.log(fmt.divider(50));
-        console.log(fmt.successMessage(`Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`));
-        if (result.failed > 0) {
-          console.log(fmt.warningMessage(`Geometric fallback: ${result.failed.toLocaleString()} zones (${failedPct}%)`));
-        }
-        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
 
-        if (result.errors.length > 0) {
+        // Check for complete failure
+        if (result.failed === total && total > 0) {
+          console.log(fmt.errorMessage(`ALL zones failed geocoding (${result.failed}/${total})`));
+          console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
           console.log('');
           console.log(fmt.header('ERRORS', '⚠️'));
-          console.log(fmt.dim(`  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`));
-          result.errors.slice(0, 3).forEach((err) => {
-            console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.zoneId}: ${err.error}`));
+          console.log(fmt.dim(`  Showing first ${Math.min(5, result.errors.length)} of ${result.errors.length} errors:`));
+          result.errors.slice(0, 5).forEach((err) => {
+            console.log(fmt.error(`  ${fmt.symbols.bullet} ${err.zoneId}: ${err.error}`));
           });
+          console.log('');
+          console.log(fmt.errorMessage('Geocoding completely failed - cannot proceed to routing'));
+          console.log(fmt.dim('  Fix the errors above and retry geocoding'));
+          console.log('');
+          process.exit(1);
         }
 
+        // Check for partial failure
+        if (result.failed > 0) {
+          console.log(fmt.successMessage(`Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`));
+          console.log(fmt.errorMessage(`Failed geocoding: ${result.failed.toLocaleString()} zones (${failedPct}%)`));
+          console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
+          console.log('');
+          console.log(fmt.header('ERRORS', '⚠️'));
+          console.log(fmt.dim(`  Showing first ${Math.min(5, result.errors.length)} of ${result.errors.length} errors:`));
+          result.errors.slice(0, 5).forEach((err) => {
+            console.log(fmt.error(`  ${fmt.symbols.bullet} ${err.zoneId}: ${err.error}`));
+          });
+          console.log('');
+          console.log(fmt.errorMessage('Geocoding had failures - cannot proceed'));
+          console.log(fmt.dim('  All zones must geocode successfully'));
+          console.log(fmt.dim('  Fix the errors above and retry geocoding'));
+          console.log('');
+          process.exit(1);
+        }
+
+        // Complete success
+        console.log(fmt.successMessage(`Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`));
+        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
         console.log('');
         console.log(fmt.suggestion('Next: Run \'varikko routes\' to calculate transit routes'));
         console.log('');
