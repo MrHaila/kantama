@@ -25,7 +25,12 @@ export interface LogEntry {
 /**
  * Write log entry to file
  */
-export function log(level: LogLevel, message: string, metadata?: Record<string, any>, error?: Error) {
+export function log(
+  level: LogLevel,
+  message: string,
+  metadata?: Record<string, any>,
+  error?: Error
+) {
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level,
@@ -41,7 +46,7 @@ export function log(level: LogLevel, message: string, metadata?: Record<string, 
   }
 
   // Write to daily log file
-  const date = new Date().toISOString().split('T')[0];  // YYYY-MM-DD
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
   const logFile = path.join(LOG_DIR, `varikko-${date}.log`);
 
   fs.appendFileSync(logFile, JSON.stringify(entry) + '\n');

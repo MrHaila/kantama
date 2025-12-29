@@ -156,20 +156,20 @@ describe('zones - processZones', () => {
           coordinates: [
             [
               [
-                [24.80, 60.10],
-                [24.82, 60.10],
+                [24.8, 60.1],
+                [24.82, 60.1],
                 [24.82, 60.12],
-                [24.80, 60.12],
-                [24.80, 60.10],
+                [24.8, 60.12],
+                [24.8, 60.1],
               ],
             ],
             [
               [
-                [24.95, 60.20],
-                [24.99, 60.20],
+                [24.95, 60.2],
+                [24.99, 60.2],
                 [24.99, 60.24],
                 [24.95, 60.24],
-                [24.95, 60.20],
+                [24.95, 60.2],
               ],
             ],
           ],
@@ -346,31 +346,27 @@ describe('zones - initializeSchema', () => {
       .all() as Array<{ name: string }>;
 
     expect(indexes.map((i) => i.name)).toEqual(
-      expect.arrayContaining([
-        'idx_routes_to',
-        'idx_routes_status',
-        'idx_time_buckets_number',
-      ])
+      expect.arrayContaining(['idx_routes_to', 'idx_routes_status', 'idx_time_buckets_number'])
     );
   });
 
   it('should drop existing tables (destructive)', () => {
     // Insert some test data first
-    testDB.db.exec("INSERT INTO places (id, name, lat, lon, geometry, svg_path) VALUES ('test', 'Test', 60.0, 24.0, '{}', 'M 0 0')");
+    testDB.db.exec(
+      "INSERT INTO places (id, name, lat, lon, geometry, svg_path) VALUES ('test', 'Test', 60.0, 24.0, '{}', 'M 0 0')"
+    );
 
     // Verify data exists
-    let count = testDB.db
-      .prepare('SELECT COUNT(*) as count FROM places')
-      .get() as { count: number };
+    let count = testDB.db.prepare('SELECT COUNT(*) as count FROM places').get() as {
+      count: number;
+    };
     expect(count.count).toBe(1);
 
     // Re-initialize schema (should drop and recreate)
     initializeSchema(testDB.db);
 
     // Old data should be gone
-    count = testDB.db
-      .prepare('SELECT COUNT(*) as count FROM places')
-      .get() as { count: number };
+    count = testDB.db.prepare('SELECT COUNT(*) as count FROM places').get() as { count: number };
     expect(count.count).toBe(0);
   });
 });
@@ -413,9 +409,7 @@ describe('zones - insertZones', () => {
 
     assertRecordCount(testDB.db, 'places', 2);
 
-    const place = testDB.db
-      .prepare('SELECT * FROM places WHERE id = ?')
-      .get('00100') as any;
+    const place = testDB.db.prepare('SELECT * FROM places WHERE id = ?').get('00100') as any;
     expect(place.name).toBe('Kaartinkaupunki');
     expect(place.lat).toBeCloseTo(60.1653, 4);
     expect(place.lon).toBeCloseTo(24.9497, 4);
@@ -478,9 +472,7 @@ describe('zones - insertZones', () => {
 
     insertZones(testDB.db, zones);
 
-    const selfRoutes = testDB.db
-      .prepare('SELECT * FROM routes WHERE from_id = to_id')
-      .all();
+    const selfRoutes = testDB.db.prepare('SELECT * FROM routes WHERE from_id = to_id').all();
     expect(selfRoutes).toHaveLength(0);
   });
 

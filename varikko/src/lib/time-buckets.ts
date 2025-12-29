@@ -77,11 +77,15 @@ export function calculateTimeBuckets(
 
     // Verify successful routes exist
     emitter?.emitProgress('calculate_time_buckets', 2, 8, 'Querying successful routes...');
-    const routeCount = db.prepare(`
+    const routeCount = db
+      .prepare(
+        `
       SELECT COUNT(*) as count
       FROM routes
       WHERE status = 'OK' AND duration IS NOT NULL
-    `).get() as { count: number };
+    `
+      )
+      .get() as { count: number };
 
     if (routeCount.count === 0) {
       throw new Error('No successful routes found. Please run route calculation first.');

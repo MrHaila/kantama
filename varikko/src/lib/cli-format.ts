@@ -133,7 +133,9 @@ export function horizontalLine(width: number, text?: string): string {
 
   return (
     symbols.horizontalLine.repeat(leftPad) +
-    ' ' + text + ' ' +
+    ' ' +
+    text +
+    ' ' +
     symbols.horizontalLine.repeat(rightPad)
   );
 }
@@ -193,11 +195,7 @@ export function progressBar(
   total: number,
   options: ProgressBarOptions = {}
 ): string {
-  const {
-    width = 20,
-    showPercentage = true,
-    showFraction = true,
-  } = options;
+  const { width = 20, showPercentage = true, showFraction = true } = options;
 
   if (total === 0) {
     const emptyBar = `[${symbols.progressEmpty.repeat(width)}]`;
@@ -244,6 +242,22 @@ export function spinner(): string {
   const frame = spinnerFrames[spinnerIndex];
   spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
   return info(frame);
+}
+
+/**
+ * Write progress to stdout without newline (for in-place updates)
+ * Uses carriage return to overwrite the current line
+ */
+export function writeProgress(text: string): void {
+  // Clear the line and write the new content
+  process.stdout.write(`\r\x1b[K${text}`);
+}
+
+/**
+ * End progress output with a newline
+ */
+export function endProgress(): void {
+  process.stdout.write('\n');
 }
 
 // ============================================================================
@@ -328,9 +342,7 @@ export function table(rows: Record<string, unknown>[], columns: TableColumn[]): 
   lines.push(headerRow);
 
   // Separator
-  const separator = columns
-    .map((col, i) => symbols.horizontalLine.repeat(widths[i]))
-    .join('  ');
+  const separator = columns.map((col, i) => symbols.horizontalLine.repeat(widths[i])).join('  ');
   lines.push(muted(separator));
 
   // Rows
@@ -370,9 +382,7 @@ export function bulletList(items: string[], indent: number = 2): string {
  */
 export function numberedList(items: string[], indent: number = 2): string {
   const prefix = ' '.repeat(indent);
-  return items
-    .map((item, i) => `${prefix}${muted(`${i + 1}.`)} ${item}`)
-    .join('\n');
+  return items.map((item, i) => `${prefix}${muted(`${i + 1}.`)} ${item}`).join('\n');
 }
 
 // ============================================================================

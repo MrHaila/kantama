@@ -74,6 +74,7 @@ pnpm dev
 ```
 
 Launches the TUI with keyboard-driven navigation:
+
 - **1-6**: Quick select workflows
 - **↑/↓ or j/k**: Navigate menu
 - **Enter**: Execute workflow
@@ -86,7 +87,6 @@ Launches the TUI with keyboard-driven navigation:
 ### 1. Fetch Zones
 
 - **Multi-City Mode**: Fetches administrative zones from Helsinki, Vantaa, and Espoo
-
   - Helsinki: osa-alue (sub-regions) - 137 zones
 
   - Vantaa: kaupunginosa (districts) - 52 zones
@@ -192,6 +192,7 @@ pnpm clean
 ## Multi-City Zoning Architecture
 
 ### City Fetcher Pattern
+
 The system uses a modular `CityFetcher` interface to handle city-specific data sources:
 
 ```typescript
@@ -204,6 +205,7 @@ interface CityFetcher {
 ```
 
 ### Data Sources
+
 - **Helsinki**: `https://kartta.hel.fi/ws/geoserver/avoindata/wfs`
   - Layer: `avoindata:Maavesi_osa_alueet`
   - Format: GeoJSON
@@ -221,6 +223,7 @@ interface CityFetcher {
   - Properties: `tunnus`, `nimi`, `tyyppi`
 
 ### Zone ID Format
+
 - Format: `{CITY_CODE}-{ORIGINAL_ID}`
 - Examples: `HEL-101` (Vilhonvuori), `VAN-51` (Ylästö), `ESP-1` (Kunnarla)
 - Enables easy identification and filtering by city
@@ -257,25 +260,22 @@ interface CityFetcher {
    ```
 
 2. **Clear Existing Zones**:
-
    - Use TUI option 4 (Clear Data) → Clear places and routes
 
 3. **Fetch Multi-City Zones**:
-
    - Use TUI option 1 (Fetch Zones) → Runs in multi-city mode by default
 
 4. **Update Visualizations**:
-
    - Zone IDs changed from postal codes (e.g., "00100") to city-prefixed (e.g., "HEL-101")
 
    - Update any hardcoded postal code references in Opas
 
 5. **Rebuild Routes**:
-
    - Clear and rebuild all routes due to zone changes
 
 ### Rollback
 
 To rollback to postal codes:
+
 1. Restore backup: `cp ../opas/public/varikko.db.backup ../opas/public/varikko.db`
 2. Use original `fetchZones()` function (still available in zones.ts)

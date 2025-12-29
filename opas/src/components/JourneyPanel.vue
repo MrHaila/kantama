@@ -16,24 +16,27 @@ interface JourneyDetailsData {
 }
 
 const store = useMapDataStore()
-const { activeZoneId, hoveredZoneId, zones, currentTimePeriod, currentRouteDetails } = storeToRefs(store)
+const { zones, currentTimePeriod, currentRouteDetails } = storeToRefs(store)
 
 const journeyDetails = computed<JourneyDetailsData | null>(() => {
-  if (!activeZoneId.value) {
+  const activeZoneId = store.transportState.activeZoneId
+  const hoveredZoneId = store.transportState.hoveredZoneId
+
+  if (!activeZoneId) {
     return null
   }
 
   // If no hover, show hint
-  if (!hoveredZoneId.value || activeZoneId.value === hoveredZoneId.value) {
-    const fromZone = zones.value?.find((z) => z.id === activeZoneId.value)
+  if (!hoveredZoneId || activeZoneId === hoveredZoneId) {
+    const fromZone = zones.value?.find((z) => z.id === activeZoneId)
     return {
       isHint: true,
       from: fromZone!,
     }
   }
 
-  const fromZone = zones.value?.find((z) => z.id === activeZoneId.value)
-  const toZone = zones.value?.find((z) => z.id === hoveredZoneId.value)
+  const fromZone = zones.value?.find((z) => z.id === activeZoneId)
+  const toZone = zones.value?.find((z) => z.id === hoveredZoneId)
 
   if (!fromZone || !toZone) return null
 

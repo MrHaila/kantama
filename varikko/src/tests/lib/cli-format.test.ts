@@ -295,9 +295,7 @@ describe('CLI Formatting Utilities', () => {
 
     it('should respect column widths', () => {
       const rows = [{ name: 'A' }];
-      const columns = [
-        { header: 'Name', key: 'name', width: 20 },
-      ];
+      const columns = [{ header: 'Name', key: 'name', width: 20 }];
 
       const result = fmt.table(rows, columns);
       const lines = result.split('\n');

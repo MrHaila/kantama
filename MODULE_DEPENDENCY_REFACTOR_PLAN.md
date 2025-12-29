@@ -20,11 +20,13 @@ kantama/ (pnpm workspace)
 #### 1. Map Configuration (HIGH PRIORITY)
 
 **Location:**
+
 - `varikko/src/lib/mapConfig.ts`
 - `opas/src/config/mapConfig.ts`
 
 **Issue:**
 Varikko's mapConfig has a comment stating:
+
 ```typescript
 /**
  * IMPORTANT: These values MUST match the source of truth in opas:
@@ -35,6 +37,7 @@ Varikko's mapConfig has a comment stating:
 This is a **critical code smell** - the configuration is duplicated and manually kept in sync.
 
 **Shared Values:**
+
 - Base dimensions (width: 800, height: 800)
 - Zoom level (1.2 for 20% zoom out)
 - ViewBox calculations
@@ -44,6 +47,7 @@ This is a **critical code smell** - the configuration is duplicated and manually
 - Clip bounding box `[24.5, 60.0, 25.3, 60.5]`
 
 **Impact:**
+
 - Used by varikko for SVG generation and coordinate projection
 - Used by opas for map rendering and zone display
 - Inconsistencies would cause misaligned visualizations
@@ -51,18 +55,19 @@ This is a **critical code smell** - the configuration is duplicated and manually
 #### 2. MessagePack Data Types (HIGH PRIORITY)
 
 **Location:**
+
 - `varikko/src/lib/export.ts` (defines types for export)
 - `opas/src/services/DataService.ts` (defines types for import)
 
 **Duplicated Types:**
 
-| Varikko Type | Opas Type | Status |
-|--------------|-----------|--------|
-| `CompactZone` | `Zone` | Nearly identical |
-| `TimeBucket` | `TimeBucket` | **Exact duplicate** |
-| `CompactLeg` | `CompactLeg` | **Exact duplicate** |
-| `CompactRoute` | `CompactRoute` | **Exact duplicate** |
-| `ZoneRoutesFile` | `ZoneRoutesData` | Nearly identical |
+| Varikko Type     | Opas Type        | Status              |
+| ---------------- | ---------------- | ------------------- |
+| `CompactZone`    | `Zone`           | Nearly identical    |
+| `TimeBucket`     | `TimeBucket`     | **Exact duplicate** |
+| `CompactLeg`     | `CompactLeg`     | **Exact duplicate** |
+| `CompactRoute`   | `CompactRoute`   | **Exact duplicate** |
+| `ZoneRoutesFile` | `ZoneRoutesData` | Nearly identical    |
 
 **Issue:**
 These types define the data contract between varikko (producer) and opas (consumer). Any mismatch breaks the application.
@@ -70,12 +75,14 @@ These types define the data contract between varikko (producer) and opas (consum
 #### 3. Shared Dependencies
 
 Both packages use:
+
 - `@msgpack/msgpack` - MessagePack encoding/decoding
 - `d3-geo` - Geographic projections
 - `topojson-client` - TopoJSON utilities
 - Type definitions: `@types/d3-geo`, `@types/geojson`
 
 **Current Status:**
+
 - opas: `@msgpack/msgpack` in dependencies
 - varikko: `@msgpack/msgpack` in devDependencies
 - Both independently declare d3-geo and topojson-client
@@ -83,11 +90,13 @@ Both packages use:
 #### 4. Utility Functions (MEDIUM PRIORITY)
 
 **Polyline Decoding:**
+
 - `opas/src/utils/polyline.ts` - Decodes Google Encoded Polyline format
 - Used by opas to render route geometry
 - Generic algorithm that could be shared
 
 **Transport Colors:**
+
 - `opas/src/utils/transportColors.ts` - HSL transport mode colors
 - Could be useful in varikko for future visualization features
 - Low priority for now (opas-specific)
@@ -127,11 +136,13 @@ opas (consumer/importer)
 ```
 
 Varikko will export:
+
 - Shared TypeScript types
 - Map configuration constants
 - Utility functions (if needed)
 
 Opas will import:
+
 - Types from varikko for type-safe data loading
 - Map configuration to ensure perfect alignment
 
@@ -164,9 +175,7 @@ Add exports field to define public API:
       "import": "./dist/config.js"
     }
   },
-  "files": [
-    "dist"
-  ]
+  "files": ["dist"]
 }
 ```
 
@@ -193,7 +202,7 @@ Add workspace dependency:
 {
   "dependencies": {
     "varikko": "workspace:*",
-    "@msgpack/msgpack": "^3.1.3",
+    "@msgpack/msgpack": "^3.1.3"
     // ... other deps
   }
 }
@@ -402,7 +411,14 @@ export * from './types';
 export * from './config';
 
 // Re-export for backwards compatibility
-export type { Zone, TimeBucket, CompactRoute, CompactLeg, ZoneRoutesData, TimePeriod } from './types';
+export type {
+  Zone,
+  TimeBucket,
+  CompactRoute,
+  CompactLeg,
+  ZoneRoutesData,
+  TimePeriod,
+} from './types';
 export { MAP_CONFIG, MAP_CENTER, MAP_SCALE, METRO_AREA_BOUNDS, CLIP_BBOX } from './config';
 ```
 
@@ -627,6 +643,7 @@ pnpm exec tsx src/main.ts map
 ```
 
 Files should still be written to:
+
 - `../opas/public/data/zones.json`
 - `../opas/public/data/routes/*.msgpack`
 - `../opas/public/background_map.json`
@@ -740,12 +757,12 @@ These are potential future improvements but not part of this refactoring:
 
 ## Risks and Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Breaking HMR workflow | Extensive testing of export commands before committing |
-| Type import issues | Ensure proper TypeScript configuration and explicit exports |
-| Build order dependencies | Document that varikko must build before opas |
-| Runtime incompatibilities | Version lock varikko dependency with workspace:* |
+| Risk                      | Mitigation                                                  |
+| ------------------------- | ----------------------------------------------------------- |
+| Breaking HMR workflow     | Extensive testing of export commands before committing      |
+| Type import issues        | Ensure proper TypeScript configuration and explicit exports |
+| Build order dependencies  | Document that varikko must build before opas                |
+| Runtime incompatibilities | Version lock varikko dependency with workspace:\*           |
 
 ## Timeline Estimate
 

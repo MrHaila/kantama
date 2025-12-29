@@ -81,11 +81,13 @@ pnpm dev routes -p MORNING --zones 2  # Morning routes from 2 zones
 ```
 
 Time periods:
+
 - **MORNING**: 09:00 departure on next Tuesday
 - **EVENING**: 17:30 departure on next Tuesday
 - **MIDNIGHT**: 23:30 departure on next Tuesday
 
 Options:
+
 - `--zones <count>`: Select N random origin zones (filters routes by FROM zone)
 - `--limit <count>`: Process only N random routes (useful for quick testing)
 - `--period <period>`: Process only specified time period
@@ -265,6 +267,7 @@ Or use remote Digitransit API with API key (slower but no local setup needed).
 ### OTP Connection Failed
 
 Ensure OTP is running:
+
 ```bash
 curl http://localhost:8080/otp/routers/default
 ```
@@ -282,6 +285,7 @@ Close any other processes accessing the database (e.g., SQLite browser).
 ## CLI Output Examples
 
 ### Status Command
+
 ```
 ╭──────────────── VARIKKO DATABASE STATUS ─────────────────╮
 
@@ -308,6 +312,7 @@ Close any other processes accessing the database (e.g., SQLite browser).
 ```
 
 ### Routes Command
+
 ```
 🚌 CALCULATING ROUTES
 
@@ -347,6 +352,7 @@ pnpm test --watch
 ```
 
 Test coverage requirements:
+
 - Lines: 80%
 - Functions: 80%
 - Branches: 70%
@@ -365,21 +371,25 @@ Test coverage requirements:
 ### v3.0.0 (2025-01-XX)
 
 **Breaking Changes:**
+
 - Removed TUI (interactive mode)
 - Default command now shows status instead of launching interactive menu
 
 **Added:**
+
 - Rich CLI output with colors, progress bars, and formatting
 - Comprehensive status command showing database state
 - Better progress reporting for long-running operations
 - Next-step suggestions in command output
 
 **Removed:**
+
 - Ink/React TUI dependencies (~10 packages)
 - TUI code (~1,500 lines)
 - Interactive mode
 
 **Improved:**
+
 - Simpler codebase (easier to maintain)
 - Better testability (all output testable)
 - Faster startup (no React rendering)

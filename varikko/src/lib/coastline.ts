@@ -48,7 +48,7 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
       `-clip ${clipMaskFile}`,
       `-simplify 80% keep-shapes`,
       `-dissolve`,
-      `-o ${tempFile} format=geojson`
+      `-o ${tempFile} format=geojson`,
     ].join(' ');
 
     await mapshaper.runCommands(cmd);
@@ -71,12 +71,16 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
     }
 
     // Handle GeometryCollection (from dissolve command)
-    if (geojson.type === 'GeometryCollection' && geojson.geometries && geojson.geometries.length > 0) {
+    if (
+      geojson.type === 'GeometryCollection' &&
+      geojson.geometries &&
+      geojson.geometries.length > 0
+    ) {
       // Wrap the first geometry in a Feature
       return {
         type: 'Feature',
         properties: {},
-        geometry: geojson.geometries[0]
+        geometry: geojson.geometries[0],
       } as Feature<Polygon | MultiPolygon>;
     }
 
@@ -85,7 +89,7 @@ export async function getWaterMask(): Promise<Feature<Polygon | MultiPolygon> | 
       return {
         type: 'Feature',
         properties: {},
-        geometry: geojson
+        geometry: geojson,
       } as Feature<Polygon | MultiPolygon>;
     }
 
@@ -119,9 +123,9 @@ export function clipZoneWithWater(
     // But check if we are on v6 or v7. Package.json says ^7.3.1.
     // In v7: difference(featureCollection([poly1, poly2]))
     // The first polygon is the one to be clipped, the second is the one to subtract.
-    
+
     const clipped = turf.difference(turf.featureCollection([zoneFeature, waterFeature]));
-    
+
     if (!clipped) return null;
     return clipped.geometry;
   } catch (error) {
@@ -131,6 +135,6 @@ export function clipZoneWithWater(
     // For now, if error, we log and return original to be safe, or null?
     // If it fails, likely a topology error.
     console.warn('Error clipping zone with water mask:', error);
-    return zoneGeometry; 
+    return zoneGeometry;
   }
 }

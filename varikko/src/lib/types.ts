@@ -10,10 +10,10 @@ export const CITY_CODES = {
 } as const;
 
 export const CITY_NAME_MAP: Record<string, string> = {
-  'HEL': 'Helsinki',
-  'VAN': 'Vantaa',
-  'ESP': 'Espoo',
-  'KAU': 'Kauniainen',
+  HEL: 'Helsinki',
+  VAN: 'Vantaa',
+  ESP: 'Espoo',
+  KAU: 'Kauniainen',
 };
 
 export interface StandardZone {

@@ -5,12 +5,14 @@
 This plan outlines a phased refactor to remove the TUI (Text User Interface) from Varikko and replace it with high-quality CLI commands. The goal is to simplify the codebase, improve testability, and reduce maintenance burden while preserving all business logic and enhancing visual output quality.
 
 **Current State**:
+
 - TUI: 1,524 lines (Ink/React)
 - Business Logic: 3,387 lines (pure TypeScript, well-tested)
 - Tests: 3,328 lines (80%+ coverage on business logic)
 - Clean separation already exists between UI and business logic
 
 **Target State**:
+
 - No TUI dependencies (removes ~8 npm packages)
 - Enhanced CLI with rich visual feedback
 - Default command shows comprehensive status
@@ -51,7 +53,7 @@ Business Logic (lib/)          UI Layer (tui/)           CLI Layer (cli.ts)
    - Flexible limit/zones options via CLI flags
    - Visual hierarchy with box-drawing characters
 
-2. **Screen Components** (screens/*.tsx):
+2. **Screen Components** (screens/\*.tsx):
    - Real-time progress bars
    - Spinning loading indicators
    - Success/error states with colors
@@ -93,6 +95,7 @@ The refactor is divided into **5 phases** with testing/linting checkpoints betwe
 5. **Phase 5**: Final cleanup and documentation
 
 Each phase is designed to:
+
 - Be independently testable
 - Allow running tests/linting between phases
 - Preserve all business logic unchanged
@@ -107,11 +110,13 @@ Each phase is designed to:
 **Goal**: Create reusable formatting utilities for high-quality CLI output
 
 **New Files**:
+
 - `src/lib/cli-format.ts` - Terminal formatting utilities
 
 **Features to Implement**:
 
 1. **Color and Symbol Utilities**:
+
    ```typescript
    - Status symbols (✓, ✗, ⚠, ⊘, ➜)
    - Color helpers (success, error, warning, info, dim)
@@ -119,6 +124,7 @@ Each phase is designed to:
    ```
 
 2. **Progress Reporting**:
+
    ```typescript
    - Simple ASCII progress bar: [=====>    ] 50% (123/456)
    - Percentage calculator
@@ -127,6 +133,7 @@ Each phase is designed to:
    ```
 
 3. **Table Formatting**:
+
    ```typescript
    - Simple aligned columns
    - Header separator
@@ -141,15 +148,18 @@ Each phase is designed to:
    ```
 
 **Dependencies to Add**:
+
 - `picocolors` (tiny color library, 1.1KB)
 - OR use ANSI escape codes directly (zero dependencies)
 
 **Test Coverage**:
+
 - Unit tests for all formatting functions
 - Snapshot tests for visual output
 - Color stripping for CI environments
 
 **Testing Checkpoint**:
+
 ```bash
 pnpm test                    # Run all tests
 pnpm exec tsc --noEmit       # Type check
@@ -163,12 +173,14 @@ pnpm exec eslint src/        # Lint
 **Goal**: Implement the comprehensive `status` command as the default action
 
 **Files to Modify**:
+
 - `src/cli.ts` - Implement status command action
 - `src/lib/db.ts` - Enhance `getDBStats()` if needed
 
 **Features**:
 
 1. **Database Overview**:
+
    ```
    ╭─────────────────────────────────────────╮
    │          VARIKKO DATABASE STATUS        │
@@ -180,6 +192,7 @@ pnpm exec eslint src/        # Lint
    ```
 
 2. **Zones Status**:
+
    ```
    📍 ZONES
       Total: 1,234 postal codes
@@ -187,6 +200,7 @@ pnpm exec eslint src/        # Lint
    ```
 
 3. **Routes Status**:
+
    ```
    🚌 ROUTES (per period: MORNING, EVENING, MIDNIGHT)
       Total Combinations: 3,702 routes
@@ -197,6 +211,7 @@ pnpm exec eslint src/        # Lint
    ```
 
 4. **Time Buckets Status**:
+
    ```
    🗺️  TIME BUCKETS
       Status: ✓ Calculated (6 buckets)
@@ -204,6 +219,7 @@ pnpm exec eslint src/        # Lint
    ```
 
 5. **Next Steps Suggestions**:
+
    ```
    💡 NEXT STEPS
       1. Run 'varikko routes' to calculate pending routes
@@ -218,16 +234,19 @@ pnpm exec eslint src/        # Lint
    ```
 
 **Make it Default**:
+
 - When user runs `varikko` (no args), show status instead of launching TUI
 - Keep explicit `varikko status` command as well
 
 **Test Coverage**:
+
 - Test status output with various database states
 - Test empty database
 - Test partial completion states
 - Test error display
 
 **Testing Checkpoint**:
+
 ```bash
 pnpm test
 pnpm exec tsc --noEmit
@@ -241,11 +260,13 @@ pnpm exec eslint src/
 **Goal**: Add rich visual feedback to all existing commands
 
 **Files to Modify**:
+
 - `src/cli.ts` - Enhance all command action handlers
 
 **For Each Command**:
 
 1. **fetch**:
+
    ```
    🌍 FETCHING POSTAL CODE ZONES
 
@@ -263,6 +284,7 @@ pnpm exec eslint src/
    ```
 
 2. **geocode**:
+
    ```
    📍 GEOCODING ZONES
 
@@ -278,6 +300,7 @@ pnpm exec eslint src/
    ```
 
 3. **routes**:
+
    ```
    🚌 CALCULATING ROUTES
 
@@ -298,6 +321,7 @@ pnpm exec eslint src/
    ```
 
 4. **clear**:
+
    ```
    🗑️  CLEAR DATA
 
@@ -315,6 +339,7 @@ pnpm exec eslint src/
    ```
 
 5. **time-buckets**:
+
    ```
    📊 CALCULATING TIME BUCKETS
 
@@ -332,6 +357,7 @@ pnpm exec eslint src/
    ```
 
 6. **map**:
+
    ```
    🗺️  PROCESSING MAPS
 
@@ -371,12 +397,14 @@ emitter.on('progress', (event) => {
 ```
 
 **Test Coverage**:
+
 - Integration tests for each command
 - Test output formatting
 - Test error scenarios
 - Test progress reporting
 
 **Testing Checkpoint**:
+
 ```bash
 pnpm test
 pnpm exec tsc --noEmit
@@ -390,6 +418,7 @@ pnpm exec eslint src/
 **Goal**: Delete TUI code and dependencies
 
 **Files to Delete**:
+
 ```
 src/tui/                      # Delete entire directory (1,524 lines)
   ├── app.tsx
@@ -402,6 +431,7 @@ src/tui/                      # Delete entire directory (1,524 lines)
 **Files to Modify**:
 
 1. **src/main.ts**:
+
    ```typescript
    // BEFORE (lines 41-54):
    async function main() {
@@ -427,13 +457,14 @@ src/tui/                      # Delete entire directory (1,524 lines)
    ```
 
 2. **src/cli.ts**:
+
    ```typescript
    // Change default action from "return null" to "run status"
    program.action(() => {
      // Run status command
      const db = openDB();
      try {
-       showStatus(db);  // New function
+       showStatus(db); // New function
      } finally {
        db.close();
      }
@@ -441,6 +472,7 @@ src/tui/                      # Delete entire directory (1,524 lines)
    ```
 
 3. **package.json**:
+
    ```json
    // REMOVE from dependencies:
    {
@@ -472,6 +504,7 @@ src/tui/                      # Delete entire directory (1,524 lines)
    - Update comments/documentation
 
 **Testing Checkpoint**:
+
 ```bash
 pnpm install                 # Update dependencies
 pnpm test                    # All tests should pass
@@ -481,6 +514,7 @@ pnpm build                   # Test build (if exists)
 ```
 
 **Manual Testing**:
+
 ```bash
 # Test all commands still work
 pnpm dev                     # Should show status
@@ -502,12 +536,14 @@ pnpm dev map
 **Test Updates**:
 
 1. **Update test descriptions** to reflect CLI-only nature:
+
    ```typescript
    // OLD: "should work in both CLI and TUI modes"
    // NEW: "should format CLI output correctly"
    ```
 
 2. **Add CLI output tests**:
+
    ```typescript
    // New test file: src/tests/lib/cli-format.test.ts
    describe('CLI formatting', () => {
@@ -536,7 +572,8 @@ pnpm dev map
 **Documentation Updates**:
 
 1. **README.md**:
-   ```markdown
+
+   ````markdown
    # Varikko Data Pipeline
 
    High-quality CLI for transit route calculation and heatmap generation.
@@ -546,6 +583,7 @@ pnpm dev map
    ```bash
    pnpm install
    ```
+   ````
 
    ## Usage
 
@@ -568,7 +606,6 @@ pnpm dev map
    ```
 
    ## Commands
-
    - `status` - Show database status (default)
    - `init` - Initialize database schema
    - `fetch` - Fetch postal code zones
@@ -577,43 +614,52 @@ pnpm dev map
    - `clear` - Clear/reset data
    - `time-buckets` - Calculate heatmap buckets
    - `map` - Process shapefiles to SVG/TopoJSON
+
+   ```
+
    ```
 
 2. **package.json**:
+
    ```json
    {
      "name": "varikko",
      "description": "Transit route calculation and heatmap generation CLI",
-     "version": "3.0.0",  // Bump major version (breaking change)
+     "version": "3.0.0", // Bump major version (breaking change)
      "keywords": ["transit", "routing", "cli", "heatmap"],
      "bin": {
-       "varikko": "./dist/main.js"  // If building for distribution
+       "varikko": "./dist/main.js" // If building for distribution
      }
    }
    ```
 
 3. **CHANGELOG.md** (new file):
+
    ```markdown
    # Changelog
 
    ## [3.0.0] - 2025-01-XX
 
    ### Breaking Changes
+
    - Removed TUI (Text User Interface)
    - Default command now shows status instead of launching interactive mode
 
    ### Added
+
    - Rich CLI output with colors, progress bars, and formatting
    - Comprehensive `status` command showing database state
    - Better progress reporting for long-running operations
    - Next-step suggestions in command output
 
    ### Removed
+
    - Ink/React dependencies (~8 packages)
    - TUI code (~1,500 lines)
    - Interactive mode
 
    ### Improved
+
    - Simpler codebase (easier to maintain)
    - Better testability (all output testable)
    - Faster startup (no React rendering)
@@ -621,6 +667,7 @@ pnpm dev map
    ```
 
 **Testing Checkpoint**:
+
 ```bash
 pnpm test                    # Final test run
 pnpm test:coverage           # Check coverage maintained
@@ -676,6 +723,7 @@ pnpm dev fetch --limit 5
 ### Existing Tests (Preserved)
 
 All existing business logic tests remain **unchanged**:
+
 - `zones.test.ts` (586 lines)
 - `routing.test.ts` (602 lines)
 - `geocoding.test.ts` (347 lines)
@@ -783,16 +831,16 @@ Based on the phased approach, assuming testing between each phase:
 
 ```json
 {
-  "ink": "^6.6.0",                    // TUI framework
-  "react": "^19.2.3",                  // React (for Ink)
-  "cli-progress": "^3.12.0",           // Unused
-  "chalk": "^5.6.2",                   // Colors (devDep)
-  "ink-select-input": "^6.2.0",        // TUI component
-  "ink-spinner": "^5.0.0",             // TUI component
-  "ink-table": "^3.1.0",               // TUI component
-  "ink-text-input": "^6.0.0",          // TUI component
-  "@types/react": "^19.2.7",           // React types
-  "@types/cli-progress": "^3.11.6"     // Unused types
+  "ink": "^6.6.0", // TUI framework
+  "react": "^19.2.3", // React (for Ink)
+  "cli-progress": "^3.12.0", // Unused
+  "chalk": "^5.6.2", // Colors (devDep)
+  "ink-select-input": "^6.2.0", // TUI component
+  "ink-spinner": "^5.0.0", // TUI component
+  "ink-table": "^3.1.0", // TUI component
+  "ink-text-input": "^6.0.0", // TUI component
+  "@types/react": "^19.2.7", // React types
+  "@types/cli-progress": "^3.11.6" // Unused types
 }
 ```
 
@@ -805,7 +853,7 @@ Based on the phased approach, assuming testing between each phase:
 
 ```json
 {
-  "picocolors": "^1.1.1"  // Tiny color library (optional)
+  "picocolors": "^1.1.1" // Tiny color library (optional)
 }
 ```
 
@@ -814,6 +862,7 @@ Based on the phased approach, assuming testing between each phase:
 ### To Keep
 
 All business logic dependencies remain:
+
 - `better-sqlite3` (database)
 - `axios` (HTTP)
 - `@turf/turf` (geospatial)
@@ -924,6 +973,7 @@ Duration: 8.2s
 This refactor plan provides a **low-risk, high-value** path to simplifying Varikko:
 
 **Benefits**:
+
 - ✓ Simpler codebase (-1,500 lines, -10 packages)
 - ✓ Better testability (all output is testable)
 - ✓ Easier maintenance (no TUI framework updates)
@@ -933,6 +983,7 @@ This refactor plan provides a **low-risk, high-value** path to simplifying Varik
 - ✓ Same test coverage (80%+)
 
 **Approach**:
+
 - ✓ Phased implementation (5 phases)
 - ✓ Testing checkpoints (after each phase)
 - ✓ Incremental improvements (each phase adds value)

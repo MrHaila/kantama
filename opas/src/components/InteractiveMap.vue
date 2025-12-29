@@ -24,6 +24,26 @@ const { zones, currentRouteLegs } = storeToRefs(store)
 // Road paths loaded from layer service
 const roadPaths = ref<string[]>([])
 
+// Zones without route data (for debugging visual)
+const zonesWithoutData = computed(() => {
+  if (!zones.value) return []
+
+  // In reachability mode, check for missing reachability scores
+  if (store.transportState.overlayMode === 'reachability') {
+    return zones.value.filter(zone => !store.reachabilityScores.get(zone.id))
+  }
+
+  // In zone selection mode, check for zones with no route from active zone
+  if (store.transportState.overlayMode === 'zoneSelection' && store.transportState.activeZoneId) {
+    return zones.value.filter(zone => {
+      if (zone.id === store.transportState.activeZoneId) return false
+      return store.getDuration(zone.id) === null
+    })
+  }
+
+  return []
+})
+
 // Load road paths from layer service
 async function loadRoadPaths() {
   if (!showRoads) return
@@ -121,8 +141,8 @@ onMounted(async () => {
 
 // ESC key handler to deselect zone
 function handleKeyDown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && store.activeZoneId) {
-    store.activeZoneId = null
+  if (event.key === 'Escape' && store.transportState.activeZoneId) {
+    store.transportState.clearZone()
   }
 }
 
@@ -144,13 +164,16 @@ onUnmounted(() => {
         class="w-full h-auto"
         style="position: absolute; top: 0; left: 0; pointer-events: auto"
       >
+        <!-- Pattern definitions -->
+        <defs>
+          <pattern id="no-data-stripes" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="4" height="8" fill="rgba(255, 255, 255, 0.3)" />
+          </pattern>
+        </defs>
+
         <g class="zones-layer">
           <!-- Render all zones with independent animation -->
-          <ZonePolygon
-            v-for="zone in zones"
-            :key="zone.id"
-            :zone="zone"
-          />
+          <ZonePolygon v-for="zone in zones" :key="zone.id" :zone="zone" />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
         <g v-if="showRoads" class="road-layer pointer-events-none">
@@ -167,10 +190,10 @@ onUnmounted(() => {
           />
         </g>
         <!-- Selected zone border on top -->
-        <g v-if="store.activeZoneId">
+        <g v-if="store.transportState.activeZoneId">
           <path
             v-for="zone in zones"
-            v-show="zone.id === store.activeZoneId"
+            v-show="zone.id === store.transportState.activeZoneId"
             :key="`selected-${zone.id}`"
             :d="zone.svgPath"
             class="pointer-events-none stroke-vintage-orange"
@@ -179,16 +202,31 @@ onUnmounted(() => {
           />
         </g>
         <!-- Hovered zone border on top -->
-        <g v-if="store.hoveredZoneId && store.hoveredZoneId !== store.activeZoneId">
+        <g
+          v-if="
+            store.transportState.hoveredZoneId &&
+            store.transportState.hoveredZoneId !== store.transportState.activeZoneId
+          "
+        >
           <path
             v-for="zone in zones"
-            v-show="zone.id === store.hoveredZoneId"
+            v-show="zone.id === store.transportState.hoveredZoneId"
             :key="`hovered-${zone.id}`"
             :d="zone.svgPath"
             class="pointer-events-none stroke-vintage-orange"
             fill="none"
             stroke-width="3"
             opacity="0.7"
+          />
+        </g>
+        <!-- No-data stripe overlay (debugging aid) -->
+        <g v-if="zonesWithoutData.length > 0" class="no-data-layer pointer-events-none">
+          <path
+            v-for="zone in zonesWithoutData"
+            :key="`no-data-${zone.id}`"
+            :d="zone.svgPath"
+            fill="url(#no-data-stripes)"
+            stroke="none"
           />
         </g>
         <!-- Routing reference points for each zone (always visible) -->

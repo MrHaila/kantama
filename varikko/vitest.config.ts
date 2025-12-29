@@ -13,7 +13,7 @@ export default defineConfig({
       include: ['src/lib/**/*.ts'],
       exclude: [
         'src/tests/**',
-        'src/tui/**',  // UI tests separate concern
+        'src/tui/**', // UI tests separate concern
         '**/*.d.ts',
       ],
       thresholds: {
@@ -23,7 +23,7 @@ export default defineConfig({
         statements: 80,
       },
     },
-    testTimeout: 30000,  // 30s for route calculation tests
+    testTimeout: 30000, // 30s for route calculation tests
     hookTimeout: 10000,
   },
 });

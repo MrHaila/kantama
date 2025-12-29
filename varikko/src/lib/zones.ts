@@ -2,7 +2,14 @@ import axios from 'axios';
 import * as turf from '@turf/turf';
 import * as d3 from 'd3-geo';
 import type Database from 'better-sqlite3';
-import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
+import type {
+  Geometry,
+  Position,
+  Polygon,
+  MultiPolygon,
+  Feature,
+  FeatureCollection,
+} from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
 import { CITY_CODES } from './types';
@@ -195,9 +202,12 @@ function isValidRing(ring: Position[]): boolean {
     if (lon === undefined || lat === undefined) return false;
     // Use metro area bounds for sanity check (catches projection errors)
     return (
-      lon >= METRO_AREA_BOUNDS.minLon && lon <= METRO_AREA_BOUNDS.maxLon &&
-      lat >= METRO_AREA_BOUNDS.minLat && lat <= METRO_AREA_BOUNDS.maxLat &&
-      !isNaN(lon) && !isNaN(lat)
+      lon >= METRO_AREA_BOUNDS.minLon &&
+      lon <= METRO_AREA_BOUNDS.maxLon &&
+      lat >= METRO_AREA_BOUNDS.minLat &&
+      lat <= METRO_AREA_BOUNDS.maxLat &&
+      !isNaN(lon) &&
+      !isNaN(lat)
     );
   });
 }
@@ -228,7 +238,9 @@ function cleanGeometry(geometry: Geometry): Geometry | null {
 /**
  * Download zones from WFS service
  */
-export async function downloadZonesFromWFS(): Promise<FeatureCollection<Geometry, FeatureProperties>> {
+export async function downloadZonesFromWFS(): Promise<
+  FeatureCollection<Geometry, FeatureProperties>
+> {
   const response = await axios.get(WFS_URL, {
     responseType: 'json',
     maxContentLength: Infinity,
@@ -299,7 +311,9 @@ export function processZones(
 export function validateSchema(db: Database.Database): boolean {
   try {
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'time_buckets')")
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'time_buckets')"
+      )
       .all() as Array<{ name: string }>;
 
     return tables.length === 4;
@@ -439,9 +453,7 @@ export function insertZones(
 /**
  * Download zones from all cities
  */
-export async function downloadZonesMultiCity(
-  emitter?: ProgressEmitter
-): Promise<StandardZone[]> {
+export async function downloadZonesMultiCity(emitter?: ProgressEmitter): Promise<StandardZone[]> {
   emitter?.emitStart('fetch_zones', ALL_FETCHERS.length, 'Fetching from multiple cities...');
 
   const allZones: StandardZone[] = [];
@@ -453,17 +465,25 @@ export async function downloadZonesMultiCity(
       emitter?.emitProgress('fetch_zones', i, totalCities, `Fetching ${fetcher.cityName}...`);
 
       const features = await fetcher.fetchFeatures();
-      const zones = features.map(f => fetcher.parseFeature(f));
+      const zones = features.map((f) => fetcher.parseFeature(f));
 
       allZones.push(...zones);
 
-      emitter?.emitProgress('fetch_zones', i + 1, totalCities,
-        `Fetched ${zones.length} zones from ${fetcher.cityName}`);
+      emitter?.emitProgress(
+        'fetch_zones',
+        i + 1,
+        totalCities,
+        `Fetched ${zones.length} zones from ${fetcher.cityName}`
+      );
     } catch (error) {
       console.error(`Failed to fetch ${fetcher.cityName}:`, error);
       // Continue with other cities (partial success)
-      emitter?.emitProgress('fetch_zones', i + 1, totalCities,
-        `Failed to fetch ${fetcher.cityName}, continuing...`);
+      emitter?.emitProgress(
+        'fetch_zones',
+        i + 1,
+        totalCities,
+        `Failed to fetch ${fetcher.cityName}, continuing...`
+      );
     }
   }
 
@@ -503,7 +523,7 @@ export async function processZonesMultiCity(
     geometryInvalid: 0,
     outsideVisibleArea: 0,
     svgPathFailed: 0,
-    passed: 0
+    passed: 0,
   };
 
   let processed = standardZones
@@ -562,7 +582,7 @@ export async function processZonesMultiCity(
         city: zone.city,
         name_se: zone.nameSe,
         admin_level: zone.adminLevel,
-        source_layer: zone.metadata?.sourceLayer
+        source_layer: zone.metadata?.sourceLayer,
       };
     })
     .filter((z): z is NonNullable<typeof z> => z !== null);
@@ -592,12 +612,16 @@ export async function fetchZonesMultiCity(
   // Download from all cities
   const standardZones = await downloadZonesMultiCity(emitter);
 
-  emitter?.emitProgress('fetch_zones', 3, 4,
-    `Downloaded ${standardZones.length} zones, processing...`);
+  emitter?.emitProgress(
+    'fetch_zones',
+    3,
+    4,
+    `Downloaded ${standardZones.length} zones, processing...`
+  );
 
   // Process zones
   const { zones, stats } = await processZonesMultiCity(standardZones, {
-    limit: options.limit
+    limit: options.limit,
   });
 
   // Log filtering summary
@@ -610,8 +634,12 @@ export async function fetchZonesMultiCity(
   console.log(`Passed filtering:     ${stats.passed}`);
   console.log('------------------------------\n');
 
-  emitter?.emitProgress('fetch_zones', 4, 4,
-    `Processed ${zones.length} zones (${stats.outsideVisibleArea} filtered as outside visible area), inserting...`);
+  emitter?.emitProgress(
+    'fetch_zones',
+    4,
+    4,
+    `Processed ${zones.length} zones (${stats.outsideVisibleArea} filtered as outside visible area), inserting...`
+  );
 
   // Insert zones
   insertZones(db, zones, emitter);
@@ -625,7 +653,7 @@ export async function fetchZonesMultiCity(
       limit: options.limit,
       multiCity: true,
       cities: ['Helsinki', 'Vantaa', 'Espoo', 'Kauniainen'],
-      filteringStats: stats
+      filteringStats: stats,
     })
   );
 
@@ -655,12 +683,7 @@ export async function fetchZones(
   // Download from WFS
   const geojson = await downloadZonesFromWFS();
 
-  emitter?.emitProgress(
-    'fetch_zones',
-    0,
-    100,
-    `Downloaded ${geojson.features.length} features`
-  );
+  emitter?.emitProgress('fetch_zones', 0, 100, `Downloaded ${geojson.features.length} features`);
 
   // Process zones
   const zones = processZones(geojson.features as Feature<Geometry, FeatureProperties>[], {

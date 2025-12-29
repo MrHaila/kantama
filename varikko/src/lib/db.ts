@@ -46,17 +46,25 @@ export interface DBStats {
 export function getDBStats(db: Database.Database): DBStats {
   const placeCount = db.prepare('SELECT COUNT(*) as count FROM places').get() as { count: number };
 
-  const routeCounts = db.prepare(`
+  const routeCounts = db
+    .prepare(
+      `
     SELECT
       status,
       COUNT(*) as count
     FROM routes
     GROUP BY status
-  `).all() as Array<{ status: string; count: number }>;
+  `
+    )
+    .all() as Array<{ status: string; count: number }>;
 
-  const timeBucketsCalculated = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as { count: number };
+  const timeBucketsCalculated = db.prepare('SELECT COUNT(*) as count FROM time_buckets').get() as {
+    count: number;
+  };
 
-  const lastRun = db.prepare("SELECT value FROM metadata WHERE key = 'last_fetch'").get() as { value: string } | undefined;
+  const lastRun = db.prepare("SELECT value FROM metadata WHERE key = 'last_fetch'").get() as
+    | { value: string }
+    | undefined;
 
   // Route counts by status
   const statusMap: Record<string, number> = {};
@@ -85,13 +93,17 @@ export function getDBStats(db: Database.Database): DBStats {
  * Get recent errors (for error preview)
  */
 export function getRecentErrors(db: Database.Database, limit: number = 5) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT from_id, to_id, time_period, legs
     FROM routes
     WHERE status = 'ERROR'
     ORDER BY ROWID DESC
     LIMIT ?
-  `).all(limit) as Array<{
+  `
+    )
+    .all(limit) as Array<{
     from_id: string;
     to_id: string;
     time_period: string;

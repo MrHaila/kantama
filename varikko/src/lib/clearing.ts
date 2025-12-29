@@ -31,10 +31,7 @@ export interface ClearResult {
  *
  * Always runs VACUUM after clearing to reclaim disk space.
  */
-export function clearData(
-  db: Database.Database,
-  options: ClearOptions = {}
-): ClearResult {
+export function clearData(db: Database.Database, options: ClearOptions = {}): ClearResult {
   const { routes, places, metadata, timeBuckets, emitter } = options;
 
   // Default to clearing everything if no specific flags
@@ -47,7 +44,12 @@ export function clearData(
   try {
     const operation = clearAll
       ? 'all'
-      : [routes && 'routes', places && 'places', metadata && 'metadata', timeBuckets && 'time_buckets']
+      : [
+          routes && 'routes',
+          places && 'places',
+          metadata && 'metadata',
+          timeBuckets && 'time_buckets',
+        ]
           .filter(Boolean)
           .join(', ');
 
@@ -83,14 +85,18 @@ export function clearData(
       // Selective clearing
       if (routes) {
         // Reset routes to PENDING (doesn't delete)
-        const info = db.prepare(`
+        const info = db
+          .prepare(
+            `
           UPDATE routes
           SET duration = NULL,
               numberOfTransfers = NULL,
               walkDistance = NULL,
               legs = NULL,
               status = 'PENDING'
-        `).run();
+        `
+          )
+          .run();
         result.deleted.routes = info.changes;
       }
 

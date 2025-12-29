@@ -60,7 +60,7 @@ function showStatus(db: Database.Database): void {
   console.log(fmt.header('ZONES', '📍'));
   if (stats.zones === 0) {
     console.log(fmt.muted('  No zones fetched yet'));
-    console.log(fmt.suggestion('  Run \'varikko fetch\' to fetch postal code zones'));
+    console.log(fmt.suggestion("  Run 'varikko fetch' to fetch postal code zones"));
   } else {
     console.log(fmt.keyValue('  Total Zones:', stats.zones, 18));
     if (stats.lastRun?.timestamp) {
@@ -75,30 +75,70 @@ function showStatus(db: Database.Database): void {
   if (stats.routes.total === 0) {
     console.log(fmt.muted('  No routes calculated yet'));
     if (stats.zones > 0) {
-      console.log(fmt.suggestion('  Run \'varikko geocode\' then \'varikko routes\' to calculate routes'));
+      console.log(
+        fmt.suggestion("  Run 'varikko geocode' then 'varikko routes' to calculate routes")
+      );
     }
   } else {
     const totalPerPeriod = stats.routes.total / 3; // 3 periods: MORNING, EVENING, MIDNIGHT
-    console.log(fmt.keyValue('  Total Routes:', `${stats.routes.total.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`, 18));
+    console.log(
+      fmt.keyValue(
+        '  Total Routes:',
+        `${stats.routes.total.toLocaleString()} (${totalPerPeriod.toLocaleString()}/period)`,
+        18
+      )
+    );
 
     // Calculate percentages
-    const okPct = stats.routes.total > 0 ? ((stats.routes.ok / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const pendingPct = stats.routes.total > 0 ? ((stats.routes.pending / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const noRoutePct = stats.routes.total > 0 ? ((stats.routes.no_route / stats.routes.total) * 100).toFixed(1) : '0.0';
-    const errorPct = stats.routes.total > 0 ? ((stats.routes.error / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const okPct =
+      stats.routes.total > 0 ? ((stats.routes.ok / stats.routes.total) * 100).toFixed(1) : '0.0';
+    const pendingPct =
+      stats.routes.total > 0
+        ? ((stats.routes.pending / stats.routes.total) * 100).toFixed(1)
+        : '0.0';
+    const noRoutePct =
+      stats.routes.total > 0
+        ? ((stats.routes.no_route / stats.routes.total) * 100).toFixed(1)
+        : '0.0';
+    const errorPct =
+      stats.routes.total > 0 ? ((stats.routes.error / stats.routes.total) * 100).toFixed(1) : '0.0';
 
-    console.log(fmt.keyValue('  ' + fmt.symbols.success + ' Calculated:', `${stats.routes.ok.toLocaleString()} (${okPct}%)`, 18));
+    console.log(
+      fmt.keyValue(
+        '  ' + fmt.symbols.success + ' Calculated:',
+        `${stats.routes.ok.toLocaleString()} (${okPct}%)`,
+        18
+      )
+    );
 
     if (stats.routes.pending > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.pending + ' Pending:', `${stats.routes.pending.toLocaleString()} (${pendingPct}%)`, 18));
+      console.log(
+        fmt.keyValue(
+          '  ' + fmt.symbols.pending + ' Pending:',
+          `${stats.routes.pending.toLocaleString()} (${pendingPct}%)`,
+          18
+        )
+      );
     }
 
     if (stats.routes.no_route > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.noRoute + ' No Route:', `${stats.routes.no_route.toLocaleString()} (${noRoutePct}%)`, 18));
+      console.log(
+        fmt.keyValue(
+          '  ' + fmt.symbols.noRoute + ' No Route:',
+          `${stats.routes.no_route.toLocaleString()} (${noRoutePct}%)`,
+          18
+        )
+      );
     }
 
     if (stats.routes.error > 0) {
-      console.log(fmt.keyValue('  ' + fmt.symbols.error + ' Errors:', `${stats.routes.error.toLocaleString()} (${errorPct}%)`, 18));
+      console.log(
+        fmt.keyValue(
+          '  ' + fmt.symbols.error + ' Errors:',
+          `${stats.routes.error.toLocaleString()} (${errorPct}%)`,
+          18
+        )
+      );
     }
   }
   console.log('');
@@ -108,12 +148,14 @@ function showStatus(db: Database.Database): void {
   if (stats.timeBuckets.calculated) {
     console.log(fmt.successMessage('  Calculated (6 buckets)'));
   } else if (stats.timeBuckets.count > 0) {
-    console.log(fmt.warningMessage(`  Partially calculated (${stats.timeBuckets.count}/6 buckets)`));
-    console.log(fmt.suggestion('  Run \'varikko time-buckets --force\' to recalculate'));
+    console.log(
+      fmt.warningMessage(`  Partially calculated (${stats.timeBuckets.count}/6 buckets)`)
+    );
+    console.log(fmt.suggestion("  Run 'varikko time-buckets --force' to recalculate"));
   } else {
     console.log(fmt.muted('  Not calculated yet'));
     if (stats.routes.ok > 0) {
-      console.log(fmt.suggestion('  Run \'varikko time-buckets\' to generate heatmap buckets'));
+      console.log(fmt.suggestion("  Run 'varikko time-buckets' to generate heatmap buckets"));
     }
   }
   console.log('');
@@ -122,16 +164,24 @@ function showStatus(db: Database.Database): void {
   if (stats.routes.error > 0) {
     const errors = getRecentErrors(db, 5);
     console.log(fmt.header('RECENT ERRORS', '⚠️'));
-    console.log(fmt.muted(`  Showing ${Math.min(5, errors.length)} of ${stats.routes.error.toLocaleString()} total errors`));
+    console.log(
+      fmt.muted(
+        `  Showing ${Math.min(5, errors.length)} of ${stats.routes.error.toLocaleString()} total errors`
+      )
+    );
     console.log('');
     errors.forEach((err) => {
       try {
         const legsData = JSON.parse(err.legs);
         const errorMsg = legsData.error || 'Unknown error';
-        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
+        console.log(
+          fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`)
+        );
         console.log(`    ${fmt.error(errorMsg)}`);
       } catch {
-        console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`));
+        console.log(
+          fmt.muted(`  ${fmt.symbols.bullet} ${err.from_id} → ${err.to_id} (${err.time_period})`)
+        );
       }
     });
     console.log('');
@@ -142,14 +192,14 @@ function showStatus(db: Database.Database): void {
   const suggestions: string[] = [];
 
   if (stats.zones === 0) {
-    suggestions.push('Run \'varikko fetch\' to fetch postal code zones');
+    suggestions.push("Run 'varikko fetch' to fetch postal code zones");
   } else if (stats.routes.total === 0) {
-    suggestions.push('Run \'varikko geocode\' to geocode zones');
-    suggestions.push('Run \'varikko routes\' to calculate transit routes');
+    suggestions.push("Run 'varikko geocode' to geocode zones");
+    suggestions.push("Run 'varikko routes' to calculate transit routes");
   } else if (stats.routes.pending > 0) {
-    suggestions.push('Run \'varikko routes\' to calculate pending routes');
+    suggestions.push("Run 'varikko routes' to calculate pending routes");
   } else if (!stats.timeBuckets.calculated && stats.routes.ok > 0) {
-    suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
+    suggestions.push("Run 'varikko time-buckets' to generate heatmap buckets");
   } else if (stats.timeBuckets.calculated) {
     suggestions.push('All data calculated! Ready for visualization');
   }
@@ -227,28 +277,34 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.header('FETCHING POSTAL CODE ZONES', '🌍'));
       console.log('');
-      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
+      console.log(
+        fmt.keyValue(
+          'Mode:',
+          options.limit ? `Limited (${options.limit} zones)` : 'Full dataset',
+          15
+        )
+      );
       console.log(fmt.keyValue('Sources:', 'Helsinki, Espoo, Vantaa WFS', 15));
       console.log('');
 
-      let lastProgress = 0;
+      let progressStarted = false;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Fetching zones...'));
         } else if (event.type === 'progress') {
-          // Show progress bar for significant updates
           if (event.current && event.total) {
-            const progress = Math.floor((event.current / event.total) * 100);
-            if (progress >= lastProgress + 10 || event.current === event.total) {
-              console.log(fmt.progressBar(event.current, event.total, { width: 30 }));
-              lastProgress = progress;
-            }
+            progressStarted = true;
+            fmt.writeProgress(fmt.progressBar(event.current, event.total, { width: 30 }));
           } else if (event.message) {
+            if (progressStarted) fmt.endProgress();
+            progressStarted = false;
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
+          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
+          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
@@ -267,10 +323,14 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.bold('SUMMARY'));
         console.log(fmt.divider(50));
         console.log(fmt.successMessage(`Fetched ${result.zoneCount.toLocaleString()} zones`));
-        console.log(fmt.successMessage(`Created ${result.routeCount.toLocaleString()} route combinations`));
+        console.log(
+          fmt.successMessage(`Created ${result.routeCount.toLocaleString()} route combinations`)
+        );
         console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
         console.log('');
-        console.log(fmt.suggestion('Next: Run \'varikko geocode\' to geocode zones to routing addresses'));
+        console.log(
+          fmt.suggestion("Next: Run 'varikko geocode' to geocode zones to routing addresses")
+        );
         console.log('');
       } catch (error) {
         console.error('');
@@ -299,8 +359,16 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.header('GEOCODING ZONES', '📍'));
       console.log('');
       console.log(fmt.keyValue('API:', 'Digitransit Geocoding API', 15));
-      console.log(fmt.keyValue('Auth:', apiKey ? fmt.success('Authenticated') : fmt.warning('No API key'), 15));
-      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
+      console.log(
+        fmt.keyValue('Auth:', apiKey ? fmt.success('Authenticated') : fmt.warning('No API key'), 15)
+      );
+      console.log(
+        fmt.keyValue(
+          'Mode:',
+          options.limit ? `Limited (${options.limit} zones)` : 'Full dataset',
+          15
+        )
+      );
       console.log('');
 
       if (!apiKey) {
@@ -310,23 +378,24 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log('');
       }
 
-      let lastProgress = 0;
+      let progressStarted = false;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Geocoding zones...'));
         } else if (event.type === 'progress') {
           if (event.current && event.total) {
-            const progress = Math.floor((event.current / event.total) * 100);
-            if (progress >= lastProgress + 10 || event.current === event.total) {
-              console.log(fmt.progressBar(event.current, event.total, { width: 30 }));
-              lastProgress = progress;
-            }
+            progressStarted = true;
+            fmt.writeProgress(fmt.progressBar(event.current, event.total, { width: 30 }));
           } else if (event.message) {
+            if (progressStarted) fmt.endProgress();
+            progressStarted = false;
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
+          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
+          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
@@ -348,23 +417,35 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.divider(50));
         console.log(fmt.bold('SUMMARY'));
         console.log(fmt.divider(50));
-        console.log(fmt.successMessage(`Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`));
+        console.log(
+          fmt.successMessage(
+            `Successfully geocoded: ${result.success.toLocaleString()} zones (${successPct}%)`
+          )
+        );
         if (result.failed > 0) {
-          console.log(fmt.warningMessage(`Geometric fallback: ${result.failed.toLocaleString()} zones (${failedPct}%)`));
+          console.log(
+            fmt.warningMessage(
+              `Geometric fallback: ${result.failed.toLocaleString()} zones (${failedPct}%)`
+            )
+          );
         }
         console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 15));
 
         if (result.errors.length > 0) {
           console.log('');
           console.log(fmt.header('ERRORS', '⚠️'));
-          console.log(fmt.dim(`  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`));
+          console.log(
+            fmt.dim(
+              `  Showing ${Math.min(3, result.errors.length)} of ${result.errors.length} errors`
+            )
+          );
           result.errors.slice(0, 3).forEach((err) => {
             console.log(fmt.muted(`  ${fmt.symbols.bullet} ${err.id}: ${err.error}`));
           });
         }
 
         console.log('');
-        console.log(fmt.suggestion('Next: Run \'varikko routes\' to calculate transit routes'));
+        console.log(fmt.suggestion("Next: Run 'varikko routes' to calculate transit routes"));
         console.log('');
       } catch (error) {
         console.error('');
@@ -414,9 +495,17 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.header('CALCULATING ROUTES', '🚌'));
       console.log('');
-      console.log(fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15));
+      console.log(
+        fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15)
+      );
       console.log(fmt.keyValue('Concurrency:', `${config.concurrency} requests`, 15));
-      console.log(fmt.keyValue('Period:', options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)', 15));
+      console.log(
+        fmt.keyValue(
+          'Period:',
+          options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)',
+          15
+        )
+      );
 
       let modeDesc = 'Full dataset';
       if (options.zones && options.limit) {
@@ -435,29 +524,28 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log('');
       }
 
-      let lastProgress = 0;
+      let progressStarted = false;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Starting route calculation...'));
         } else if (event.type === 'progress') {
+          progressStarted = true;
           const current = event.current || 0;
           const total = event.total || 0;
           const metadata = event.metadata || {};
 
-          const progress = total ? Math.floor((current / total) * 100) : 0;
-          if (progress >= lastProgress + 5 || current === total) {
-            const bar = fmt.progressBar(current, total, { width: 30 });
-            const stats = fmt.formatRouteStats({
-              ok: metadata.ok,
-              noRoute: metadata.noRoute,
-              errors: metadata.errors,
-            });
-            console.log(`${bar} ${stats}`);
-            lastProgress = progress;
-          }
+          const bar = fmt.progressBar(current, total, { width: 30 });
+          const stats = fmt.formatRouteStats({
+            ok: metadata.ok,
+            noRoute: metadata.noRoute,
+            errors: metadata.errors,
+          });
+          fmt.writeProgress(`${bar} ${stats}`);
         } else if (event.type === 'complete') {
+          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
+          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }
@@ -465,7 +553,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       try {
         const result = await buildRoutes(db, {
-          period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
+          period: options.period
+            ? (options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT')
+            : undefined,
           zones: options.zones,
           limit: options.limit,
           emitter,
@@ -480,7 +570,9 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.keyValue('Total processed:', result.processed.toLocaleString(), 20));
         console.log(fmt.successMessage(`Successful: ${result.ok.toLocaleString()} routes`));
         if (result.noRoute > 0) {
-          console.log(fmt.warningMessage(`No route found: ${result.noRoute.toLocaleString()} routes`));
+          console.log(
+            fmt.warningMessage(`No route found: ${result.noRoute.toLocaleString()} routes`)
+          );
         }
         if (result.errors > 0) {
           console.log(fmt.errorMessage(`Errors: ${result.errors.toLocaleString()} routes`));
@@ -489,7 +581,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
         console.log('');
         if (result.ok > 0) {
-          console.log(fmt.suggestion('Next: Run \'varikko time-buckets\' to calculate heatmap data'));
+          console.log(fmt.suggestion("Next: Run 'varikko time-buckets' to calculate heatmap data"));
         } else {
           console.log(fmt.warningMessage('No successful routes calculated'));
           if (config.isLocal) {
@@ -612,13 +704,17 @@ export async function parseCLI(): Promise<CLICommand | null> {
         }
         if (result.deleted.routes !== undefined) {
           const note = routes && !places ? ' (reset to PENDING)' : '';
-          console.log(fmt.keyValue('Routes:', `${result.deleted.routes.toLocaleString()}${note}`, 15));
+          console.log(
+            fmt.keyValue('Routes:', `${result.deleted.routes.toLocaleString()}${note}`, 15)
+          );
         }
         if (result.deleted.metadata !== undefined) {
           console.log(fmt.keyValue('Metadata:', result.deleted.metadata.toLocaleString(), 15));
         }
         if (result.deleted.timeBuckets !== undefined) {
-          console.log(fmt.keyValue('Time Buckets:', result.deleted.timeBuckets.toLocaleString(), 15));
+          console.log(
+            fmt.keyValue('Time Buckets:', result.deleted.timeBuckets.toLocaleString(), 15)
+          );
         }
         console.log('');
       } catch (error) {
@@ -675,7 +771,13 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.divider(50));
 
         result.timeBuckets.forEach((bucket) => {
-          console.log(fmt.keyValue(`  Bucket ${bucket.number}:`, `${bucket.label} ${fmt.dim('(' + bucket.color + ')')}`, 18));
+          console.log(
+            fmt.keyValue(
+              `  Bucket ${bucket.number}:`,
+              `${bucket.label} ${fmt.dim('(' + bucket.color + ')')}`,
+              18
+            )
+          );
         });
 
         console.log('');
@@ -723,8 +825,12 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.log(fmt.bold('Export Statistics (dry run):'));
         console.log(fmt.keyValue('  Zones:', stats.zones.toLocaleString(), 20));
         console.log(fmt.keyValue('  Calculated Routes:', stats.routes.toLocaleString(), 20));
-        console.log(fmt.keyValue('  Est. zones.json:', fmt.formatBytes(stats.estimatedZonesSize), 20));
-        console.log(fmt.keyValue('  Est. route files:', fmt.formatBytes(stats.estimatedRoutesSize), 20));
+        console.log(
+          fmt.keyValue('  Est. zones.json:', fmt.formatBytes(stats.estimatedZonesSize), 20)
+        );
+        console.log(
+          fmt.keyValue('  Est. route files:', fmt.formatBytes(stats.estimatedRoutesSize), 20)
+        );
         console.log('');
         console.log(fmt.suggestion('Run without --dry-run to export files'));
         console.log('');
@@ -736,18 +842,28 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.keyValue('Output:', outputDir, 15));
       console.log('');
 
+      let progressStarted = false;
       emitter.on('progress', (event) => {
         if (event.type === 'start') {
           console.log(fmt.infoMessage('Exporting data...'));
         } else if (event.type === 'progress') {
           if (event.current && event.total) {
-            console.log(fmt.progressBar(event.current, event.total, { width: 30 }) + ' ' + (event.message || ''));
+            progressStarted = true;
+            fmt.writeProgress(
+              fmt.progressBar(event.current, event.total, { width: 30 }) +
+                ' ' +
+                (event.message || '')
+            );
           } else if (event.message) {
+            if (progressStarted) fmt.endProgress();
+            progressStarted = false;
             console.log(fmt.dim(event.message));
           }
         } else if (event.type === 'complete') {
+          if (progressStarted) fmt.endProgress();
           console.log(fmt.successMessage(event.message || 'Complete'));
         } else if (event.type === 'error') {
+          if (progressStarted) fmt.endProgress();
           console.error(fmt.errorMessage(event.message || 'Error'));
           if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
         }

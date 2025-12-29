@@ -151,11 +151,7 @@ export async function geocodeZone(
           const polygon = turf.feature(geometry);
 
           const isInside = turf.booleanPointInPolygon(point, polygon);
-          const distance = turf.distance(
-            turf.point([poiLon, poiLat]),
-            point,
-            { units: 'meters' }
-          );
+          const distance = turf.distance(turf.point([poiLon, poiLat]), point, { units: 'meters' });
 
           if (isInside) {
             return {
@@ -173,11 +169,7 @@ export async function geocodeZone(
         const feature = response.data.features[0];
         const [lon, lat] = feature.geometry.coordinates;
         const point = turf.point([lon, lat]);
-        const distance = turf.distance(
-          turf.point([poiLon, poiLat]),
-          point,
-          { units: 'meters' }
-        );
+        const distance = turf.distance(turf.point([poiLon, poiLat]), point, { units: 'meters' });
 
         return {
           success: true,
@@ -283,7 +275,9 @@ export async function geocodeZones(
 
   // Get all zones including geometry for validation
   // Use COALESCE for optional columns that may not exist in all schemas
-  let zones = db.prepare(`
+  let zones = db
+    .prepare(
+      `
     SELECT
       id,
       name,
@@ -294,7 +288,9 @@ export async function geocodeZones(
       name_se
     FROM places
     ORDER BY id
-  `).all() as Place[];
+  `
+    )
+    .all() as Place[];
 
   if (limit) {
     zones = zones.slice(0, limit);

@@ -1,9 +1,9 @@
-import { ref } from 'vue';
+import { ref } from 'vue'
 
 export interface ZoneAnimationOptions {
-  duration?: number; // milliseconds
-  easing?: string; // CSS easing function
-  onComplete?: () => void;
+  duration?: number // milliseconds
+  easing?: string // CSS easing function
+  onComplete?: () => void
 }
 
 export function useZoneAnimation(
@@ -11,38 +11,35 @@ export function useZoneAnimation(
   delayMs: number = 0,
   options: ZoneAnimationOptions = {}
 ) {
-  const currentColor = ref(targetColorGetter());
-  const isAnimating = ref(false);
+  const currentColor = ref(targetColorGetter())
+  const isAnimating = ref(false)
 
-  const {
-    duration = 300,
-    onComplete,
-  } = options;
+  const { duration = 300, onComplete } = options
 
   /**
    * Start animation to new color after specified delay
    */
   function startAnimation(newColor: string) {
-    isAnimating.value = true;
+    isAnimating.value = true
 
     // Apply delay before starting color transition
     setTimeout(() => {
-      currentColor.value = newColor;
+      currentColor.value = newColor
 
       // Mark animation complete after transition duration
       setTimeout(() => {
-        isAnimating.value = false;
-        onComplete?.();
-      }, duration);
-    }, delayMs);
+        isAnimating.value = false
+        onComplete?.()
+      }, duration)
+    }, delayMs)
   }
 
   /**
    * Immediately set color without animation
    */
   function setColorImmediate(color: string) {
-    currentColor.value = color;
-    isAnimating.value = false;
+    currentColor.value = color
+    isAnimating.value = false
   }
 
   return {
@@ -50,5 +47,5 @@ export function useZoneAnimation(
     isAnimating,
     startAnimation,
     setColorImmediate,
-  };
+  }
 }

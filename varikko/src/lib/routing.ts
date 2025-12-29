@@ -232,7 +232,7 @@ async function processPeriod(
     const allZones = db
       .prepare('SELECT DISTINCT id FROM places ORDER BY RANDOM() LIMIT ?')
       .all(zones) as { id: string }[];
-    selectedZones = allZones.map(z => z.id);
+    selectedZones = allZones.map((z) => z.id);
   }
 
   // Fetch pending routes (optionally filtered by origin zones)
@@ -247,13 +247,9 @@ async function processPeriod(
     query += ` AND from_id IN (${placeholders})`;
   }
 
-  const params = selectedZones && selectedZones.length > 0
-    ? [period, ...selectedZones]
-    : [period];
+  const params = selectedZones && selectedZones.length > 0 ? [period, ...selectedZones] : [period];
 
-  const pendingRoutes = db
-    .prepare(query)
-    .all(...params) as { from_id: string; to_id: string }[];
+  const pendingRoutes = db.prepare(query).all(...params) as { from_id: string; to_id: string }[];
 
   if (pendingRoutes.length === 0) {
     return { processed: 0, ok: 0, noRoute: 0, errors: 0 };
@@ -380,18 +376,15 @@ export async function buildRoutes(
   db: Database.Database,
   options: BuildRoutesOptions = {}
 ): Promise<BuildRoutesResult> {
-  const {
-    period,
-    zones,
-    limit,
-    emitter,
-  } = options;
+  const { period, zones, limit, emitter } = options;
 
   const config = getOTPConfig();
 
   // Validate API key for remote OTP
   if (!config.isLocal && !config.apiKey) {
-    throw new Error('Missing HSL_API_KEY or DIGITRANSIT_API_KEY environment variable (required for remote API)');
+    throw new Error(
+      'Missing HSL_API_KEY or DIGITRANSIT_API_KEY environment variable (required for remote API)'
+    );
   }
 
   // Determine which periods to process
@@ -430,15 +423,7 @@ export async function buildRoutes(
   let totalErrors = 0;
 
   for (const p of periodsToRun) {
-    const result = await processPeriod(
-      db,
-      p,
-      placeMap,
-      config,
-      zones,
-      limit,
-      emitter
-    );
+    const result = await processPeriod(db, p, placeMap, config, zones, limit, emitter);
 
     totalProcessed += result.processed;
     totalOk += result.ok;

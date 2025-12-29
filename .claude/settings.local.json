@@ -21,7 +21,9 @@
       "Bash(pnpm exec tsx:*)",
       "Bash(node -e:*)",
       "Bash(sqlite3:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(pnpm --filter opas exec tsc:*)",
+      "Bash(pnpm exec vue-tsc:*)"
     ],
     "deny": [],
     "ask": []
