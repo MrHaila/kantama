@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { MAP_CONFIG } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
+import ZonePolygon from './ZonePolygon.vue'
 import { decodePolyline } from '../utils/polyline'
 import { modeColors } from '../utils/transportColors'
 import { layerService } from '../services/LayerService'
@@ -113,21 +114,6 @@ const routeStops = computed(() => {
   return stops
 })
 
-// Handle zone click
-function handleZoneClick(zoneId: string) {
-  store.activeZoneId = zoneId
-}
-
-// Handle mouse enter
-function handleMouseEnter(zoneId: string) {
-  store.hoveredZoneId = zoneId
-}
-
-// Handle mouse leave
-function handleMouseLeave() {
-  store.hoveredZoneId = null
-}
-
 // Load data on mount
 onMounted(async () => {
   await Promise.all([store.loadData(), loadRoadPaths()])
@@ -158,18 +144,12 @@ onUnmounted(() => {
         class="w-full h-auto"
         style="position: absolute; top: 0; left: 0; pointer-events: auto"
       >
-        <g>
-          <!-- Render all zones -->
-          <path
+        <g class="zones-layer">
+          <!-- Render all zones with independent animation -->
+          <ZonePolygon
             v-for="zone in zones"
             :key="zone.id"
-            :d="zone.svgPath"
-            class="cursor-pointer transition-colors duration-300 stroke-vintage-dark stroke-2"
-            :fill="store.getZoneColor(zone.id)"
-            :fill-opacity="store.activeZoneId === zone.id ? 0 : 1"
-            @mouseenter="handleMouseEnter(zone.id)"
-            @mouseleave="handleMouseLeave"
-            @click="handleZoneClick(zone.id)"
+            :zone="zone"
           />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
