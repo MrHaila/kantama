@@ -48,7 +48,7 @@ Business Logic (lib/)          UI Layer (tui/)           CLI Layer (cli.ts)
 1. **Dashboard** (dashboard.tsx):
    - Database status overview (zones, routes, time buckets)
    - Menu with keyboard shortcuts
-   - Test mode toggle
+   - Flexible limit/zones options via CLI flags
    - Visual hierarchy with box-drawing characters
 
 2. **Screen Components** (screens/*.tsx):
@@ -485,9 +485,9 @@ pnpm build                   # Test build (if exists)
 # Test all commands still work
 pnpm dev                     # Should show status
 pnpm dev status              # Should show status
-pnpm dev fetch --test        # Should work
-pnpm dev geocode --test      # Should work
-pnpm dev routes --test       # Should work
+pnpm dev fetch --limit 5        # Should work
+pnpm dev geocode --limit 5      # Should work
+pnpm dev routes --limit 10       # Should work
 pnpm dev clear --force --routes
 pnpm dev time-buckets
 pnpm dev map
@@ -562,7 +562,7 @@ pnpm dev map
    pnpm dev map             # Process shapefiles
 
    # Options
-   pnpm dev fetch --test    # Test mode (5 zones)
+   pnpm dev fetch --limit 5    # Test mode (5 zones)
    pnpm dev routes --period MORNING
    pnpm dev clear --force --routes
    ```
@@ -651,7 +651,7 @@ pnpm test:coverage
 
 # Manual smoke tests
 pnpm dev status
-pnpm dev fetch --test
+pnpm dev fetch --limit 5
 ```
 
 ### New Tests to Add
@@ -874,7 +874,7 @@ After TUI removal, consider these enhancements:
 ### Current CLI Output (Before)
 
 ```bash
-$ pnpm dev routes --test
+$ pnpm dev routes --limit 10
 
 Starting route calculation...
 Progress: 5/5 (100%) - OK: 5, No Route: 0, Errors: 0
@@ -890,7 +890,7 @@ Total processed: 5
 ### Enhanced CLI Output (After)
 
 ```bash
-$ pnpm dev routes --test
+$ pnpm dev routes --limit 10
 
 🚌 CALCULATING ROUTES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

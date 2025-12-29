@@ -261,8 +261,7 @@ describe('geocoding - geocodeZones (integration)', () => {
 
   it('should geocode all zones', async () => {
     const result = await geocodeZones(testDB.db, {
-      testMode: true,
-      testLimit: 5,
+      limit: 5,
       apiKey: 'test-key',
     });
 
@@ -293,8 +292,7 @@ describe('geocoding - geocodeZones (integration)', () => {
       .mockResolvedValueOnce({ data: { features: [{ geometry: { coordinates: [24.95, 60.17] }, properties: {} }] } });
 
     const result = await geocodeZones(testDB.db, {
-      testMode: true,
-      testLimit: 5,
+      limit: 5,
       apiKey: 'test-key',
     });
 
@@ -307,8 +305,7 @@ describe('geocoding - geocodeZones (integration)', () => {
     const startTime = Date.now();
 
     await geocodeZones(testDB.db, {
-      testMode: true,
-      testLimit: 3,
+      limit: 3,
       apiKey: 'test-key',
     });
 
@@ -333,8 +330,7 @@ describe('geocoding - geocodeZones (integration)', () => {
     };
 
     await geocodeZones(testDB.db, {
-      testMode: true,
-      testLimit: 3,
+      limit: 3,
       apiKey: 'test-key',
       emitter: emitter as any,
     });

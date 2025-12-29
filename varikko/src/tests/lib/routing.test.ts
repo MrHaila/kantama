@@ -287,7 +287,6 @@ describe('routing', () => {
 
         const result = await buildRoutes(db, {
           period: 'MORNING',
-          testMode: false,
         });
 
         expect(result.processed).toBe(2);
@@ -332,7 +331,6 @@ describe('routing', () => {
 
         const result = await buildRoutes(db, {
           period: 'MORNING',
-          testMode: false,
         });
 
         expect(result.processed).toBe(1);
@@ -367,7 +365,6 @@ describe('routing', () => {
 
         const result = await buildRoutes(db, {
           period: 'MORNING',
-          testMode: false,
         });
 
         expect(result.processed).toBe(1);
@@ -464,11 +461,10 @@ describe('routing', () => {
 
         const result = await buildRoutes(db, {
           period: 'MORNING',
-          testMode: true,
-          testLimit: 5,
+          limit: 5,
         });
 
-        // Should only process 5 routes (test limit)
+        // Should only process 5 routes (limit)
         expect(result.processed).toBe(5);
       } finally {
         cleanup();

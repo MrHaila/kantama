@@ -89,12 +89,12 @@ The script will check both variables (DIGITRANSIT_API_KEY first, then HSL_API_KE
 
 ## Usage
 
-### Test Mode (Recommended First Step)
+### Limited Processing (Recommended First Step)
 
 Before geocoding all zones, test with a small sample:
 
 ```bash
-pnpm --filter varikko geocode:test
+pnpm dev geocode --limit 5
 ```
 
 This will:
@@ -110,7 +110,7 @@ Expected output:
 ============================================================
 Zone Geocoding - Address-based Routing Point Resolution
 ============================================================
-Test mode: YES (will process 5 zones only)
+Mode: Limited (5 zones)
 Rate limiting: 100ms delay between requests
 API key configured: YES
 ============================================================

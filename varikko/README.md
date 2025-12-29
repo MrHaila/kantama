@@ -9,7 +9,7 @@ Varikko is a command-line data pipeline tool for Kantama. It fetches geospatial 
 - **Rich CLI Output**: Beautiful formatted output with colors, progress bars, and emojis
 - **Comprehensive Status**: Default command shows full database state and next steps
 - **7 Commands**: Fetch zones, geocode, build routes, clear data, calculate time buckets, process maps, show status
-- **Test Mode**: Quick validation with subset of data
+- **Flexible Filtering**: Limit zones and routes for quick testing and incremental processing
 - **Event-Driven**: Real-time progress visualization for long-running operations
 - **Type-Safe**: Full TypeScript implementation with comprehensive test coverage (80%+)
 
@@ -52,19 +52,17 @@ pnpm dev init --force
 Fetches postal code polygons from WFS service, calculates centroids, pre-renders SVG paths, and pre-fills routes table.
 
 ```bash
-pnpm dev fetch           # Fetch all zones
-pnpm dev fetch --test    # Test mode: 5 zones only
+pnpm dev fetch              # Fetch all zones
+pnpm dev fetch --limit 5    # Limit to 5 zones for quick validation
 ```
-
-Test mode fetches only 5 zones for quick validation.
 
 ### `geocode`
 
 Resolves street addresses for better routing points using Digitransit API. Falls back to geometric centroids if geocoding fails.
 
 ```bash
-pnpm dev geocode         # Geocode all zones
-pnpm dev geocode --test  # Test mode: 5 zones only
+pnpm dev geocode              # Geocode all zones
+pnpm dev geocode --limit 10   # Limit to 10 zones
 ```
 
 Requires: `DIGITRANSIT_API_KEY` or `HSL_API_KEY` (optional but recommended)
@@ -74,9 +72,12 @@ Requires: `DIGITRANSIT_API_KEY` or `HSL_API_KEY` (optional but recommended)
 Calculates transit routes via OTP for all zone pairs.
 
 ```bash
-pnpm dev routes                    # All periods: MORNING, EVENING, MIDNIGHT
-pnpm dev routes --period MORNING   # Single period only
-pnpm dev routes --test             # Test mode: 5 routes per period
+pnpm dev routes                       # All periods, all routes
+pnpm dev routes --period MORNING      # Single period only
+pnpm dev routes --zones 5             # All routes FROM 5 random origin zones
+pnpm dev routes --limit 10            # Process 10 random routes total
+pnpm dev routes --zones 3 --limit 20  # 20 routes from 3 random zones
+pnpm dev routes -p MORNING --zones 2  # Morning routes from 2 zones
 ```
 
 Time periods:
@@ -84,7 +85,10 @@ Time periods:
 - **EVENING**: 17:30 departure on next Tuesday
 - **MIDNIGHT**: 23:30 departure on next Tuesday
 
-Test mode processes only 5 random routes per period for quick validation.
+Options:
+- `--zones <count>`: Select N random origin zones (filters routes by FROM zone)
+- `--limit <count>`: Process only N random routes (useful for quick testing)
+- `--period <period>`: Process only specified time period
 
 ### `clear`
 
@@ -253,7 +257,7 @@ Or use remote Digitransit API with API key (slower but no local setup needed).
 - **Full route calculation**: Several hours for 262 zones (205,146 routes total)
   - Local OTP (10 concurrent): ~2-3 hours
   - Remote API (1 concurrent): ~12-15 hours
-- **Test mode**: 10-30 seconds for validation
+- **Limited processing**: `--limit 10` or `--zones 1` completes in seconds for quick validation
 - **Memory usage**: < 200MB
 
 ## Troubleshooting

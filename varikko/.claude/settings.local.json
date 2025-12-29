@@ -5,7 +5,11 @@
       "Read(//Users/teemu/Documents/Kantama/**)",
       "WebFetch(domain:geo.stat.fi)",
       "WebFetch(domain:kartat.espoo.fi)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(pnpm test:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nReplace test mode with flexible limit/zones options\n\nEnable more granular control over route generation testing by replacing\nbinary --test flag with --limit and --zones options. This allows users\nto specify exact number of routes or origin zones to process, making\niterative development and testing more efficient.\n\nCommands updated:\n- fetch: --test → --limit <count>\n- geocode: --test → --limit <count>  \n- routes: --test → --zones <count> and --limit <count>\n\nExamples:\n- varikko routes --zones 5 (all routes FROM 5 random zones)\n- varikko routes --limit 10 (10 random routes total)\n- varikko routes --zones 3 --limit 20 (20 routes from 3 zones)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

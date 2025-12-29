@@ -217,7 +217,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
   program
     .command('fetch')
     .description('Fetch postal code zones from WFS')
-    .option('-t, --test', 'Test mode (5 zones only)')
+    .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
       const db = openDB();
       const emitter = createProgressEmitter();
@@ -227,7 +227,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.header('FETCHING POSTAL CODE ZONES', '🌍'));
       console.log('');
-      console.log(fmt.keyValue('Mode:', options.test ? 'Test (5 zones only)' : 'Full dataset', 15));
+      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
       console.log(fmt.keyValue('Sources:', 'Helsinki, Espoo, Vantaa WFS', 15));
       console.log('');
 
@@ -256,8 +256,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       try {
         const result = await fetchZones(db, {
-          testMode: options.test,
-          testLimit: 5,
+          limit: options.limit,
           emitter,
         });
 
@@ -287,7 +286,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
   program
     .command('geocode')
     .description('Geocode zones to routing addresses')
-    .option('-t, --test', 'Test mode (5 zones only)')
+    .option('-l, --limit <count>', 'Limit number of zones to process', parseInt)
     .action(async (options) => {
       const db = openDB();
       const emitter = createProgressEmitter();
@@ -301,7 +300,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log('');
       console.log(fmt.keyValue('API:', 'Digitransit Geocoding API', 15));
       console.log(fmt.keyValue('Auth:', apiKey ? fmt.success('Authenticated') : fmt.warning('No API key'), 15));
-      console.log(fmt.keyValue('Mode:', options.test ? 'Test (5 zones only)' : 'Full dataset', 15));
+      console.log(fmt.keyValue('Mode:', options.limit ? `Limited (${options.limit} zones)` : 'Full dataset', 15));
       console.log('');
 
       if (!apiKey) {
@@ -335,8 +334,7 @@ export async function parseCLI(): Promise<CLICommand | null> {
 
       try {
         const result = await geocodeZones(db, {
-          testMode: options.test,
-          testLimit: 5,
+          limit: options.limit,
           apiKey,
           emitter,
         });
@@ -382,7 +380,8 @@ export async function parseCLI(): Promise<CLICommand | null> {
   program
     .command('routes')
     .description('Calculate transit routes')
-    .option('-t, --test', 'Test mode (5 random routes per period)')
+    .option('-z, --zones <count>', 'Number of random origin zones to process', parseInt)
+    .option('-l, --limit <count>', 'Limit number of routes to process', parseInt)
     .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)')
     .action(async (options) => {
       const db = openDB();
@@ -418,7 +417,16 @@ export async function parseCLI(): Promise<CLICommand | null> {
       console.log(fmt.keyValue('OTP:', `${config.url} (${config.isLocal ? 'local' : 'remote'})`, 15));
       console.log(fmt.keyValue('Concurrency:', `${config.concurrency} requests`, 15));
       console.log(fmt.keyValue('Period:', options.period ? options.period.toUpperCase() : 'All (MORNING, EVENING, MIDNIGHT)', 15));
-      console.log(fmt.keyValue('Mode:', options.test ? 'Test (5 routes/period)' : 'Full dataset', 15));
+
+      let modeDesc = 'Full dataset';
+      if (options.zones && options.limit) {
+        modeDesc = `${options.zones} zones, ${options.limit} routes`;
+      } else if (options.zones) {
+        modeDesc = `${options.zones} random origin zones`;
+      } else if (options.limit) {
+        modeDesc = `${options.limit} random routes`;
+      }
+      console.log(fmt.keyValue('Mode:', modeDesc, 15));
       console.log('');
 
       if (!config.isLocal) {
@@ -458,8 +466,8 @@ export async function parseCLI(): Promise<CLICommand | null> {
       try {
         const result = await buildRoutes(db, {
           period: options.period ? options.period.toUpperCase() as 'MORNING' | 'EVENING' | 'MIDNIGHT' : undefined,
-          testMode: options.test,
-          testLimit: 5,
+          zones: options.zones,
+          limit: options.limit,
           emitter,
         });
 

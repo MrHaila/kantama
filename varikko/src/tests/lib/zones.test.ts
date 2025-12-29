@@ -237,7 +237,7 @@ describe('zones - processZones', () => {
       },
     }));
 
-    const zones = processZones(features, { testMode: true, testLimit: 5 });
+    const zones = processZones(features, { limit: 5 });
 
     expect(zones.length).toBeLessThanOrEqual(5);
   });
@@ -546,7 +546,7 @@ describe('zones - fetchZones (integration)', () => {
   });
 
   it('should fetch and insert zones end-to-end', async () => {
-    const result = await fetchZones(testDB.db, { testMode: true, testLimit: 5 });
+    const result = await fetchZones(testDB.db, { limit: 5 });
 
     expect(result.zoneCount).toBeLessThanOrEqual(5);
     expect(result.routeCount).toBeGreaterThan(0);
@@ -555,7 +555,7 @@ describe('zones - fetchZones (integration)', () => {
   });
 
   it('should store metadata', async () => {
-    await fetchZones(testDB.db, { testMode: true });
+    await fetchZones(testDB.db, { limit: 5 });
 
     const metadata = testDB.db
       .prepare("SELECT value FROM metadata WHERE key = 'last_fetch'")
@@ -565,7 +565,7 @@ describe('zones - fetchZones (integration)', () => {
     const parsed = JSON.parse(metadata.value);
     expect(parsed.date).toBeTruthy();
     expect(parsed.zoneCount).toBeGreaterThan(0);
-    expect(parsed.isTest).toBe(true);
+    expect(parsed.limit).toBe(5);
   });
 
   it('should fail if schema not initialized', async () => {
@@ -577,7 +577,7 @@ describe('zones - fetchZones (integration)', () => {
     uninitializedDB.db.exec('DROP TABLE IF EXISTS metadata');
     uninitializedDB.db.exec('DROP TABLE IF EXISTS time_buckets');
 
-    await expect(fetchZones(uninitializedDB.db, { testMode: true })).rejects.toThrow(
+    await expect(fetchZones(uninitializedDB.db, {})).rejects.toThrow(
       'Database schema not initialized'
     );
 

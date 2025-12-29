@@ -33,8 +33,7 @@ interface FeatureProperties {
 }
 
 export interface FetchZonesOptions {
-  testMode?: boolean;
-  testLimit?: number;
+  limit?: number;
   emitter?: ProgressEmitter;
 }
 
@@ -244,7 +243,7 @@ export async function downloadZonesFromWFS(): Promise<FeatureCollection<Geometry
  */
 export function processZones(
   features: Feature<Geometry, FeatureProperties>[],
-  options: { testMode?: boolean; testLimit?: number } = {}
+  options: { limit?: number } = {}
 ): ZoneData[] {
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
@@ -286,9 +285,9 @@ export function processZones(
     })
     .filter((z): z is NonNullable<typeof z> => z !== null);
 
-  // Apply test mode limit
-  if (options.testMode && options.testLimit) {
-    processed = processed.slice(0, options.testLimit);
+  // Apply limit if specified
+  if (options.limit) {
+    processed = processed.slice(0, options.limit);
   }
 
   return processed;
@@ -485,7 +484,7 @@ export interface ProcessingStats {
  */
 export async function processZonesMultiCity(
   standardZones: StandardZone[],
-  options: { testMode?: boolean; testLimit?: number } = {}
+  options: { limit?: number } = {}
 ): Promise<{ zones: ZoneData[]; stats: ProcessingStats }> {
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
@@ -568,9 +567,9 @@ export async function processZonesMultiCity(
     })
     .filter((z): z is NonNullable<typeof z> => z !== null);
 
-  // Apply test mode limit
-  if (options.testMode && options.testLimit) {
-    processed = processed.slice(0, options.testLimit);
+  // Apply limit if specified
+  if (options.limit) {
+    processed = processed.slice(0, options.limit);
   }
 
   return { zones: processed, stats };
@@ -598,8 +597,7 @@ export async function fetchZonesMultiCity(
 
   // Process zones
   const { zones, stats } = await processZonesMultiCity(standardZones, {
-    testMode: options.testMode,
-    testLimit: options.testLimit || 5
+    limit: options.limit
   });
 
   // Log filtering summary
@@ -624,7 +622,7 @@ export async function fetchZonesMultiCity(
     JSON.stringify({
       date: new Date().toISOString(),
       zoneCount: zones.length,
-      isTest: options.testMode || false,
+      limit: options.limit,
       multiCity: true,
       cities: ['Helsinki', 'Vantaa', 'Espoo', 'Kauniainen'],
       filteringStats: stats
@@ -666,8 +664,7 @@ export async function fetchZones(
 
   // Process zones
   const zones = processZones(geojson.features as Feature<Geometry, FeatureProperties>[], {
-    testMode: options.testMode,
-    testLimit: options.testLimit || 5,
+    limit: options.limit,
   });
 
   // Insert zones
@@ -679,7 +676,7 @@ export async function fetchZones(
     JSON.stringify({
       date: new Date().toISOString(),
       zoneCount: zones.length,
-      isTest: options.testMode || false,
+      limit: options.limit,
     })
   );
 

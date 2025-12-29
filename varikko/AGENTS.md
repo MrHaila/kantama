@@ -228,7 +228,7 @@ interface CityFetcher {
 ## Patterns
 
 1. **Event-Driven Progress**: Business logic emits events for real-time UI updates
-2. **Test Mode**: All workflows support test mode for quick validation
+2. **Flexible Filtering**: All workflows support --limit and --zones for quick testing
 3. **Idempotency**: Operations pick up where they left off (PENDING routes)
 4. **Type Safety**: Full TypeScript coverage with strict mode
 5. **Relational Consolidation**: Single SQLite database for all persistence

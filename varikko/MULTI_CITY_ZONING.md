@@ -79,7 +79,7 @@ The `places` table now includes:
 import { fetchZonesMultiCity } from './lib/zones';
 
 const result = await fetchZonesMultiCity(db, {
-  testMode: false,
+  limit: undefined, // or set to a number to limit zones
   emitter: progressEmitter
 });
 ```
@@ -142,12 +142,9 @@ See the Migration Guide in AGENTS.md for detailed steps to migrate from postal c
 
 ## Testing
 
-Run test mode with 5 zones:
+Run with limited zones:
 ```bash
-pnpm dev
-# Select option 1 (Fetch Zones)
-# Press 't' to toggle test mode
-# Press Enter to run
+pnpm dev fetch --limit 5
 ```
 
 Verify database content:

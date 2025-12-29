@@ -36,8 +36,7 @@ interface GeocodingResponse {
 }
 
 export interface GeocodeOptions {
-  testMode?: boolean;
-  testLimit?: number;
+  limit?: number;
   emitter?: ProgressEmitter;
   apiKey?: string;
 }
@@ -277,7 +276,7 @@ export async function geocodeZones(
   outsideZone: number;
   errors: Array<{ id: string; error: string }>;
 }> {
-  const { testMode, testLimit = 5, emitter, apiKey } = options;
+  const { limit, emitter, apiKey } = options;
 
   // Ensure schema has geocoding columns
   ensureGeocodingSchema(db);
@@ -297,8 +296,8 @@ export async function geocodeZones(
     ORDER BY id
   `).all() as Place[];
 
-  if (testMode) {
-    zones = zones.slice(0, testLimit);
+  if (limit) {
+    zones = zones.slice(0, limit);
   }
 
   const results = {

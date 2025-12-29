@@ -39,8 +39,8 @@ export interface OTPConfig {
 
 export interface BuildRoutesOptions {
   period?: 'MORNING' | 'EVENING' | 'MIDNIGHT';
-  testMode?: boolean;
-  testLimit?: number;
+  zones?: number;
+  limit?: number;
   emitter?: ProgressEmitter;
 }
 
@@ -220,31 +220,49 @@ async function processPeriod(
   period: string,
   placeMap: Map<string, { lat: number; lon: number }>,
   config: OTPConfig,
-  testMode: boolean,
-  testLimit: number,
+  zones?: number,
+  limit?: number,
   emitter?: ProgressEmitter
 ): Promise<{ processed: number; ok: number; noRoute: number; errors: number }> {
   const targetTime = TIME_MAPPING[period] || '08:30:00';
 
-  // Fetch pending routes
+  // Get random origin zones if specified
+  let selectedZones: string[] | undefined;
+  if (zones) {
+    const allZones = db
+      .prepare('SELECT DISTINCT id FROM places ORDER BY RANDOM() LIMIT ?')
+      .all(zones) as { id: string }[];
+    selectedZones = allZones.map(z => z.id);
+  }
+
+  // Fetch pending routes (optionally filtered by origin zones)
+  let query = `
+    SELECT from_id, to_id
+    FROM routes
+    WHERE status = 'PENDING' AND time_period = ?
+  `;
+
+  if (selectedZones && selectedZones.length > 0) {
+    const placeholders = selectedZones.map(() => '?').join(',');
+    query += ` AND from_id IN (${placeholders})`;
+  }
+
+  const params = selectedZones && selectedZones.length > 0
+    ? [period, ...selectedZones]
+    : [period];
+
   const pendingRoutes = db
-    .prepare(
-      `
-      SELECT from_id, to_id
-      FROM routes
-      WHERE status = 'PENDING' AND time_period = ?
-    `
-    )
-    .all(period) as { from_id: string; to_id: string }[];
+    .prepare(query)
+    .all(...params) as { from_id: string; to_id: string }[];
 
   if (pendingRoutes.length === 0) {
     return { processed: 0, ok: 0, noRoute: 0, errors: 0 };
   }
 
-  // Apply test mode limit if enabled
+  // Apply route limit if specified
   let tasks = pendingRoutes;
-  if (testMode) {
-    tasks = [...tasks].sort(() => Math.random() - 0.5).slice(0, testLimit);
+  if (limit) {
+    tasks = [...tasks].sort(() => Math.random() - 0.5).slice(0, limit);
   }
 
   const updateStmt = db.prepare(`
@@ -253,7 +271,7 @@ async function processPeriod(
     WHERE from_id = ? AND to_id = ? AND time_period = ?
   `);
 
-  const limit = pLimit(config.concurrency);
+  const concurrencyLimit = pLimit(config.concurrency);
 
   let completed = 0;
   let okCount = 0;
@@ -341,7 +359,7 @@ async function processPeriod(
     }
   };
 
-  await Promise.all(tasks.map((t) => limit(() => runTask(t))));
+  await Promise.all(tasks.map((t) => concurrencyLimit(() => runTask(t))));
 
   return {
     processed: completed,
@@ -364,8 +382,8 @@ export async function buildRoutes(
 ): Promise<BuildRoutesResult> {
   const {
     period,
-    testMode = false,
-    testLimit = 5,
+    zones,
+    limit,
     emitter,
   } = options;
 
@@ -400,7 +418,8 @@ export async function buildRoutes(
       periods: periodsToRun,
       isLocal: config.isLocal,
       concurrency: config.concurrency,
-      testMode,
+      zones,
+      limit,
     });
   }
 
@@ -416,8 +435,8 @@ export async function buildRoutes(
       p,
       placeMap,
       config,
-      testMode,
-      testLimit,
+      zones,
+      limit,
       emitter
     );
 
@@ -437,7 +456,8 @@ export async function buildRoutes(
       ok: totalOk,
       noRoute: totalNoRoute,
       errors: totalErrors,
-      testMode,
+      zones,
+      limit,
     })
   );
 
