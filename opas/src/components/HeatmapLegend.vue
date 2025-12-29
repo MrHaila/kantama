@@ -54,10 +54,10 @@ const legendItems = computed<LegendItem[]>(() => {
 </script>
 
 <template>
-  <div class="heatmap-legend">
-    <div class="legend-title">{{ legendTitle }}</div>
+  <div data-testid="heatmap-legend" class="heatmap-legend">
+    <div data-testid="legend-title" class="legend-title">{{ legendTitle }}</div>
     <div class="legend-items">
-      <div v-for="(item, index) in legendItems" :key="index" class="legend-item">
+      <div v-for="(item, index) in legendItems" :key="index" :data-testid="`legend-bucket-${index + 1}`" class="legend-item">
         <div class="legend-color" :style="{ backgroundColor: item.color }"></div>
         <div class="legend-label">{{ item.label }}</div>
       </div>

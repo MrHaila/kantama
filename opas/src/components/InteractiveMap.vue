@@ -237,10 +237,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative w-full aspect-square">
+  <div data-testid="interactive-map" class="relative w-full aspect-square">
     <HeatmapLegend />
     <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <svg
+        data-testid="interactive-map-svg"
         :viewBox="MAP_CONFIG.viewBox"
         class="w-full h-auto"
         style="position: absolute; top: 0; left: 0; pointer-events: auto"
@@ -252,7 +253,7 @@ onUnmounted(() => {
           </pattern>
         </defs>
 
-        <g class="zones-layer">
+        <g data-testid="zones-layer" class="zones-layer">
           <!-- Render all zones with independent animation controlled by parent -->
           <ZonePolygon
             v-for="zone in zones"
@@ -331,7 +332,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Route visualization layer -->
-        <g v-if="routePaths.length" class="route-paths">
+        <g v-if="routePaths.length" data-testid="route-paths" class="route-paths">
           <!-- White outline for contrast -->
           <path
             v-for="route in routePaths"

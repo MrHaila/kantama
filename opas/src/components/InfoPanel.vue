@@ -66,11 +66,13 @@ function deselectZone() {
 <template>
   <div
     v-if="displayZoneId"
+    data-testid="info-panel"
     class="relative p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm"
   >
     <!-- Close button in top right corner (only if zone is selected, not just hovered) -->
     <button
       v-if="store.transportState.activeZoneId"
+      data-testid="info-panel-close"
       class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center text-vintage-dark/60 hover:text-vintage-dark transition-colors duration-200 rounded-sm hover:bg-vintage-dark/10"
       title="Deselect zone"
       @click="deselectZone"
@@ -81,8 +83,8 @@ function deselectZone() {
     </button>
 
     <div v-if="zoneDetails" :class="store.transportState.activeZoneId ? 'pr-8' : ''">
-      <h2 class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
-      <p class="text-vintage-dark/60 text-sm tracking-widest mb-4">{{ zoneDetails.city || 'Helsinki' }}</p>
+      <h2 data-testid="zone-name" class="text-3xl font-bold uppercase mb-1 text-vintage-orange">{{ zoneDetails.name }}</h2>
+      <p data-testid="zone-city" class="text-vintage-dark/60 text-sm tracking-widest mb-4">{{ zoneDetails.city || 'Helsinki' }}</p>
 
       <!-- Travel time stats (zone selection mode) -->
       <div v-if="reachabilityStats?.type === 'travel-time'" class="space-y-2">
@@ -95,13 +97,13 @@ function deselectZone() {
       <!-- Connectivity stats (reachability mode) -->
       <div v-else-if="reachabilityStats?.type === 'connectivity'" class="space-y-2">
         <div class="flex items-baseline space-x-1.5 mb-3">
-          <span class="text-2xl font-bold">Rank #{{ reachabilityStats.rank }}</span>
+          <span data-testid="zone-rank" class="text-2xl font-bold">Rank #{{ reachabilityStats.rank }}</span>
           <span class="text-sm">connectivity</span>
         </div>
         <div class="text-sm space-y-1">
-          <div>{{ reachabilityStats.zonesWithin15min }} {{ pluralize(reachabilityStats.zonesWithin15min, 'zone', 'zones') }} within 15 min</div>
-          <div>{{ reachabilityStats.zonesWithin30min }} {{ pluralize(reachabilityStats.zonesWithin30min, 'zone', 'zones') }} within 30 min</div>
-          <div class="text-vintage-dark/60">Avg: {{ reachabilityStats.avgTravelTime }} min</div>
+          <div data-testid="zones-within-15min">{{ reachabilityStats.zonesWithin15min }} {{ pluralize(reachabilityStats.zonesWithin15min, 'zone', 'zones') }} within 15 min</div>
+          <div data-testid="zones-within-30min">{{ reachabilityStats.zonesWithin30min }} {{ pluralize(reachabilityStats.zonesWithin30min, 'zone', 'zones') }} within 30 min</div>
+          <div data-testid="avg-travel-time" class="text-vintage-dark/60">Avg: {{ reachabilityStats.avgTravelTime }} min</div>
         </div>
       </div>
 
@@ -109,7 +111,7 @@ function deselectZone() {
     </div>
   </div>
 
-  <div v-else class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm">
+  <div v-else data-testid="info-panel" class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm">
     <h2 class="text-xl uppercase">Discover Helsinki</h2>
     <p class="text-sm mt-2">Hover or select a zone to see details.</p>
   </div>

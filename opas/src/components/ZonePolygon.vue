@@ -63,6 +63,7 @@ function handleMouseLeave() {
 
 <template>
   <path
+    :data-testid="`zone-${zone.id}`"
     :d="zone.svgPath"
     :style="styleVars"
     class="zone-polygon"

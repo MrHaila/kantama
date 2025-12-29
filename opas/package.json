@@ -12,7 +12,8 @@
     "format": "prettier --write \"src/**/*.{ts,vue,js,css}\"",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
-    "test:headed": "playwright test --headed"
+    "test:headed": "playwright test --headed",
+    "test:create-fixtures": "tsx tests/helpers/fixture-generator.ts"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",

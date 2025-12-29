@@ -89,7 +89,7 @@ watch([() => theme, () => layers], () => {
 </script>
 
 <template>
-  <div ref="containerRef" class="relative w-full aspect-square overflow-hidden">
+  <div ref="containerRef" data-testid="background-map" class="relative w-full aspect-square overflow-hidden">
     <!-- SVG loaded here -->
   </div>
 </template>

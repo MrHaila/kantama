@@ -63,6 +63,7 @@ onMounted(() => {
         <button
           v-for="mode in transportModes"
           :key="mode.value"
+          :data-testid="`transport-mode-${mode.value}`"
           class="px-4 py-2 font-sans text-xs tracking-widest uppercase transition-colors relative"
           :class="[
             store.transportState.transportMode === mode.value
@@ -83,6 +84,7 @@ onMounted(() => {
         <button
           v-for="period in periods"
           :key="period"
+          :data-testid="`time-period-${period.toLowerCase()}`"
           class="px-4 py-2 font-sans text-xs tracking-widest uppercase transition-colors"
           :class="
             store.currentTimePeriod === period
@@ -99,7 +101,7 @@ onMounted(() => {
     <!-- Main Content -->
     <main class="min-h-screen w-full flex relative">
       <!-- Loading State -->
-      <div v-if="currentState === 'loading'" class="grow flex items-center justify-center bg-[#A8B5B9]">
+      <div v-if="currentState === 'loading'" data-testid="loading-state" class="grow flex items-center justify-center bg-[#A8B5B9]">
         <div class="text-center">
           <div
             class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-vintage-dark border-t-transparent mb-4"
@@ -109,12 +111,13 @@ onMounted(() => {
       </div>
 
       <!-- Error State -->
-      <div v-else-if="currentState === 'error'" class="grow flex items-center justify-center bg-[#A8B5B9]">
+      <div v-else-if="currentState === 'error'" data-testid="error-state" class="grow flex items-center justify-center bg-[#A8B5B9]">
         <div class="text-center max-w-md px-8">
           <div class="text-vintage-dark text-6xl mb-4">⚠️</div>
           <h2 class="text-2xl font-sans font-bold text-vintage-dark mb-2">Failed to Load</h2>
           <p class="text-vintage-dark/80 mb-4">{{ error || 'Unable to load map data' }}</p>
           <button
+            data-testid="retry-button"
             class="px-6 py-2 bg-vintage-dark text-vintage-cream hover:bg-vintage-orange transition-colors font-sans tracking-widest text-sm"
             @click="initialize()"
           >
