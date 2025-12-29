@@ -17,15 +17,21 @@ interface Props {
   showRoads?: boolean
   roadColor?: string
   roadWidth?: number
+  showRailways?: boolean
+  railwayColor?: string
+  railwayWidth?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showRoads: true,
   roadColor: undefined,
   roadWidth: 0.5,
+  showRailways: true,
+  railwayColor: undefined,
+  railwayWidth: 1.2,
 })
 
-const { showRoads, roadColor, roadWidth } = props
+const { showRoads, roadColor, roadWidth, showRailways, railwayColor, railwayWidth } = props
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
@@ -105,6 +111,9 @@ watch(
 // Road paths loaded from layer service
 const roadPaths = ref<string[]>([])
 
+// Railway paths loaded from layer service
+const railwayPaths = ref<string[]>([])
+
 // Zones without route data (for debugging visual)
 const zonesWithoutData = computed(() => {
   if (!zones.value) return []
@@ -133,6 +142,17 @@ async function loadRoadPaths() {
     roadPaths.value = await layerService.getRoadPaths()
   } catch (error) {
     console.error('Failed to load road paths:', error)
+  }
+}
+
+// Load railway paths from layer service
+async function loadRailwayPaths() {
+  if (!showRailways) return
+
+  try {
+    railwayPaths.value = await layerService.getRailwayPaths()
+  } catch (error) {
+    console.error('Failed to load railway paths:', error)
   }
 }
 
@@ -217,7 +237,7 @@ const routeStops = computed(() => {
 
 // Load data on mount
 onMounted(async () => {
-  await Promise.all([store.loadData(), loadRoadPaths()])
+  await Promise.all([store.loadData(), loadRoadPaths(), loadRailwayPaths()])
 })
 
 // ESC key handler to deselect zone
@@ -272,6 +292,20 @@ onUnmounted(() => {
             :class="roadColor ? '' : 'stroke-current text-vintage-dark/50'"
             :stroke="roadColor"
             :stroke-width="roadWidth || 0.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </g>
+        <!-- Railways layer - on top of roads, under borders -->
+        <g v-if="showRailways" class="railway-layer pointer-events-none">
+          <path
+            v-for="(d, index) in railwayPaths"
+            :key="`railway-${index}`"
+            :d="d"
+            fill="none"
+            :class="railwayColor ? '' : 'stroke-current text-vintage-dark/70'"
+            :stroke="railwayColor"
+            :stroke-width="railwayWidth || 1.2"
             stroke-linecap="round"
             stroke-linejoin="round"
           />

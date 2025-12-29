@@ -131,6 +131,20 @@ class LayerService {
   }
 
   /**
+   * Extract railway paths from the railways layer for rendering
+   */
+  async getRailwayPaths(): Promise<string[]> {
+    try {
+      const railwaysSvg = await this.loadLayer('railways')
+      const paths = railwaysSvg.querySelectorAll('path')
+      return Array.from(paths).map((p) => p.getAttribute('d') || '')
+    } catch (error) {
+      console.error('Failed to load railway paths:', error)
+      return []
+    }
+  }
+
+  /**
    * Clear all cached layers (useful for hot-reload during development)
    */
   clearCache(): void {
