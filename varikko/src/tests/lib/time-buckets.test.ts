@@ -177,6 +177,22 @@ describe('calculateTimeBuckets', () => {
 
   describe('error handling', () => {
     it('should throw error if no successful routes exist', () => {
+      // Seed zones but no routes with OK status
+      seedTestData({
+        zones: [
+          {
+            id: '00100',
+            name: 'Zone 1',
+            city: 'Helsinki',
+            routingPoint: [60.1, 24.9] as [number, number],
+            geometry: { type: 'Point' as const, coordinates: [24.9, 60.1] },
+            svgPath: 'M 0 0',
+          },
+        ],
+        timeBuckets: [],
+        routes: [],
+      });
+
       expect(() => {
         calculateTimeBuckets();
       }).toThrow('No successful routes found');
