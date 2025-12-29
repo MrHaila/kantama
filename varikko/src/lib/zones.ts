@@ -1,7 +1,6 @@
 import axios from 'axios';
 import * as turf from '@turf/turf';
 import * as d3 from 'd3-geo';
-import type Database from 'better-sqlite3';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
@@ -9,6 +8,13 @@ import { CITY_CODES } from './types';
 import type { StandardZone, ZoneData } from './types';
 import polylabel from 'polylabel';
 import { getWaterMask, clipZoneWithWater } from './coastline';
+import {
+  writeZones,
+  initializeRoutes,
+  ensureDataDirectoryStructure,
+  updatePipelineMetadata,
+} from './datastore';
+import type { Zone, ZonesData, TimePeriod, FetchMetadata } from '../shared/types';
 
 import {
   WIDTH,
@@ -294,145 +300,48 @@ export function processZones(
 }
 
 /**
- * Check if database schema is initialized
+ * Write zones to file storage and initialize route files
  */
-export function validateSchema(db: Database.Database): boolean {
-  try {
-    const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('places', 'routes', 'metadata', 'time_buckets')")
-      .all() as Array<{ name: string }>;
-
-    return tables.length === 4;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Initialize database schema (DESTRUCTIVE - drops existing tables)
- */
-export function initializeSchema(db: Database.Database): void {
-  db.exec(`
-    DROP TABLE IF EXISTS routes;
-    DROP TABLE IF EXISTS places;
-    CREATE TABLE places (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      city TEXT,
-      name_se TEXT,
-      admin_level TEXT,
-      lat REAL,
-      lon REAL,
-      geometry TEXT,
-      svg_path TEXT,
-      source_layer TEXT,
-      routing_lat REAL,
-      routing_lon REAL,
-      routing_source TEXT,
-      geocoding_error TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS routes (
-      from_id TEXT NOT NULL,
-      to_id TEXT NOT NULL,
-      time_period TEXT NOT NULL,
-      duration INTEGER,
-      numberOfTransfers INTEGER,
-      walkDistance REAL,
-      legs TEXT,
-      status TEXT DEFAULT 'PENDING',
-      PRIMARY KEY (from_id, to_id, time_period),
-      FOREIGN KEY (from_id) REFERENCES places(id),
-      FOREIGN KEY (to_id) REFERENCES places(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS metadata (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS time_buckets (
-      id INTEGER PRIMARY KEY,
-      bucket_number INTEGER NOT NULL UNIQUE,
-      min_duration INTEGER NOT NULL,
-      max_duration INTEGER NOT NULL,
-      color_hex TEXT NOT NULL,
-      label TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_routes_to ON routes(to_id, time_period);
-    CREATE INDEX IF NOT EXISTS idx_routes_status ON routes(status);
-    CREATE INDEX IF NOT EXISTS idx_time_buckets_number ON time_buckets(bucket_number);
-  `);
-}
-
-/**
- * Insert zones and pre-fill routes
- */
-export function insertZones(
-  db: Database.Database,
+export function saveZones(
   zones: ZoneData[],
   emitter?: ProgressEmitter
 ): void {
-  emitter?.emitStart('fetch_zones', zones.length, 'Inserting zones...');
+  emitter?.emitStart('fetch_zones', zones.length, 'Saving zones...');
 
-  const insertPlace = db.prepare(`
-    INSERT OR REPLACE INTO places (
-      id, name, city, name_se, admin_level, lat, lon, geometry, svg_path, source_layer,
-      routing_lat, routing_lon, routing_source, geocoding_error
-    )
-    VALUES (
-      @id, @name, COALESCE(@city, NULL), COALESCE(@name_se, NULL), COALESCE(@admin_level, NULL),
-      @lat, @lon, @geometry, @svg_path, COALESCE(@source_layer, NULL),
-      NULL, NULL, NULL, NULL
-    )
-  `);
+  // Ensure data directory exists
+  ensureDataDirectoryStructure();
 
-  const insertRoute = db.prepare(`
-    INSERT OR IGNORE INTO routes (from_id, to_id, time_period, status)
-    VALUES (?, ?, ?, 'PENDING')
-  `);
+  // Convert ZoneData to Zone format (removing intermediate geometry data)
+  const zoneRecords: Zone[] = zones.map((z) => ({
+    id: z.id,
+    name: z.name,
+    city: z.city || 'Unknown',
+    svgPath: z.svg_path,
+    routingPoint: [z.lat, z.lon],
+  }));
 
-  const transaction = db.transaction(() => {
-    // Insert zones
-    for (const zone of zones) {
-      // Ensure all properties exist (for compatibility with old postal code format)
-      const normalizedZone = {
-        ...zone,
-        city: zone.city || null,
-        name_se: zone.name_se || null,
-        admin_level: zone.admin_level || null,
-        source_layer: zone.source_layer || null,
-      };
-      insertPlace.run(normalizedZone);
-    }
+  // Create zones data structure (time buckets will be added later by time-buckets command)
+  const zonesData: ZonesData = {
+    version: 1,
+    timeBuckets: [], // Will be populated by calculateTimeBuckets
+    zones: zoneRecords,
+  };
 
-    // Pre-fill routes Cartesian product
-    let routeCount = 0;
-    const totalRoutes = zones.length * (zones.length - 1) * TIME_PERIODS.length;
+  // Write zones.json
+  writeZones(zonesData);
 
-    for (const fromZone of zones) {
-      for (const toZone of zones) {
-        if (fromZone.id === toZone.id) continue;
+  emitter?.emitProgress('fetch_zones', zones.length, zones.length * 2, 'Initializing route files...');
 
-        for (const period of TIME_PERIODS) {
-          insertRoute.run(fromZone.id, toZone.id, period);
-          routeCount++;
+  // Initialize empty route files (all routes marked as PENDING)
+  const zoneIds = zones.map((z) => z.id);
+  const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
+  initializeRoutes(zoneIds, periods);
 
-          if (routeCount % 100 === 0) {
-            emitter?.emitProgress('fetch_zones', routeCount, totalRoutes, 'Pre-filling routes...');
-          }
-        }
-      }
-    }
-  });
+  const routeCount = zones.length * zones.length * TIME_PERIODS.length;
 
-  transaction();
-
-  emitter?.emitComplete('fetch_zones', 'Zones inserted successfully', {
+  emitter?.emitComplete('fetch_zones', 'Zones saved successfully', {
     zoneCount: zones.length,
-    routeCount: zones.length * (zones.length - 1) * TIME_PERIODS.length,
+    routeCount,
   });
 }
 
@@ -579,15 +488,9 @@ export async function processZonesMultiCity(
  * Fetch zones using multi-city approach
  */
 export async function fetchZonesMultiCity(
-  db: Database.Database,
   options: FetchZonesOptions = {}
 ): Promise<{ zoneCount: number; routeCount: number; stats: ProcessingStats }> {
   const emitter = options.emitter;
-
-  // Auto-initialize schema if needed
-  if (!validateSchema(db)) {
-    initializeSchema(db);
-  }
 
   // Download from all cities
   const standardZones = await downloadZonesMultiCity(emitter);
@@ -611,44 +514,33 @@ export async function fetchZonesMultiCity(
   console.log('------------------------------\n');
 
   emitter?.emitProgress('fetch_zones', 4, 4,
-    `Processed ${zones.length} zones (${stats.outsideVisibleArea} filtered as outside visible area), inserting...`);
+    `Processed ${zones.length} zones (${stats.outsideVisibleArea} filtered as outside visible area), saving...`);
 
-  // Insert zones
-  insertZones(db, zones, emitter);
+  // Save zones to file storage
+  saveZones(zones, emitter);
 
-  // Store metadata
-  db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
-    'last_fetch',
-    JSON.stringify({
-      date: new Date().toISOString(),
-      zoneCount: zones.length,
-      limit: options.limit,
-      multiCity: true,
-      cities: ['Helsinki', 'Vantaa', 'Espoo', 'Kauniainen'],
-      filteringStats: stats
-    })
-  );
+  // Store pipeline metadata
+  const fetchMetadata: FetchMetadata = {
+    timestamp: new Date().toISOString(),
+    zoneCount: zones.length,
+    limit: options.limit,
+    cities: ['Helsinki', 'Vantaa', 'Espoo', 'Kauniainen'],
+    filteringStats: stats
+  };
+  updatePipelineMetadata('lastFetch', fetchMetadata);
 
-  const routeCount = zones.length * (zones.length - 1) * TIME_PERIODS.length;
+  const routeCount = zones.length * zones.length * TIME_PERIODS.length;
 
   return { zoneCount: zones.length, routeCount, stats };
 }
 
 /**
- * Fetch zones from WFS and populate database (original implementation)
+ * Fetch zones from WFS (original implementation, kept for compatibility)
  */
 export async function fetchZones(
-  db: Database.Database,
   options: FetchZonesOptions = {}
 ): Promise<{ zoneCount: number; routeCount: number }> {
   const emitter = options.emitter;
-
-  // Validate schema exists
-  if (!validateSchema(db)) {
-    throw new Error(
-      'Database schema not initialized. Run "varikko init" first to set up the database.'
-    );
-  }
 
   emitter?.emitStart('fetch_zones', undefined, 'Downloading zones from WFS...');
 
@@ -667,20 +559,27 @@ export async function fetchZones(
     limit: options.limit,
   });
 
-  // Insert zones
-  insertZones(db, zones, emitter);
+  // Save zones to file storage
+  saveZones(zones, emitter);
 
-  // Store metadata
-  db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
-    'last_fetch',
-    JSON.stringify({
-      date: new Date().toISOString(),
-      zoneCount: zones.length,
-      limit: options.limit,
-    })
-  );
+  // Store pipeline metadata
+  const fetchMetadata: FetchMetadata = {
+    timestamp: new Date().toISOString(),
+    zoneCount: zones.length,
+    limit: options.limit,
+    cities: ['WFS'],
+    filteringStats: {
+      total: geojson.features.length,
+      insidePointFailed: 0,
+      geometryInvalid: 0,
+      outsideVisibleArea: 0,
+      svgPathFailed: 0,
+      passed: zones.length,
+    }
+  };
+  updatePipelineMetadata('lastFetch', fetchMetadata);
 
-  const routeCount = zones.length * (zones.length - 1) * TIME_PERIODS.length;
+  const routeCount = zones.length * zones.length * TIME_PERIODS.length;
 
   return { zoneCount: zones.length, routeCount };
 }

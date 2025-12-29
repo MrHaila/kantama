@@ -89,3 +89,47 @@ export interface DataManifest {
   totalSize: number;
   errors: number;
 }
+
+// ============================================================================
+// Pipeline State Types
+// ============================================================================
+
+export interface FetchMetadata {
+  timestamp: string;
+  zoneCount: number;
+  limit?: number;
+  cities: string[];
+  filteringStats: {
+    total: number;
+    insidePointFailed: number;
+    geometryInvalid: number;
+    outsideVisibleArea: number;
+    svgPathFailed: number;
+    passed: number;
+  };
+}
+
+export interface GeocodingMetadata {
+  timestamp: string;
+  processed: number;
+  successful: number;
+  failed: number;
+  errors: Array<{ zoneId: string; error: string }>;
+}
+
+export interface RouteCalculationMetadata {
+  timestamp: string;
+  periods: string[];
+  processed: number;
+  OK: number;
+  NO_ROUTE: number;
+  ERROR: number;
+  PENDING: number;
+}
+
+export interface PipelineState {
+  lastFetch?: FetchMetadata;
+  lastGeocoding?: GeocodingMetadata;
+  lastRouteCalculation?: RouteCalculationMetadata;
+  timeBucketsCalculatedAt?: string;
+}

@@ -1,7 +1,20 @@
 import axios from 'axios';
-import Database from 'better-sqlite3';
 import pLimit from 'p-limit';
 import { ProgressEmitter } from './events';
+import {
+  readZones,
+  getAllZoneIds,
+  readZoneRoutes,
+  writeZoneRoutes,
+  updatePipelineMetadata,
+} from './datastore';
+import {
+  TimePeriod,
+  CompactRoute,
+  CompactLeg,
+  RouteStatus,
+  RouteCalculationMetadata,
+} from '../shared/types';
 
 // ============================================================================
 // Types & Interfaces
@@ -216,9 +229,8 @@ export async function fetchRoute(
  * Process routes for a single time period
  */
 async function processPeriod(
-  db: Database.Database,
-  period: string,
-  placeMap: Map<string, { lat: number; lon: number }>,
+  period: TimePeriod,
+  placeMap: Map<string, { id: string; lat: number; lon: number }>,
   config: OTPConfig,
   zones?: number,
   limit?: number,
@@ -226,34 +238,29 @@ async function processPeriod(
 ): Promise<{ processed: number; ok: number; noRoute: number; errors: number }> {
   const targetTime = TIME_MAPPING[period] || '08:30:00';
 
+  // Get all zone IDs
+  const allZoneIds = getAllZoneIds();
+
   // Get random origin zones if specified
-  let selectedZones: string[] | undefined;
+  let selectedZones: string[] = allZoneIds;
   if (zones) {
-    const allZones = db
-      .prepare('SELECT DISTINCT id FROM places ORDER BY RANDOM() LIMIT ?')
-      .all(zones) as { id: string }[];
-    selectedZones = allZones.map(z => z.id);
+    // Randomly select zones
+    selectedZones = [...allZoneIds].sort(() => Math.random() - 0.5).slice(0, zones);
   }
 
-  // Fetch pending routes (optionally filtered by origin zones)
-  let query = `
-    SELECT from_id, to_id
-    FROM routes
-    WHERE status = 'PENDING' AND time_period = ?
-  `;
+  // Collect pending routes from selected zones
+  const pendingRoutes: Array<{ from_id: string; to_id: string }> = [];
 
-  if (selectedZones && selectedZones.length > 0) {
-    const placeholders = selectedZones.map(() => '?').join(',');
-    query += ` AND from_id IN (${placeholders})`;
+  for (const fromId of selectedZones) {
+    const routesData = readZoneRoutes(fromId, period);
+    if (!routesData) continue;
+
+    for (const route of routesData.r) {
+      if (route.s === RouteStatus.PENDING) {
+        pendingRoutes.push({ from_id: fromId, to_id: route.i });
+      }
+    }
   }
-
-  const params = selectedZones && selectedZones.length > 0
-    ? [period, ...selectedZones]
-    : [period];
-
-  const pendingRoutes = db
-    .prepare(query)
-    .all(...params) as { from_id: string; to_id: string }[];
 
   if (pendingRoutes.length === 0) {
     return { processed: 0, ok: 0, noRoute: 0, errors: 0 };
@@ -265,18 +272,15 @@ async function processPeriod(
     tasks = [...tasks].sort(() => Math.random() - 0.5).slice(0, limit);
   }
 
-  const updateStmt = db.prepare(`
-    UPDATE routes
-    SET duration = ?, numberOfTransfers = ?, walkDistance = ?, legs = ?, status = ?
-    WHERE from_id = ? AND to_id = ? AND time_period = ?
-  `);
-
   const concurrencyLimit = pLimit(config.concurrency);
 
   let completed = 0;
   let okCount = 0;
   let noRouteCount = 0;
   let errorCount = 0;
+
+  // Keep track of routes to update per zone (to batch file writes)
+  const routeUpdates = new Map<string, Map<string, CompactRoute>>();
 
   const runTask = async (task: { from_id: string; to_id: string }) => {
     const from = placeMap.get(task.from_id);
@@ -303,29 +307,25 @@ async function processPeriod(
 
     const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime, config);
 
+    // Create updated route
+    let updatedRoute: CompactRoute;
+
     if (result.status === 'OK') {
-      updateStmt.run(
-        result.duration,
-        result.numberOfTransfers,
-        result.walkDistance,
-        JSON.stringify(result.legs),
-        'OK',
-        task.from_id,
-        task.to_id,
-        period
-      );
+      updatedRoute = {
+        i: task.to_id,
+        d: result.duration || null,
+        t: result.numberOfTransfers || null,
+        s: RouteStatus.OK,
+        l: result.legs ? convertLegsToCompact(result.legs) : undefined,
+      };
       okCount++;
     } else {
-      updateStmt.run(
-        null,
-        null,
-        null,
-        result.data || null,
-        result.status,
-        task.from_id,
-        task.to_id,
-        period
-      );
+      updatedRoute = {
+        i: task.to_id,
+        d: null,
+        t: null,
+        s: result.status === 'NO_ROUTE' ? RouteStatus.NO_ROUTE : RouteStatus.ERROR,
+      };
 
       if (result.status === 'NO_ROUTE') {
         noRouteCount++;
@@ -333,6 +333,12 @@ async function processPeriod(
         errorCount++;
       }
     }
+
+    // Store update for batching
+    if (!routeUpdates.has(task.from_id)) {
+      routeUpdates.set(task.from_id, new Map());
+    }
+    routeUpdates.get(task.from_id)!.set(task.to_id, updatedRoute);
 
     completed++;
 
@@ -346,20 +352,16 @@ async function processPeriod(
       });
     }
 
-    // Update metadata periodically
-    if (completed % 10 === 0 || completed === tasks.length) {
-      db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
-        `progress_${period}`,
-        JSON.stringify({
-          completed,
-          total: tasks.length,
-          lastUpdate: new Date().toISOString(),
-        })
-      );
+    // Flush updates periodically (every 50 routes or at end)
+    if (completed % 50 === 0 || completed === tasks.length) {
+      flushRouteUpdates(routeUpdates, period);
     }
   };
 
   await Promise.all(tasks.map((t) => concurrencyLimit(() => runTask(t))));
+
+  // Final flush of any remaining updates
+  flushRouteUpdates(routeUpdates, period);
 
   return {
     processed: completed,
@@ -367,6 +369,68 @@ async function processPeriod(
     noRoute: noRouteCount,
     errors: errorCount,
   };
+}
+
+/**
+ * Flush route updates to msgpack files
+ */
+function flushRouteUpdates(
+  routeUpdates: Map<string, Map<string, CompactRoute>>,
+  period: TimePeriod
+): void {
+  for (const [fromId, updates] of routeUpdates.entries()) {
+    if (updates.size === 0) continue;
+
+    const routesData = readZoneRoutes(fromId, period);
+    if (!routesData) continue;
+
+    // Apply updates
+    for (const [toId, updatedRoute] of updates.entries()) {
+      const routeIndex = routesData.r.findIndex((r) => r.i === toId);
+      if (routeIndex !== -1) {
+        routesData.r[routeIndex] = updatedRoute;
+      }
+    }
+
+    // Write back to file
+    writeZoneRoutes(fromId, period, routesData);
+
+    // Clear processed updates
+    updates.clear();
+  }
+}
+
+/**
+ * Convert OTP legs to compact format
+ */
+function convertLegsToCompact(legs: unknown[]): CompactLeg[] {
+  return legs.map((leg: any) => {
+    const compactLeg: CompactLeg = {
+      m: leg.mode,
+      d: leg.duration,
+    };
+
+    if (leg.distance !== undefined) compactLeg.di = leg.distance;
+    if (leg.from) {
+      compactLeg.f = {
+        n: leg.from.name,
+        lt: leg.from.lat,
+        ln: leg.from.lon,
+      };
+    }
+    if (leg.to) {
+      compactLeg.t = {
+        n: leg.to.name,
+        lt: leg.to.lat,
+        ln: leg.to.lon,
+      };
+    }
+    if (leg.legGeometry) compactLeg.g = leg.legGeometry.points;
+    if (leg.routeShortName) compactLeg.sn = leg.routeShortName;
+    if (leg.routeLongName) compactLeg.ln = leg.routeLongName;
+
+    return compactLeg;
+  });
 }
 
 // ============================================================================
@@ -377,7 +441,6 @@ async function processPeriod(
  * Build routes for one or all time periods
  */
 export async function buildRoutes(
-  db: Database.Database,
   options: BuildRoutesOptions = {}
 ): Promise<BuildRoutesResult> {
   const {
@@ -395,22 +458,24 @@ export async function buildRoutes(
   }
 
   // Determine which periods to process
-  const periodsToRun = period ? [period] : ALL_PERIODS;
+  const periodsToRun: TimePeriod[] = period ? [period] : ['MORNING', 'EVENING', 'MIDNIGHT'];
 
-  // Load places with routing coordinates
-  const places = db
-    .prepare(
-      `
-      SELECT
-        id,
-        COALESCE(routing_lat, lat) as lat,
-        COALESCE(routing_lon, lon) as lon
-      FROM places
-    `
-    )
-    .all() as { id: string; lat: number; lon: number }[];
+  // Load zones with routing coordinates
+  const zonesData = readZones();
+  if (!zonesData) {
+    throw new Error('No zones data found - run fetch first');
+  }
 
-  const placeMap = new Map(places.map((p) => [p.id, p]));
+  const placeMap = new Map(
+    zonesData.zones.map((z) => [
+      z.id,
+      {
+        id: z.id,
+        lat: z.routingPoint[0],
+        lon: z.routingPoint[1],
+      },
+    ])
+  );
 
   // Emit start event
   if (emitter) {
@@ -428,10 +493,10 @@ export async function buildRoutes(
   let totalOk = 0;
   let totalNoRoute = 0;
   let totalErrors = 0;
+  let totalPending = 0;
 
   for (const p of periodsToRun) {
     const result = await processPeriod(
-      db,
       p,
       placeMap,
       config,
@@ -446,20 +511,28 @@ export async function buildRoutes(
     totalErrors += result.errors;
   }
 
-  // Store final metadata
-  db.prepare('INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)').run(
-    'last_route_calculation',
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      periods: periodsToRun,
-      processed: totalProcessed,
-      ok: totalOk,
-      noRoute: totalNoRoute,
-      errors: totalErrors,
-      zones,
-      limit,
-    })
-  );
+  // Count remaining pending routes
+  for (const p of periodsToRun) {
+    const allZoneIds = getAllZoneIds();
+    for (const zoneId of allZoneIds) {
+      const routesData = readZoneRoutes(zoneId, p);
+      if (!routesData) continue;
+
+      totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+    }
+  }
+
+  // Store pipeline metadata
+  const metadata: RouteCalculationMetadata = {
+    timestamp: new Date().toISOString(),
+    periods: periodsToRun,
+    processed: totalProcessed,
+    OK: totalOk,
+    NO_ROUTE: totalNoRoute,
+    ERROR: totalErrors,
+    PENDING: totalPending,
+  };
+  updatePipelineMetadata('lastRouteCalculation', metadata);
 
   // Emit complete event
   if (emitter) {
