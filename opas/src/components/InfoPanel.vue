@@ -53,6 +53,11 @@ const reachabilityStats = computed(() => {
   return null
 })
 
+// Helper function for pluralization
+function pluralize(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural
+}
+
 function deselectZone() {
   store.transportState.clearZone()
 }
@@ -94,8 +99,8 @@ function deselectZone() {
           <span class="text-sm">connectivity</span>
         </div>
         <div class="text-sm space-y-1">
-          <div>{{ reachabilityStats.zonesWithin15min }} zones within 15 min</div>
-          <div>{{ reachabilityStats.zonesWithin30min }} zones within 30 min</div>
+          <div>{{ reachabilityStats.zonesWithin15min }} {{ pluralize(reachabilityStats.zonesWithin15min, 'zone', 'zones') }} within 15 min</div>
+          <div>{{ reachabilityStats.zonesWithin30min }} {{ pluralize(reachabilityStats.zonesWithin30min, 'zone', 'zones') }} within 30 min</div>
           <div class="text-vintage-dark/60">Avg: {{ reachabilityStats.avgTravelTime }} min</div>
         </div>
       </div>
