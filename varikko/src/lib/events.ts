@@ -6,6 +6,7 @@ export type WorkflowStage =
   | 'build_routes'
   | 'clear_data'
   | 'calculate_time_buckets'
+  | 'calculate_reachability'
   | 'process_map'
   | 'generate_svg'
   | 'export_layers'

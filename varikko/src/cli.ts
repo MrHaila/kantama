@@ -3,6 +3,7 @@ import { fetchZonesMultiCity } from './lib/zones';
 import { geocodeZones } from './lib/geocoding';
 import { buildRoutes, getOTPConfig } from './lib/routing';
 import { calculateTimeBuckets } from './lib/time-buckets';
+import { calculateReachability } from './lib/reachability';
 import { processMaps } from './lib/maps';
 import { validateData } from './lib/validate';
 import { createProgressEmitter } from './lib/events';
@@ -219,6 +220,34 @@ function showStatus(): void {
   }
   console.log('');
 
+  // Reachability Status
+  const reachabilityTimestamp = pipelineState?.reachabilityCalculatedAt;
+  const zonesWithReachability = zonesData ? zonesData.zones.filter((z) => z.reachability).length : 0;
+  const hasReachability = zonesWithReachability > 0;
+
+  // Check if reachability is stale (calculated before routes)
+  const reachabilityIsStale = reachabilityTimestamp && routeCalculationTimestamp &&
+    new Date(reachabilityTimestamp) < new Date(routeCalculationTimestamp);
+
+  console.log(fmt.header('REACHABILITY', '📊'));
+  console.log(fmt.keyValue('  Status:', hasReachability
+    ? reachabilityIsStale ? fmt.warning('Stale') : fmt.success('Calculated')
+    : fmt.muted('Not calculated'), 18));
+
+  if (hasReachability) {
+    console.log(fmt.keyValue('  Zones:', `${zonesWithReachability}/${zoneCount} zones have scores`, 18));
+    if (reachabilityIsStale) {
+      console.log(fmt.warningMessage('  ⚠ Outdated - routes updated after reachability calculated'));
+      console.log(fmt.suggestion('  Run \'varikko reachability --force\' to recalculate'));
+    }
+  } else {
+    console.log(fmt.muted('  Required for opas default heatmap'));
+    if (grandTotalOk > 0) {
+      console.log(fmt.suggestion('  Run \'varikko reachability\' to calculate scores'));
+    }
+  }
+  console.log('');
+
   // Next Steps
   console.log(fmt.header('NEXT STEPS', '💡'));
   const suggestions: string[] = [];
@@ -247,9 +276,13 @@ function showStatus(): void {
       suggestions.push('Run \'varikko routes\' to calculate pending routes');
     } else if (bucketsAreStale) {
       suggestions.push('Run \'varikko time-buckets --force\' to recalculate stale buckets');
+    } else if (reachabilityIsStale) {
+      suggestions.push('Run \'varikko reachability --force\' to recalculate stale reachability');
     } else if (bucketCount !== 6 && grandTotalOk > 0) {
       suggestions.push('Run \'varikko time-buckets\' to generate heatmap buckets');
-    } else if (bucketCount === 6) {
+    } else if (!hasReachability && grandTotalOk > 0) {
+      suggestions.push('Run \'varikko reachability\' to calculate connectivity scores');
+    } else if (bucketCount === 6 && hasReachability) {
       suggestions.push('All data calculated! Ready for visualization');
     }
   }
@@ -844,6 +877,89 @@ export async function parseCLI(): Promise<CLICommand | null> {
         console.error(fmt.warning('Make sure shapefile data exists in data/maastokartta_esri/'));
         console.error('');
         process.exit(1);
+      }
+    });
+
+  program
+    .command('reachability')
+    .description('Calculate reachability scores for heatmap')
+    .option('-p, --period <period>', 'Time period (MORNING, EVENING, MIDNIGHT)', 'MORNING')
+    .option('-f, --force', 'Force recalculation even if already calculated')
+    .action((options) => {
+      const emitter = createProgressEmitter();
+      const startTime = Date.now();
+
+      // Validate period
+      const validPeriods = ['MORNING', 'EVENING', 'MIDNIGHT'];
+      const period = options.period.toUpperCase();
+      if (!validPeriods.includes(period)) {
+        console.error('');
+        console.error(fmt.errorMessage(`Invalid period: ${options.period}`));
+        console.error(fmt.dim(`  Valid periods: ${validPeriods.join(', ')}`));
+        console.error('');
+        process.exit(1);
+      }
+
+      // Header
+      console.log('');
+      console.log(fmt.header('CALCULATING REACHABILITY', '📊'));
+      console.log('');
+      console.log(fmt.keyValue('Period:', period, 15));
+      console.log(fmt.keyValue('Mode:', options.force ? 'Force recalculation' : 'Normal', 15));
+      console.log('');
+
+      emitter.on('progress', (event) => {
+        if (event.type === 'start') {
+          console.log(fmt.infoMessage('Analyzing zone connectivity...'));
+        } else if (event.type === 'progress') {
+          if (event.message) console.log(fmt.dim(`  ${event.message}`));
+        } else if (event.type === 'complete') {
+          console.log(fmt.successMessage(event.message || 'Complete'));
+        } else if (event.type === 'error') {
+          console.error(fmt.errorMessage(event.message || 'Error'));
+          if (event.error) console.error(fmt.dim(`  ${event.error.message}`));
+        }
+      });
+
+      try {
+        const result = calculateReachability({
+          period: period as 'MORNING' | 'EVENING' | 'MIDNIGHT',
+          force: options.force,
+          emitter,
+        });
+
+        const duration = Date.now() - startTime;
+
+        console.log('');
+        console.log(fmt.divider(50));
+        console.log(fmt.bold('SUMMARY'));
+        console.log(fmt.divider(50));
+        console.log(fmt.keyValue('Zones processed:', result.zonesProcessed.toLocaleString(), 20));
+        console.log(fmt.keyValue('Zones with data:', result.zonesWithData.toLocaleString(), 20));
+        if (result.bestConnected) {
+          console.log(fmt.keyValue('Best connected:', `${result.bestConnected.zoneId} (score: ${result.bestConnected.score.toFixed(3)})`, 20));
+        }
+        if (result.worstConnected) {
+          console.log(fmt.keyValue('Worst connected:', `${result.worstConnected.zoneId} (score: ${result.worstConnected.score.toFixed(3)})`, 20));
+        }
+        console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 20));
+        console.log('');
+        console.log(fmt.successMessage('Reachability scores ready for opas heatmap'));
+        console.log('');
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('already calculated')) {
+          console.log('');
+          console.log(fmt.warningMessage('Reachability already calculated'));
+          console.log(fmt.dim('  Use --force flag to recalculate'));
+          console.log('');
+          process.exit(0);
+        } else {
+          console.error('');
+          console.error(fmt.errorMessage('Reachability calculation failed'));
+          console.error(fmt.dim(`  ${error instanceof Error ? error.message : String(error)}`));
+          console.error('');
+          process.exit(1);
+        }
       }
     });
 

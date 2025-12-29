@@ -103,30 +103,31 @@ export function computeReachabilityScores(
 }
 
 /**
- * Generates color scale for reachability scores
- * Green (best) -> Yellow -> Orange -> Red (worst)
+ * Generates color based on rank percentile
+ * Uses rank (1=best) and totalZones to create smooth gradient
+ * Green (best connected) -> Yellow -> Orange -> Red (least connected)
  */
-export function getReachabilityColor(score: number): string {
-  // Ensure score is 0-1
-  const normalizedScore = Math.max(0, Math.min(1, score))
+export function getReachabilityColorByRank(rank: number, totalZones: number): string {
+  // Convert rank to percentile (0=best, 1=worst)
+  const percentile = (rank - 1) / Math.max(totalZones - 1, 1)
 
-  // Color stops: green -> yellow -> orange -> red
-  if (normalizedScore >= 0.75) {
-    // Green to yellow-green
-    const t = (normalizedScore - 0.75) / 0.25
+  // Color stops: green (0) -> lime -> yellow -> orange -> red (1)
+  if (percentile <= 0.25) {
+    // Green to lime (best 25%)
+    const t = percentile / 0.25
     return interpolateColor('#22c55e', '#84cc16', t) // green-500 to lime-500
-  } else if (normalizedScore >= 0.5) {
-    // Yellow-green to yellow
-    const t = (normalizedScore - 0.5) / 0.25
-    return interpolateColor('#eab308', '#84cc16', t) // yellow-500 to lime-500
-  } else if (normalizedScore >= 0.25) {
+  } else if (percentile <= 0.5) {
+    // Lime to yellow
+    const t = (percentile - 0.25) / 0.25
+    return interpolateColor('#84cc16', '#eab308', t) // lime-500 to yellow-500
+  } else if (percentile <= 0.75) {
     // Yellow to orange
-    const t = (normalizedScore - 0.25) / 0.25
-    return interpolateColor('#f97316', '#eab308', t) // orange-500 to yellow-500
+    const t = (percentile - 0.5) / 0.25
+    return interpolateColor('#eab308', '#f97316', t) // yellow-500 to orange-500
   } else {
-    // Orange to red
-    const t = normalizedScore / 0.25
-    return interpolateColor('#ef4444', '#f97316', t) // red-500 to orange-500
+    // Orange to red (worst 25%)
+    const t = (percentile - 0.75) / 0.25
+    return interpolateColor('#f97316', '#ef4444', t) // orange-500 to red-500
   }
 }
 
@@ -161,9 +162,9 @@ export interface ReachabilityBucket {
 
 export function generateReachabilityLegend(): ReachabilityBucket[] {
   return [
-    { min: 0.75, max: 1.0, color: '#22c55e', label: 'Excellent' },
-    { min: 0.5, max: 0.75, color: '#84cc16', label: 'Good' },
-    { min: 0.25, max: 0.5, color: '#eab308', label: 'Moderate' },
-    { min: 0.0, max: 0.25, color: '#f97316', label: 'Poor' },
+    { min: 0.0, max: 0.25, color: '#22c55e', label: 'Top 25%' },
+    { min: 0.25, max: 0.5, color: '#84cc16', label: 'Top 50%' },
+    { min: 0.5, max: 0.75, color: '#eab308', label: 'Bottom 50%' },
+    { min: 0.75, max: 1.0, color: '#f97316', label: 'Bottom 25%' },
   ]
 }

@@ -15,6 +15,17 @@ export interface Zone {
   city: string;
   svgPath: string;
   routingPoint: [number, number]; // [lat, lon]
+  reachability?: ZoneReachability; // Pre-computed by varikko
+}
+
+/** Pre-computed reachability scores for a zone (computed by varikko, consumed by opas) */
+export interface ZoneReachability {
+  rank: number; // 1 = best connected
+  score: number; // 0-1 composite score
+  zones15: number; // zones within 15 min
+  zones30: number; // zones within 30 min
+  zones45: number; // zones within 45 min
+  medianTime: number; // median travel time (seconds)
 }
 
 // ============================================================================
@@ -136,4 +147,5 @@ export interface PipelineState {
   lastGeocoding?: GeocodingMetadata;
   lastRouteCalculation?: RouteCalculationMetadata;
   timeBucketsCalculatedAt?: string;
+  reachabilityCalculatedAt?: string;
 }

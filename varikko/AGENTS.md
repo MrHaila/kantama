@@ -72,6 +72,14 @@ interface Zone {
   city: string                // Helsinki, Vantaa, Espoo
   svgPath: string            // Pre-rendered SVG path
   routingPoint: [lat, lon]   // Geocoded routing coordinates
+  reachability?: {            // Pre-computed by "Calculate Reachability" workflow
+    rank: number              // 1 = best connected
+    score: number             // 0-1 composite score
+    zones15: number           // zones within 15 min
+    zones30: number           // zones within 30 min
+    zones45: number           // zones within 45 min
+    medianTime: number        // median travel time (seconds)
+  }
 }
 
 interface TimeBucket {
@@ -209,6 +217,25 @@ Launches the TUI with keyboard-driven navigation:
 - Generates pre-rendered SVG with projection
 
 - Water and road layers for background visualization
+
+### 7. Calculate Reachability
+
+Pre-computes zone connectivity scores for the default heatmap view. **Must run after Build Routes.**
+
+```bash
+varikko reachability [--period MORNING|EVENING|MIDNIGHT] [--force]
+```
+
+- Reads all msgpack route files for a given period (default: MORNING)
+- Computes for each zone:
+  - `zones15`: count of zones reachable within 15 minutes
+  - `zones30`: count of zones reachable within 30 minutes
+  - `zones45`: count of zones reachable within 45 minutes
+  - `medianTime`: median travel time to all reachable zones
+  - `score`: composite accessibility score (0-1, weighted formula)
+  - `rank`: 1 = best connected, N = worst connected
+- Updates `zones.json` with reachability data embedded in each zone
+- **Required** for opas default heatmap (no route data loads on page load)
 
 ## Environment Variables
 

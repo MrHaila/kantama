@@ -14,7 +14,7 @@ import { themes } from '../config/themes'
 import { useTransportState } from '../composables/useTransportState'
 import {
   computeReachabilityScores,
-  getReachabilityColor,
+  getReachabilityColorByRank,
   generateReachabilityLegend,
   type ReachabilityScore,
   type ReachabilityBucket,
@@ -88,10 +88,10 @@ export const useMapDataStore = defineStore('mapData', () => {
       const rawTimeBuckets = dataService.getTimeBuckets()
       timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets)
 
-      console.log('Data loaded:', zones.value.length, 'zones')
+      // Load pre-computed reachability scores from zones.json
+      loadPrecomputedReachability()
 
-      // Compute reachability scores in background
-      await computeReachability()
+      console.log('Data loaded:', zones.value.length, 'zones')
     } catch (e) {
       initError.value = {
         type: 'network_error',
@@ -105,19 +105,52 @@ export const useMapDataStore = defineStore('mapData', () => {
   }
 
   /**
-   * Compute reachability scores for all zones
+   * Load pre-computed reachability scores from zones.json
+   * These are computed by varikko during the route calculation phase
+   */
+  function loadPrecomputedReachability() {
+    const scores = new Map<string, ReachabilityScore>()
+
+    for (const zone of zones.value) {
+      if (zone.reachability) {
+        scores.set(zone.id, {
+          zoneId: zone.id,
+          rank: zone.reachability.rank,
+          score: zone.reachability.score,
+          zonesWithin15min: zone.reachability.zones15,
+          zonesWithin30min: zone.reachability.zones30,
+          zonesWithin45min: zone.reachability.zones45,
+          medianTravelTime: zone.reachability.medianTime,
+          avgTravelTime: zone.reachability.medianTime, // Use median as fallback
+        })
+      }
+    }
+
+    reachabilityScores.value = scores
+    console.log('Loaded pre-computed reachability scores for', scores.size, 'zones')
+  }
+
+  /**
+   * Compute reachability scores for all zones (on-demand, not on page load)
+   * Uses parallel batched loading for better performance
    */
   async function computeReachability() {
     if (zones.value.length === 0) return
 
     const period = currentTimePeriod.value
     const routesByZone = new Map<string, CompactRoute[]>()
+    const BATCH_SIZE = 20
 
-    // Load all zone routes for the current period
+    // Load all zone routes in parallel batches
+    const zonesToLoad = zones.value.filter((z) => !dataService.hasRoutesLoaded(z.id, period))
+
+    for (let i = 0; i < zonesToLoad.length; i += BATCH_SIZE) {
+      const batch = zonesToLoad.slice(i, i + BATCH_SIZE)
+      await Promise.all(batch.map((zone) => dataService.loadRoutesForZone(zone.id, period)))
+    }
+
+    // Collect routes from cache
     for (const zone of zones.value) {
-      if (!dataService.hasRoutesLoaded(zone.id, period)) {
-        await dataService.loadRoutesForZone(zone.id, period)
-      }
       const routes = dataService.getRoutes(zone.id, period)
       if (routes) {
         routesByZone.set(zone.id, routes)
@@ -185,7 +218,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     if (transportState.overlayMode.value === 'reachability') {
       const score = reachabilityScores.value.get(zoneId)
       if (!score) return '#e0e0e0'
-      return getReachabilityColor(score.score)
+      return getReachabilityColorByRank(score.rank, reachabilityScores.value.size)
     }
 
     // Zone selection mode - show travel times from active zone

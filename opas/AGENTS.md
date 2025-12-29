@@ -104,3 +104,14 @@ await page.locator('#app')                // ID selector
 3. **Vintage Styling**: Consistent sepia-toned aesthetic across all visual elements
 4. **TypeScript**: All code must be fully typed
 5. **Component Composition**: Prefer composition over inheritance for map features
+
+## Performance Rules
+
+⚠️ **No route data loading on page load.** Route data (`.msgpack` files) must only be loaded when the user selects a zone. Initial page load should only fetch:
+
+- `zones.json` (includes pre-computed reachability scores)
+- `background_map.json` (static map layers)
+
+This rule is enforced by a Playwright test in `tests/e2e/performance.spec.ts`.
+
+Reachability scores for the default heatmap view must be pre-computed by Varikko and included in `zones.json`, not calculated at runtime.
