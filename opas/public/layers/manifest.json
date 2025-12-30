@@ -8,24 +8,6 @@
       "zIndex": 0
     },
     {
-      "id": "transit-M",
-      "file": "transit-M.svg",
-      "description": "Transit route usage (Morning)",
-      "zIndex": 5
-    },
-    {
-      "id": "transit-E",
-      "file": "transit-E.svg",
-      "description": "Transit route usage (Evening)",
-      "zIndex": 5
-    },
-    {
-      "id": "transit-N",
-      "file": "transit-N.svg",
-      "description": "Transit route usage (Midnight)",
-      "zIndex": 5
-    },
-    {
       "id": "roads",
       "file": "roads.svg",
       "description": "Road network",
@@ -36,12 +18,6 @@
       "file": "railways.svg",
       "description": "Railway network",
       "zIndex": 20
-    },
-    {
-      "id": "ferries",
-      "file": "ferries.svg",
-      "description": "Ferry routes",
-      "zIndex": 30
     }
   ]
 }

@@ -35,16 +35,12 @@ const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
  * Blacklist of zone IDs that should be permanently excluded from processing.
  * These zones have been identified as having routing failures or other issues
  * that prevent them from being included in the route network.
- *
- * Zones:
- * - HEL-312 (Vattuniemi): All routing attempts fail with ERROR status
- * - HEL-461 (Pajamäki): All routing attempts fail with ERROR status
- * - VAN-Vaarala (Vaarala): All routing attempts fail with ERROR status
  */
 const ZONE_BLACKLIST: Set<string> = new Set([
-  'HEL-312',
-  'HEL-461',
-  'VAN-Vaarala',
+  'HEL-500',
+  'HEL-532',
+  'HEL-531',
+  'ESP-316',
 ]);
 
 interface FeatureProperties {

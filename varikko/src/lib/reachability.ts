@@ -13,6 +13,7 @@ export interface ReachabilityResult {
   zonesWithData: number;
   bestConnected: { zoneId: string; score: number } | null;
   worstConnected: { zoneId: string; score: number } | null;
+  zonesWithNoConnections: string[];
 }
 
 interface ZoneMetrics {
@@ -105,6 +106,7 @@ export function calculateReachability(
 
     // Collect metrics for all zones
     const metricsMap = new Map<string, ZoneMetrics>();
+    const zonesWithNoConnections: string[] = [];
     let zonesWithData = 0;
 
     for (const zoneId of zoneIds) {
@@ -136,6 +138,8 @@ export function calculateReachability(
           reachableCount: durations.length,
           durations,
         });
+      } else {
+        zonesWithNoConnections.push(zoneId);
       }
     }
 
@@ -218,6 +222,7 @@ export function calculateReachability(
         scores.length > 0
           ? { zoneId: scores[scores.length - 1].zoneId, score: scores[scores.length - 1].score }
           : null,
+      zonesWithNoConnections,
     };
 
     emitter?.emitComplete(

@@ -66,6 +66,9 @@ export function action(options: ReachabilityOptions): void {
     console.log(
       fmt.keyValue('Zones with data:', result.zonesWithData.toLocaleString(), 20)
     );
+    console.log(
+      fmt.keyValue('No connections:', result.zonesWithNoConnections.length.toLocaleString(), 20)
+    );
     if (result.bestConnected) {
       console.log(
         fmt.keyValue(
@@ -85,6 +88,16 @@ export function action(options: ReachabilityOptions): void {
       );
     }
     console.log(fmt.keyValue('Duration:', fmt.formatDuration(duration), 20));
+
+    if (result.zonesWithNoConnections.length > 0) {
+      console.log('');
+      console.log(fmt.bold('ZONES WITH NO CONNECTIONS:'));
+      console.log(fmt.divider(50));
+      result.zonesWithNoConnections.forEach(zoneId => {
+        console.log(fmt.dim(`  ${zoneId}`));
+      });
+    }
+
     console.log('');
     console.log(fmt.successMessage('Reachability scores ready for opas heatmap'));
     console.log('');
