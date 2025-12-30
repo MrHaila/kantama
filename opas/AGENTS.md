@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This module serves as the **Web Frontend** for the Chrono-Map project. It provides an interactive Vue 3 + D3.js visualization of temporal distances between places in Helsinki using public transit data from Varikko.
+This module serves as the **Web Frontend** for Kantama. It provides an interactive Vue 3 + D3.js visualization of temporal distances between places in Helsinki using public transit data from Varikko.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
 # Kantama
 
-An interactive map of temporal distances between places in the Helsinki metropolitan area using public transit.
+An interactive map of temporal distances between places in the greater capital region (Helsinki, Espoo, Vantaa, Kauniainen) using public transit.
 
 ## Architecture Overview
 

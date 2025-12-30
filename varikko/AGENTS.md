@@ -186,7 +186,7 @@ Launches the TUI with keyboard-driven navigation:
 
 - Calculates transit routes via OTP
 
-- Three time periods: MORNING (08:30), EVENING (17:30), MIDNIGHT (23:30)
+- Three time periods: MORNING (08:30), EVENING (17:00), MIDNIGHT (24:00)
 
 - Supports both local and remote OTP instances
 
