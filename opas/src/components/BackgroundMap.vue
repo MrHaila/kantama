@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { layerService, type LayerId, type ThemeName } from '../services/LayerService'
 import { useLayerVisibility } from '../composables/useLayerVisibility'
 
@@ -10,10 +10,6 @@ interface Props {
 
 const { theme = 'morning', layers = ['water'] } = defineProps<Props>()
 const { layerVisibility } = useLayerVisibility()
-
-const shouldShowBackgroundLayers = computed(() => {
-  return layerVisibility.background || layerVisibility.infrastructure
-})
 
 const containerRef = ref<HTMLElement | null>(null)
 const viewBox = ref<string>('')

@@ -24,13 +24,15 @@ export function parseViewBox(viewBoxStr: string): ViewBox {
     throw new Error(`Invalid viewBox format: "${viewBoxStr}". Expected 4 values.`)
   }
 
-  const [x, y, width, height] = parts.map(Number)
+  const numbers = parts.map(Number)
 
-  if (parts.some(isNaN)) {
+  if (numbers.some(isNaN)) {
     throw new Error(`Invalid viewBox values: "${viewBoxStr}". All values must be numbers.`)
   }
 
-  return { x, y, width, height }
+  const [x, y, width, height] = numbers
+
+  return { x: x!, y: y!, width: width!, height: height! }
 }
 
 /**
@@ -59,7 +61,7 @@ export function extractPathCoordinates(pathD: string): Array<[number, number]> {
   // Extract coordinate pairs (x, y)
   for (let i = 0; i < numbers.length; i += 2) {
     if (i + 1 < numbers.length) {
-      coordinates.push([numbers[i], numbers[i + 1]])
+      coordinates.push([numbers[i]!, numbers[i + 1]!])
     }
   }
 
@@ -91,5 +93,5 @@ export function isWithinBounds(coord: [number, number], viewBox: ViewBox): boole
  */
 export function extractViewBoxFromSVG(svgContent: string): string | null {
   const match = svgContent.match(/viewBox=["']([^"']+)["']/)
-  return match ? match[1] : null
+  return match?.[1] ?? null
 }

@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest'
 import { MAP_CONFIG, MAP_CENTER, MAP_SCALE, WIDTH, HEIGHT } from 'varikko'
 import { loadZonesData, loadManifest, loadLayerSVG, layerExists } from './helpers/file-loader'
-import { parseViewBox, extractPathCoordinates, isWithinBounds, extractViewBoxFromSVG } from './helpers/svg-parser'
+import { parseViewBox, extractPathCoordinates, extractViewBoxFromSVG } from './helpers/svg-parser'
 import { createTestProjection, compareProjections, verifyProjection } from './helpers/projection'
 import { TEST_COORDINATES } from './fixtures/test-coordinates'
 
@@ -72,7 +72,7 @@ describe('Projection Alignment', () => {
         height: HEIGHT,
       })
 
-      const comparison = compareProjections(varikkoProjection, opasProjection, TEST_COORDINATES, 0.01)
+      const comparison = compareProjections(varikkoProjection, opasProjection, TEST_COORDINATES as any, 0.01)
 
       expect(comparison.aligned).toBe(true)
       expect(comparison.maxDiff).toBeLessThan(0.01)
@@ -224,14 +224,15 @@ describe('Projection Alignment', () => {
 
       // Check first zone has required properties
       const firstZone = zones.zones[0]
+      expect(firstZone).toBeDefined()
       expect(firstZone).toHaveProperty('id')
       expect(firstZone).toHaveProperty('svgPath')
       expect(firstZone).toHaveProperty('routingPoint')
 
       // Verify routing point is valid lat/lon
-      expect(Array.isArray(firstZone.routingPoint)).toBe(true)
-      expect(firstZone.routingPoint).toHaveLength(2)
-      const [lat, lon] = firstZone.routingPoint
+      expect(Array.isArray(firstZone!.routingPoint)).toBe(true)
+      expect(firstZone!.routingPoint).toHaveLength(2)
+      const [lat, lon] = firstZone!.routingPoint
       expect(typeof lat).toBe('number')
       expect(typeof lon).toBe('number')
     })
