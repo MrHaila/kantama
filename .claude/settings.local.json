@@ -31,7 +31,9 @@
       "Bash(pnpm --filter opas exec vue-tsc --noEmit)",
       "Bash(pnpm --filter opas build:*)",
       "Bash(pnpm varikko:*)",
-      "Bash(pnpm --filter varikko dev:*)"
+      "Bash(pnpm --filter varikko dev:*)",
+      "Bash(pnpm test:alignment:*)",
+      "Bash(pnpm varikko:dev:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,8 +25,8 @@ describe('Projection Alignment', () => {
       // Verify that the shared config exports the expected values
       expect(MAP_CENTER).toEqual([24.93, 60.17])
       expect(MAP_SCALE).toBe(120000)
-      expect(WIDTH).toBe(960) // 800 * 1.2
-      expect(HEIGHT).toBe(960)
+      expect(WIDTH).toBe(1080) // 900 * 1.2
+      expect(HEIGHT).toBe(720) // 600 * 1.2
     })
 
     it('should calculate viewBox correctly from MAP_CONFIG', () => {
@@ -36,7 +36,7 @@ describe('Projection Alignment', () => {
   })
 
   describe('Coordinate Transformation', () => {
-    it('should project map center to canvas center [480, 480]', () => {
+    it('should project map center to canvas center', () => {
       const projection = createTestProjection({
         center: MAP_CENTER,
         scale: MAP_SCALE,
@@ -49,8 +49,9 @@ describe('Projection Alignment', () => {
 
       expect(result.matched).toBe(true)
       if (result.actual) {
-        expect(result.actual[0]).toBeCloseTo(480, 1)
-        expect(result.actual[1]).toBeCloseTo(480, 1)
+        // Center should be at [width/2, height/2] = [600, 360]
+        expect(result.actual[0]).toBeCloseTo(WIDTH / 2, 1)
+        expect(result.actual[1]).toBeCloseTo(HEIGHT / 2, 1)
       }
     })
 

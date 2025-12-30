@@ -35,7 +35,7 @@ async function loadLayers() {
     // Create SVG container
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('viewBox', viewBox.value)
-    svg.setAttribute('class', 'w-full h-auto')
+    svg.setAttribute('class', 'w-full h-full')
 
     // Filter layers based on visibility settings (only water layer is used here)
     const filteredLayers = layers.filter(layerId => {
@@ -96,7 +96,7 @@ watch([() => theme, () => layers, () => layerVisibility.background], () => {
 </script>
 
 <template>
-  <div ref="containerRef" data-testid="background-map" class="relative w-full aspect-square overflow-hidden">
+  <div ref="containerRef" data-testid="background-map" class="relative w-full h-full overflow-hidden">
     <!-- SVG loaded here -->
   </div>
 </template>

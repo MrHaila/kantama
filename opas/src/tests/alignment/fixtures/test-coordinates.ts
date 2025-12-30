@@ -15,7 +15,7 @@ export interface TestCoordinate {
 /**
  * Known geographic coordinates with their expected SVG projections
  *
- * The map center should project to exactly [480, 480] (center of 960x960 canvas).
+ * The map center should project to exactly [540, 360] (center of 1080x720 canvas).
  * Other coordinates don't have exact expected values but should be consistent
  * between varikko and opas projections.
  */
@@ -24,7 +24,7 @@ export const TEST_COORDINATES: readonly TestCoordinate[] = [
     name: 'MapCenter',
     lat: 60.17,
     lon: 24.93,
-    expectedSVG: [480, 480] as const,
+    expectedSVG: [540, 360] as const,
   },
   {
     name: 'Helsinki',

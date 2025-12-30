@@ -289,8 +289,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div data-testid="interactive-map" class="relative w-full aspect-square">
-    <div class="fixed top-5 right-5 z-[1000] flex flex-col gap-3">
+  <div data-testid="interactive-map" class="relative w-full h-full">
+    <div class="hidden md:flex fixed top-5 right-5 z-[1000] flex-col gap-3">
       <HeatmapLegend />
       <LayerControls />
     </div>
@@ -298,7 +298,7 @@ onUnmounted(() => {
       <svg
         data-testid="interactive-map-svg"
         :viewBox="MAP_CONFIG.viewBox"
-        class="w-full h-auto"
+        class="w-full h-full"
         style="position: absolute; top: 0; left: 0; pointer-events: auto"
       >
         <!-- Pattern definitions -->
