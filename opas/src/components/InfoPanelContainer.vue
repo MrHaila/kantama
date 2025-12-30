@@ -7,7 +7,7 @@ const store = useMapDataStore()
 </script>
 
 <template>
-  <div class="fixed left-6 bottom-6 z-20 flex flex-col-reverse gap-4 font-sans">
+  <div class="fixed left-6 bottom-6 z-20 flex flex-col-reverse space-y-3 font-sans">
     <!-- InfoPanel - always shown (bottom) -->
     <InfoPanel />
 

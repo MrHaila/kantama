@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref } from 'vue'
 import BackgroundMap from './components/BackgroundMap.vue'
 import InteractiveMap from './components/InteractiveMap.vue'
 import InfoPanelContainer from './components/InfoPanelContainer.vue'
+import HeatmapLegend from './components/HeatmapLegend.vue'
+import LayerControls from './components/LayerControls.vue'
 import { useAppState } from './composables/useAppState'
 import { useMapDataStore } from './stores/mapData'
 import { getLayerStyles, type MapThemeName } from './config/mapThemes'
@@ -38,6 +40,21 @@ const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT']
 
 function setPeriod(period: TimePeriod): void {
   store.currentTimePeriod = period
+}
+
+// Zoom controls
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2.0
+const ZOOM_STEP = 0.1
+
+const zoomScale = ref(1.0)
+
+function zoomIn(): void {
+  zoomScale.value = Math.min(MAX_ZOOM, zoomScale.value + ZOOM_STEP)
+}
+
+function zoomOut(): void {
+  zoomScale.value = Math.max(MIN_ZOOM, zoomScale.value - ZOOM_STEP)
 }
 
 onMounted(() => {
@@ -113,8 +130,44 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- Legend and Layer Controls - Top Right -->
+    <div class="hidden md:flex fixed top-6 right-6 z-20 flex-col gap-3">
+      <HeatmapLegend />
+      <LayerControls />
+    </div>
+
     <!-- Controls - Bottom Right -->
     <div class="hidden md:flex fixed bottom-6 right-6 z-20 flex-col gap-3 items-end">
+      <!-- Zoom Controls -->
+      <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
+        <button
+          data-testid="zoom-out-button"
+          class="px-3 py-2 font-sans text-lg transition-colors"
+          :class="
+            zoomScale <= MIN_ZOOM
+              ? 'bg-vintage-cream/50 text-vintage-dark/30 cursor-not-allowed'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+          "
+          :disabled="zoomScale <= MIN_ZOOM"
+          @click="zoomOut"
+        >
+          −
+        </button>
+        <button
+          data-testid="zoom-in-button"
+          class="px-3 py-2 font-sans text-lg transition-colors"
+          :class="
+            zoomScale >= MAX_ZOOM
+              ? 'bg-vintage-cream/50 text-vintage-dark/30 cursor-not-allowed'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+          "
+          :disabled="zoomScale >= MAX_ZOOM"
+          @click="zoomIn"
+        >
+          +
+        </button>
+      </div>
+
       <!-- Period Toggle -->
       <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
         <button
@@ -163,8 +216,11 @@ onMounted(() => {
       </div>
 
       <!-- Ready State - Show Map -->
-      <div v-else class="grow relative flex items-center">
-        <div class="relative shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] border-8 border-white bg-white p-2 h-[calc(100vh-3rem)] aspect-3/2 mx-auto">
+      <div v-else class="grow relative flex items-center justify-center">
+        <div
+          class="relative shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] border-8 border-white bg-white p-2 h-[calc(100vh-3rem)] aspect-3/2 transition-transform duration-200"
+          :style="{ transform: `scale(${zoomScale})` }"
+        >
           <!-- Background Map Layer (water only) -->
           <div class="absolute inset-0">
             <BackgroundMap :theme="currentTheme" :layers="['water']" />

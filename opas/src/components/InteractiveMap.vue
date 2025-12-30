@@ -4,8 +4,6 @@ import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
 import { MAP_CONFIG, MAP_CENTER, MAP_SCALE } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
-import HeatmapLegend from './HeatmapLegend.vue'
-import LayerControls from './LayerControls.vue'
 import ZonePolygon from './ZonePolygon.vue'
 import { decodePolyline } from '../utils/polyline'
 import { useLayerVisibility } from '../composables/useLayerVisibility'
@@ -290,10 +288,6 @@ onUnmounted(() => {
 
 <template>
   <div data-testid="interactive-map" class="relative w-full h-full">
-    <div class="hidden md:flex fixed top-5 right-5 z-[1000] flex-col gap-3">
-      <HeatmapLegend />
-      <LayerControls />
-    </div>
     <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <svg
         data-testid="interactive-map-svg"
