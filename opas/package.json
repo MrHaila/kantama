@@ -13,7 +13,11 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
-    "test:create-fixtures": "tsx tests/helpers/fixture-generator.ts"
+    "test:create-fixtures": "tsx tests/helpers/fixture-generator.ts",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:unit:ui": "vitest --ui",
+    "test:alignment": "vitest run src/tests/alignment"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",
@@ -31,6 +35,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/node": "^25.0.3",
     "@vitejs/plugin-vue": "^6.0.3",
+    "@vitest/ui": "^4.0.16",
     "@vue/tsconfig": "^0.8.1",
     "autoprefixer": "^10.4.23",
     "eslint-config-prettier": "^10.1.8",
@@ -42,6 +47,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.50.0",
     "vite": "npm:rolldown-vite@7.3.0",
+    "vitest": "^4.0.16",
     "vue-eslint-parser": "^10.0.0",
     "vue-tsc": "^3.2.0"
   }

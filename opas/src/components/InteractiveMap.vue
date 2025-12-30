@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import { MAP_CONFIG } from '../config/mapConfig'
+import { MAP_CONFIG, MAP_CENTER, MAP_SCALE } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
 import HeatmapLegend from './HeatmapLegend.vue'
 import LayerControls from './LayerControls.vue'
@@ -184,13 +184,13 @@ async function loadRailwayPaths() {
 }
 
 // Create D3 projection to convert lat/lon to SVG coordinates
-// Must match the projection used in fetch_zones.ts
+// Must match the projection used in varikko data generation
 const projection = computed(() => {
   const width = MAP_CONFIG.width
   const height = MAP_CONFIG.height
   return geoMercator()
-    .center([24.93, 60.17])
-    .scale(120000)
+    .center(MAP_CENTER)
+    .scale(MAP_SCALE)
     .translate([width / 2, height / 2])
 })
 
