@@ -43,8 +43,7 @@ See each sub-project's `AGENTS.md` for specific implementation details.
 ## Global Rules
 
 1. **Package Manager**: Always use `pnpm`, never `npm` or `yarn`.
-2. **Code Quality**: Run `prettier` and `eslint` before committing. All code must be TypeScript.
-3. **Validation**: Use `pnpm lint` and `pnpm format` at the repo root to check all sub-projects.
+1. **Validation**: Use `pnpm lint` and `pnpm format` at the repo root to check all sub-projects.
 
 ## Quick Start
 
