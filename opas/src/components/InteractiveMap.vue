@@ -109,7 +109,7 @@ function updateZoneColors(animate: boolean = true) {
 
 // Watch for state changes that should trigger color updates
 watch(
-  () => [store.transportState.activeZoneId, store.transportState.overlayMode, store.reachabilityScores],
+  () => [store.transportState.activeZoneId, store.transportState.overlayMode, store.reachabilityScores, store.currentCosts],
   () => {
     updateZoneColors(true)
   },
