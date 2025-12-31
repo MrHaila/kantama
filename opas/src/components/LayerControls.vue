@@ -13,6 +13,7 @@ const layers = [
   { key: 'infrastructure' as const, label: 'Roads + Rails' },
   { key: 'transit' as const, label: 'Transit Layer' },
   { key: 'zoneBorders' as const, label: 'Zone Borders + Points' },
+  { key: 'ticketZones' as const, label: 'Ticket Zones' },
 ]
 </script>
 

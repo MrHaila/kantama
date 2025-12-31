@@ -6,6 +6,7 @@ export interface LayerVisibility {
   infrastructure: boolean
   transit: boolean
   zoneBorders: boolean
+  ticketZones: boolean
 }
 
 const layerVisibility = reactive<LayerVisibility>({
@@ -14,6 +15,7 @@ const layerVisibility = reactive<LayerVisibility>({
   infrastructure: true,
   transit: false,
   zoneBorders: true,
+  ticketZones: false,
 })
 
 export function useLayerVisibility() {

@@ -4,7 +4,7 @@
  */
 
 export type MapThemeName = 'morning' | 'evening' | 'midnight'
-export type LayerId = 'water' | 'roads' | 'railways' | 'transit-M' | 'transit-E' | 'transit-N'
+export type LayerId = 'water' | 'roads' | 'railways' | 'transit-M' | 'transit-E' | 'transit-N' | 'ticketZones'
 
 export interface LayerStyles {
   fill?: string
@@ -42,6 +42,7 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#d1d5db50', strokeWidth: 1.0 },
       roads: { stroke: '#a8998a', strokeWidth: 0.4 },
       railways: { stroke: '#6b7280', strokeWidth: 0.8 },
+      ticketZones: { stroke: '#264653', strokeWidth: 1.5, fill: 'none' },
     },
     timeBucketColors: [
       '#22c55e', // Green - 0-15min
@@ -69,6 +70,7 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#d1d5db50', strokeWidth: 1.0 },
       roads: { stroke: '#8b7d6b', strokeWidth: 0.4 },
       railways: { stroke: '#57534e', strokeWidth: 0.8 },
+      ticketZones: { stroke: '#57534e', strokeWidth: 1.5, fill: 'none' },
     },
     timeBucketColors: [
       '#2dd4bf', // Teal - 0-15min
@@ -96,6 +98,7 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       'transit-N': { stroke: '#c4b5fd', strokeWidth: 1.0 },
       roads: { stroke: '#4a4a4a', strokeWidth: 0.5 },
       railways: { stroke: '#6b7280', strokeWidth: 0.9 },
+      ticketZones: { stroke: '#6b7280', strokeWidth: 1.5, fill: 'none' },
     },
     timeBucketColors: [
       '#4ade80', // Bright green - 0-15min

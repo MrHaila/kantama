@@ -3,6 +3,7 @@
  */
 
 export * as fetch from './fetch';
+export * as fetchTicketZones from './fetchTicketZones';
 export * as geocode from './geocode';
 export * as routes from './routes';
 export * as timeBuckets from './time-buckets';

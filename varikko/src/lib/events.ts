@@ -2,6 +2,7 @@ import { EventEmitter } from 'eventemitter3';
 
 export type WorkflowStage =
   | 'fetch_zones'
+  | 'fetch_ticket_zones'
   | 'geocode_zones'
   | 'build_routes'
   | 'clear_data'
