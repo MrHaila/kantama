@@ -24,10 +24,12 @@ pnpm dev routes   # Calculate routes (requires OTP running)
 | `pnpm dev time-buckets` | Generate heatmap color distribution |
 | `pnpm dev reachability` | Pre-compute zone connectivity scores |
 | `pnpm dev transit-layer` | Generate transit visualization layer |
+| `pnpm dev zones list` | List all zones with metadata (debugging) |
 | `pnpm dev clear` | Clear data files |
 
-### Route Calculation Options
+### Command Options
 
+**Route Calculation:**
 ```bash
 pnpm dev routes                       # All periods, all routes
 pnpm dev routes --period MORNING      # Single period
@@ -36,6 +38,12 @@ pnpm dev routes --limit 10            # 10 random routes total
 ```
 
 Time periods: MORNING (08:30), EVENING (17:00), MIDNIGHT (24:00)
+
+**Zone Listing:**
+```bash
+pnpm dev zones list                   # List all zones
+pnpm dev zones list --limit 10        # Show first 10 zones only
+```
 
 ## Data Output
 

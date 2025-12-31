@@ -12,3 +12,4 @@ export * as reachability from './reachability';
 export * as status from './status';
 export * as transitLayer from './transit-layer';
 export * as simplifyRoutes from './simplify-routes';
+export * as zones from './zones';

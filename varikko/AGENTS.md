@@ -235,6 +235,45 @@ varikko reachability [--period MORNING|EVENING|MIDNIGHT] [--force]
 - Updates `zones.json` with reachability data embedded in each zone
 - **Required** for opas default heatmap (no route data loads on page load)
 
+### 8. List Zones
+
+Displays all zones with metadata in a formatted table. Useful for debugging and quick reference.
+
+```bash
+varikko zones list [--limit <count>]
+```
+
+- Reads zones from `zones.json`
+- Displays zone metadata in a formatted table:
+  - ID (e.g., `HEL-101`, `ESP-231`)
+  - Name (e.g., `Vilhonvuori`, `Matinkylä`)
+  - City (Helsinki, Vantaa, Espoo)
+  - Routing coordinates (latitude, longitude)
+- Optional `--limit` flag to show only first N zones
+- Helpful for:
+  - Verifying zone data after fetch
+  - Finding zone IDs for testing
+  - Checking routing point locations
+  - Quick debugging reference
+
+**Example:**
+```bash
+varikko zones list --limit 5
+
+📍 ZONES
+
+Total zones:    262
+Showing:        5 zones (limited)
+
+ID            Name                       City          Latitude    Longitude
+────────────  ─────────────────────────  ────────────  ──────────  ──────────
+HEL-101       Vilhonvuori                Helsinki       60.181478   24.960107
+HEL-232       Arabianranta               Helsinki       60.207575   24.979171
+ESP-231       Matinkylä                  Espoo          60.165230   24.740890
+VAN-41        Ylästö                     Vantaa         60.305420   25.044670
+HEL-090       Kaivopuisto                Helsinki       60.157880   24.958041
+```
+
 ## Environment Variables
 
 ```bash
