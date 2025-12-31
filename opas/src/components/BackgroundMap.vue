@@ -26,9 +26,22 @@ function createWaterGradientDefs(svg: SVGSVGElement, themeName: ThemeName, viewB
   }
 
   // Parse viewBox: "minX minY width height"
-  const [minX, minY, width, height] = viewBoxStr.split(' ').map(Number)
-  const centerX = minX + width / 2  // Horizontal center
-  const centerY = minY              // Top of map
+  const coords = viewBoxStr.split(' ').map(Number)
+  if (coords.length !== 4) {
+    return null
+  }
+
+  const minX = coords[0] as number
+  const minY = coords[1] as number
+  const width = coords[2] as number
+  const height = coords[3] as number
+
+  if (isNaN(minX) || isNaN(minY) || isNaN(width) || isNaN(height)) {
+    return null
+  }
+
+  const centerX = minX + width / 2 // Horizontal center
+  const centerY = minY // Top of map
   const radius = Math.max(width, height) * 0.8
 
   // Create defs element
@@ -80,7 +93,19 @@ async function loadLayers() {
     svg.setAttribute('class', 'w-full h-full')
 
     // Parse viewBox for background rect dimensions
-    const [minX, minY, width, height] = viewBox.value.split(' ').map(Number)
+    const coords = viewBox.value.split(' ').map(Number)
+    if (coords.length !== 4) {
+      throw new Error('Invalid viewBox format in manifest')
+    }
+
+    const minX = coords[0] as number
+    const minY = coords[1] as number
+    const width = coords[2] as number
+    const height = coords[3] as number
+
+    if (isNaN(minX) || isNaN(minY) || isNaN(width) || isNaN(height)) {
+      throw new Error('Invalid viewBox values in manifest')
+    }
 
     // Create background rect to fill islands/holes in water
     const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
