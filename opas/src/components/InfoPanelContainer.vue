@@ -7,11 +7,11 @@ const store = useMapDataStore()
 </script>
 
 <template>
-  <div class="fixed left-6 bottom-6 z-20 flex flex-col-reverse space-y-3 font-sans">
-    <!-- InfoPanel - always shown (bottom) -->
-    <InfoPanel />
-
+  <div class="fixed left-6 bottom-6 z-20 flex flex-col space-y-3 font-sans">
     <!-- JourneyPanel - only shown when zone is selected (above info) -->
     <JourneyPanel v-if="store.transportState.activeZoneId" />
+
+    <!-- InfoPanel - always shown (bottom) -->
+    <InfoPanel />
   </div>
 </template>

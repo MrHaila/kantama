@@ -10,7 +10,7 @@ import {
   type CompactLeg,
   RouteStatus,
 } from '../services/DataService'
-import { themes } from '../config/themes'
+import { getTimeBucketColors, getZoneBorderColor, type MapThemeName } from '../config/mapThemes'
 import { useTransportState } from '../composables/useTransportState'
 import {
   computeReachabilityScores,
@@ -19,6 +19,16 @@ import {
   type ReachabilityScore,
   type ReachabilityBucket,
 } from '../services/ReachabilityService'
+
+// Map TimePeriod to MapThemeName
+function toMapTheme(period: TimePeriod): MapThemeName {
+  switch (period) {
+    case 'MORNING': return 'morning'
+    case 'EVENING': return 'evening'
+    case 'MIDNIGHT': return 'midnight'
+    default: return 'morning'
+  }
+}
 
 // Get time bucket color for a given duration
 function getTimeBucketColor(duration: number, timeBuckets: TimeBucket[]): string {
@@ -30,18 +40,14 @@ function getTimeBucketColor(duration: number, timeBuckets: TimeBucket[]): string
   return '#e0e0e0'
 }
 
-// Get themed time bucket colors
-function getThemedTimeBuckets(timeBuckets: TimeBucket[]): TimeBucket[] {
-  const currentTheme = themes.vintage
+// Get themed time bucket colors based on map theme
+function getThemedTimeBuckets(timeBuckets: TimeBucket[], mapTheme: MapThemeName): TimeBucket[] {
+  const themeColors = getTimeBucketColors(mapTheme)
 
-  if (!currentTheme || !currentTheme.timeBucketColors) {
-    return timeBuckets
-  }
-
-  if (timeBuckets.length === currentTheme.timeBucketColors.length) {
+  if (timeBuckets.length === themeColors.length) {
     return timeBuckets.map((bucket, index) => ({
       ...bucket,
-      color: currentTheme.timeBucketColors[index] || bucket.color,
+      color: themeColors[index] || bucket.color,
     }))
   }
 
@@ -57,6 +63,11 @@ export const useMapDataStore = defineStore('mapData', () => {
   const currentCosts = ref<Map<string, number>>(new Map())
   const currentTimePeriod = ref<TimePeriod>('MORNING')
   const timeBuckets = ref<TimeBucket[]>([])
+  const rawTimeBuckets = ref<TimeBucket[]>([])
+
+  // Derived map theme from time period
+  const currentMapTheme = computed(() => toMapTheme(currentTimePeriod.value))
+  const zoneBorderColor = computed(() => getZoneBorderColor(currentMapTheme.value))
 
   // Reachability state
   const reachabilityScores = ref<Map<string, ReachabilityScore>>(new Map())
@@ -85,8 +96,8 @@ export const useMapDataStore = defineStore('mapData', () => {
       }
 
       zones.value = dataService.getZones()
-      const rawTimeBuckets = dataService.getTimeBuckets()
-      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets)
+      rawTimeBuckets.value = dataService.getTimeBuckets()
+      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets.value, currentMapTheme.value)
 
       // Load pre-computed reachability scores from zones.json
       loadPrecomputedReachability()
@@ -203,6 +214,15 @@ export const useMapDataStore = defineStore('mapData', () => {
   })
 
   /**
+   * Update time bucket colors when map theme changes
+   */
+  watch(currentMapTheme, () => {
+    if (rawTimeBuckets.value.length > 0) {
+      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets.value, currentMapTheme.value)
+    }
+  })
+
+  /**
    * Get duration to a specific zone from the active zone
    */
   function getDuration(toId: string): number | null {
@@ -300,6 +320,10 @@ export const useMapDataStore = defineStore('mapData', () => {
     timeBuckets,
     currentRouteDetails,
     currentRouteLegs,
+
+    // Map theme
+    currentMapTheme,
+    zoneBorderColor,
 
     // Reachability
     reachabilityScores,

@@ -12,10 +12,21 @@ export interface LayerStyles {
   strokeWidth?: number
 }
 
+export interface WaterGradient {
+  type: 'radial' | 'solid'
+  // For radial gradients: [centerColor, edgeColor]
+  // Radiates from map center outward
+  colors?: [string, string]
+  // For solid: just the fill color (from layers.water.fill)
+}
+
 export interface MapTheme {
   name: MapThemeName
   description: string
   layers: Record<LayerId, LayerStyles>
+  timeBucketColors: string[]
+  zoneBorderColor: string
+  waterGradient: WaterGradient
 }
 
 export const mapThemes: Record<MapThemeName, MapTheme> = {
@@ -24,11 +35,24 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
     description: 'Bright daylight palette (08:30)',
     layers: {
       water: { fill: '#4a90e2' },
-      'transit-M': { stroke: '#e85d75', strokeWidth: 1.0 },
-      'transit-E': { stroke: '#cccccc', strokeWidth: 1.0 },
-      'transit-N': { stroke: '#cccccc', strokeWidth: 1.0 },
-      roads: { stroke: '#8b7355', strokeWidth: 0.5 },
-      railways: { stroke: '#4a5568', strokeWidth: 1.2 },
+      'transit-M': { stroke: '#ff6b6b', strokeWidth: 1.0 },
+      'transit-E': { stroke: '#d1d5db50', strokeWidth: 1.0 },
+      'transit-N': { stroke: '#d1d5db50', strokeWidth: 1.0 },
+      roads: { stroke: '#a8998a', strokeWidth: 0.4 },
+      railways: { stroke: '#6b7280', strokeWidth: 0.8 },
+    },
+    timeBucketColors: [
+      '#22c55e', // Green - 0-15min
+      '#84cc16', // Lime - 15-30min
+      '#eab308', // Yellow - 30-45min
+      '#7dd3fc', // Light cyan - 45-60min
+      '#38bdf8', // Sky - 60-75min
+      '#0284c7', // Darker blue - 75-90min+
+    ],
+    zoneBorderColor: '#264653',
+    waterGradient: {
+      type: 'radial',
+      colors: ['#93c5fd', '#1e40af'], // Light center → darker edges
     },
   },
   evening: {
@@ -36,23 +60,48 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
     description: 'Warm transitional palette (17:30)',
     layers: {
       water: { fill: '#2a4d69' },
-      'transit-M': { stroke: '#cccccc', strokeWidth: 1.0 },
-      'transit-E': { stroke: '#f4a261', strokeWidth: 1.0 },
-      'transit-N': { stroke: '#cccccc', strokeWidth: 1.0 },
-      roads: { stroke: '#a67c52', strokeWidth: 0.5 },
-      railways: { stroke: '#5a5568', strokeWidth: 1.2 },
+      'transit-M': { stroke: '#d1d5db50', strokeWidth: 1.0 },
+      'transit-E': { stroke: '#ffd43b', strokeWidth: 1.0 },
+      'transit-N': { stroke: '#d1d5db50', strokeWidth: 1.0 },
+      roads: { stroke: '#8b7d6b', strokeWidth: 0.4 },
+      railways: { stroke: '#57534e', strokeWidth: 0.8 },
+    },
+    timeBucketColors: [
+      '#2dd4bf', // Teal - 0-15min
+      '#a3e635', // Lime - 15-30min
+      '#fbbf24', // Amber - 30-45min
+      '#fb923c', // Orange - 45-60min
+      '#f472b6', // Pink - 60-75min
+      '#a855f7', // Purple - 75-90min+
+    ],
+    zoneBorderColor: '#264653',
+    waterGradient: {
+      type: 'radial',
+      colors: ['#475569', '#1e293b'], // Lighter center → darker edges
     },
   },
   midnight: {
     name: 'midnight',
     description: 'Dark night palette (23:30)',
     layers: {
-      water: { fill: '#1a3a52' },
-      'transit-M': { stroke: '#cccccc', strokeWidth: 1.0 },
-      'transit-E': { stroke: '#cccccc', strokeWidth: 1.0 },
-      'transit-N': { stroke: '#a78bfa', strokeWidth: 1.0 },
-      roads: { stroke: '#9b8b6b', strokeWidth: 0.6 },
-      railways: { stroke: '#9ca3af', strokeWidth: 1.2 },
+      water: { fill: '#0c1929' },
+      'transit-M': { stroke: '#4b556350', strokeWidth: 1.0 },
+      'transit-E': { stroke: '#4b556350', strokeWidth: 1.0 },
+      'transit-N': { stroke: '#c4b5fd', strokeWidth: 1.0 },
+      roads: { stroke: '#4a4a4a', strokeWidth: 0.5 },
+      railways: { stroke: '#6b7280', strokeWidth: 0.9 },
+    },
+    timeBucketColors: [
+      '#4ade80', // Bright green - 0-15min
+      '#a3e635', // Lime - 15-30min
+      '#facc15', // Bright yellow - 30-45min
+      '#67e8f9', // Bright cyan - 45-60min
+      '#22d3ee', // Cyan - 60-75min
+      '#06b6d4', // Teal - 75-90min+
+    ],
+    zoneBorderColor: '#e2e8f0',
+    waterGradient: {
+      type: 'solid', // Uniform dark blue at night
     },
   },
 }
@@ -69,4 +118,25 @@ export function getLayerStyles(themeName: MapThemeName, layerId: LayerId): Layer
  */
 export function getMapThemeNames(): MapThemeName[] {
   return Object.keys(mapThemes) as MapThemeName[]
+}
+
+/**
+ * Get time bucket colors for a theme
+ */
+export function getTimeBucketColors(themeName: MapThemeName): string[] {
+  return mapThemes[themeName]?.timeBucketColors || mapThemes.morning.timeBucketColors
+}
+
+/**
+ * Get zone border color for a theme
+ */
+export function getZoneBorderColor(themeName: MapThemeName): string {
+  return mapThemes[themeName]?.zoneBorderColor || '#264653'
+}
+
+/**
+ * Get water gradient for a theme
+ */
+export function getWaterGradient(themeName: MapThemeName): WaterGradient {
+  return mapThemes[themeName]?.waterGradient || { type: 'solid' }
 }

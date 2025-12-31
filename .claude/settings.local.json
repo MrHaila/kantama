@@ -33,7 +33,8 @@
       "Bash(pnpm varikko:*)",
       "Bash(pnpm --filter varikko dev:*)",
       "Bash(pnpm test:alignment:*)",
-      "Bash(pnpm varikko:dev:*)"
+      "Bash(pnpm varikko:dev:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

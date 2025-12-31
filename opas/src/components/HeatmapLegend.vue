@@ -2,15 +2,15 @@
 import { computed } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import { themes, type ThemeColors } from '../config/themes'
+import { themes } from '../config/themes'
 import type { TimeBucket } from '../services/DataService'
 import type { ReachabilityBucket } from '../services/ReachabilityService'
 
 const store = useMapDataStore()
 const { timeBuckets, reachabilityLegend } = storeToRefs(store)
 
-// Current theme (could be made reactive in the future)
-const currentTheme = computed<ThemeColors>(() => themes.vintage!)
+// UI theme for panel styling (not map colors)
+const uiTheme = themes.vintage!
 
 // Legend title based on overlay mode
 const legendTitle = computed(() => {
@@ -36,17 +36,8 @@ const legendItems = computed<LegendItem[]>(() => {
   }
 
   // Zone selection mode - show travel time legend
-  const baseTimeBuckets = timeBuckets.value || []
-
-  // Override colors with theme colors if we have the right number
-  if (baseTimeBuckets.length === currentTheme.value.timeBucketColors.length) {
-    return baseTimeBuckets.map((bucket: TimeBucket, index: number) => ({
-      color: currentTheme.value.timeBucketColors[index] || bucket.color,
-      label: bucket.label,
-    }))
-  }
-
-  return baseTimeBuckets.map((bucket: TimeBucket) => ({
+  // Time buckets already have themed colors from the store
+  return (timeBuckets.value || []).map((bucket: TimeBucket) => ({
     color: bucket.color,
     label: bucket.label,
   }))
@@ -67,7 +58,7 @@ const legendItems = computed<LegendItem[]>(() => {
 
 <style scoped>
 .heatmap-legend {
-  background: v-bind('currentTheme.background');
+  background: v-bind('uiTheme.background');
   border: 2px solid #264653;
   padding: 16px;
   box-shadow: 4px 4px 0px rgba(38, 70, 83, 1);
@@ -77,7 +68,7 @@ const legendItems = computed<LegendItem[]>(() => {
 .legend-title {
   font-size: 14px;
   font-weight: 600;
-  color: v-bind('currentTheme.title');
+  color: v-bind('uiTheme.title');
   margin-bottom: 12px;
   text-align: left;
   border-bottom: 1px solid rgba(38, 70, 83, 0.2);
@@ -106,7 +97,7 @@ const legendItems = computed<LegendItem[]>(() => {
 
 .legend-label {
   font-size: 12px;
-  color: v-bind('currentTheme.text');
+  color: v-bind('uiTheme.text');
   font-weight: 500;
 }
 </style>

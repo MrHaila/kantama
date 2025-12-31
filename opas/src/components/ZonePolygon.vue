@@ -52,6 +52,7 @@ const strokeWidth = computed(() => props.showStroke ? 2 : 0)
 // CSS variables for dynamic styling
 const styleVars = computed(() => ({
   '--zone-color': currentColor.value,
+  '--zone-border-color': store.zoneBorderColor,
   '--animation-delay': `${currentDelay.value}ms`,
   '--fill-opacity': fillOpacity.value,
   '--stroke-width': strokeWidth.value,
@@ -88,10 +89,11 @@ function handleMouseLeave() {
   cursor: pointer;
   fill: var(--zone-color);
   fill-opacity: var(--fill-opacity, 1);
-  stroke: var(--color-vintage-dark);
+  stroke: var(--zone-border-color, #264653);
   stroke-width: var(--stroke-width, 2);
   transition:
     fill 150ms ease-in-out var(--animation-delay),
+    stroke 200ms ease-in-out,
     stroke-width 200ms ease-in-out,
     fill-opacity 150ms ease-in-out;
 }

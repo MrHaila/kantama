@@ -137,7 +137,7 @@ onMounted(() => {
     </div>
 
     <!-- Controls - Bottom Right -->
-    <div class="hidden md:flex fixed bottom-6 right-6 z-20 flex-col gap-3 items-end">
+    <div class="hidden md:flex fixed bottom-6 right-6 z-20 flex-col gap-3 items-end select-none">
       <!-- Zoom Controls -->
       <div class="flex border-2 border-vintage-dark shadow-[3px_3px_0px_rgba(38,70,83,1)] bg-vintage-cream">
         <button
@@ -146,7 +146,7 @@ onMounted(() => {
           :class="
             zoomScale <= MIN_ZOOM
               ? 'bg-vintage-cream/50 text-vintage-dark/30 cursor-not-allowed'
-              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10 active:bg-vintage-dark/20 cursor-pointer'
           "
           :disabled="zoomScale <= MIN_ZOOM"
           @click="zoomOut"
@@ -159,7 +159,7 @@ onMounted(() => {
           :class="
             zoomScale >= MAX_ZOOM
               ? 'bg-vintage-cream/50 text-vintage-dark/30 cursor-not-allowed'
-              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10 active:bg-vintage-dark/20'
           "
           :disabled="zoomScale >= MAX_ZOOM"
           @click="zoomIn"
@@ -178,7 +178,7 @@ onMounted(() => {
           :class="
             store.currentTimePeriod === period
               ? 'bg-vintage-dark text-vintage-cream'
-              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10'
+              : 'bg-vintage-cream text-vintage-dark hover:bg-vintage-dark/10 active:bg-vintage-dark/20 cursor-pointer'
           "
           @click="setPeriod(period)"
         >

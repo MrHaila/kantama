@@ -12,7 +12,7 @@ const layerVisibility = reactive<LayerVisibility>({
   background: true,
   zoneColors: true,
   infrastructure: true,
-  transit: true,
+  transit: false,
   zoneBorders: true,
 })
 
