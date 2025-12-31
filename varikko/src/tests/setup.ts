@@ -1,25 +1,28 @@
-import { afterAll, beforeAll } from 'vitest';
-import fs from 'fs';
-import path from 'path';
+/**
+ * Global test setup for vitest
+ *
+ * This file runs before all test files.
+ */
 
-// Test database path (in-memory or temp file)
-export const TEST_DB_PATH = ':memory:'; // Or path.join(process.cwd(), 'test-varikko.db');
+import { beforeAll, afterAll } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Test data directory
+const TEST_DATA_DIR = path.join(__dirname, 'fixtures', 'test-data');
 
 beforeAll(() => {
-  // Set test environment variables
-  process.env.NODE_ENV = 'test';
-  process.env.USE_LOCAL_OTP = 'true'; // Always use local in tests
-
-  // Create logs directory if it doesn't exist
-  const logsDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
+  // Ensure test data directory exists
+  if (!fs.existsSync(TEST_DATA_DIR)) {
+    fs.mkdirSync(TEST_DATA_DIR, { recursive: true });
   }
 });
 
 afterAll(() => {
-  // Cleanup: remove test database if file-based
-  if (TEST_DB_PATH !== ':memory:' && fs.existsSync(TEST_DB_PATH)) {
-    fs.unlinkSync(TEST_DB_PATH);
-  }
+  // Cleanup is handled by individual test files or helpers
+  // as they may want to inspect test data after tests complete
 });

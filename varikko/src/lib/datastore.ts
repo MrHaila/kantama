@@ -16,7 +16,6 @@ import {
   CompactRoute,
   ZoneRoutesData,
   TimePeriod,
-  TransportMode,
   RouteStatus,
   DataManifest,
   PipelineState,
@@ -66,12 +65,15 @@ function getRoutesDir(): string {
 /**
  * Get path to a specific route file
  */
-function getRoutePath(zoneId: string, period: TimePeriod, mode: TransportMode = 'WALK'): string {
+function getRoutePath(zoneId: string, period: TimePeriod): string {
   // Use single-letter abbreviations: M, E, N
-  const periodSuffix = period.charAt(0);
-  // Add mode suffix for non-WALK modes (backward compatible)
-  const modeSuffix = mode === 'WALK' ? '' : `-${mode.toLowerCase()}`;
-  return path.join(getRoutesDir(), `${zoneId}-${periodSuffix}${modeSuffix}.msgpack`);
+  const periodMap: Record<TimePeriod, string> = {
+    MORNING: 'M',
+    EVENING: 'E',
+    MIDNIGHT: 'N',
+  };
+  const periodSuffix = periodMap[period];
+  return path.join(getRoutesDir(), `${zoneId}-${periodSuffix}.msgpack`);
 }
 
 /**
@@ -233,10 +235,9 @@ export function getAllZoneIds(): string[] {
  */
 export function readZoneRoutes(
   zoneId: string,
-  period: TimePeriod,
-  mode: TransportMode = 'WALK'
+  period: TimePeriod
 ): ZoneRoutesData | null {
-  const filePath = getRoutePath(zoneId, period, mode);
+  const filePath = getRoutePath(zoneId, period);
   return readMsgpackFile<ZoneRoutesData>(filePath);
 }
 
@@ -246,10 +247,9 @@ export function readZoneRoutes(
 export function writeZoneRoutes(
   zoneId: string,
   period: TimePeriod,
-  data: ZoneRoutesData,
-  mode: TransportMode = 'WALK'
+  data: ZoneRoutesData
 ): void {
-  const filePath = getRoutePath(zoneId, period, mode);
+  const filePath = getRoutePath(zoneId, period);
   writeMsgpackFile(filePath, data);
 }
 
@@ -260,12 +260,11 @@ export function updateRoute(
   fromId: string,
   toId: string,
   period: TimePeriod,
-  route: CompactRoute,
-  mode: TransportMode = 'WALK'
+  route: CompactRoute
 ): void {
-  const routesData = readZoneRoutes(fromId, period, mode);
+  const routesData = readZoneRoutes(fromId, period);
   if (!routesData) {
-    throw new Error(`No routes data found for zone ${fromId} period ${period} mode ${mode}`);
+    throw new Error(`No routes data found for zone ${fromId} period ${period}`);
   }
 
   const routeIndex = routesData.r.findIndex((r) => r.i === toId);
@@ -274,7 +273,7 @@ export function updateRoute(
   }
 
   routesData.r[routeIndex] = route;
-  writeZoneRoutes(fromId, period, routesData, mode);
+  writeZoneRoutes(fromId, period, routesData);
 }
 
 /**
@@ -283,30 +282,32 @@ export function updateRoute(
  */
 export function initializeRoutes(
   zoneIds: string[],
-  periods: TimePeriod[],
-  modes: TransportMode[] = ['WALK']
+  periods: TimePeriod[]
 ): void {
   ensureDirectoryExists(getRoutesDir());
 
   for (const fromId of zoneIds) {
     for (const period of periods) {
-      for (const mode of modes) {
-        const routes: CompactRoute[] = zoneIds.map((toId) => ({
-          i: toId,
-          d: null,
-          t: null,
-          s: RouteStatus.PENDING,
-        }));
+      const routes: CompactRoute[] = zoneIds.map((toId) => ({
+        i: toId,
+        d: null,
+        t: null,
+        s: RouteStatus.PENDING,
+      }));
 
-        const routesData: ZoneRoutesData = {
-          f: fromId,
-          p: period.charAt(0), // M, E, or N
-          m: mode, // Include transport mode
-          r: routes,
-        };
+      const periodMap: Record<TimePeriod, string> = {
+        MORNING: 'M',
+        EVENING: 'E',
+        MIDNIGHT: 'N',
+      };
 
-        writeZoneRoutes(fromId, period, routesData, mode);
-      }
+      const routesData: ZoneRoutesData = {
+        f: fromId,
+        p: periodMap[period], // M, E, or N
+        r: routes,
+      };
+
+      writeZoneRoutes(fromId, period, routesData);
     }
   }
 }
@@ -315,14 +316,13 @@ export function initializeRoutes(
  * Get all zones that have pending routes for a given period
  */
 export function getZonesWithPendingRoutes(
-  period: TimePeriod,
-  mode: TransportMode = 'WALK'
+  period: TimePeriod
 ): string[] {
   const zoneIds = getAllZoneIds();
   const zonesWithPending: string[] = [];
 
   for (const zoneId of zoneIds) {
-    const routesData = readZoneRoutes(zoneId, period, mode);
+    const routesData = readZoneRoutes(zoneId, period);
     if (!routesData) continue;
 
     const hasPending = routesData.r.some((r) => r.s === RouteStatus.PENDING);
@@ -356,8 +356,7 @@ export function getAllPendingRoutes(): Map<TimePeriod, string[]> {
  * Count routes by status for a given period
  */
 export function countRoutesByStatus(
-  period: TimePeriod,
-  mode: TransportMode = 'WALK'
+  period: TimePeriod
 ): Record<RouteStatus, number> {
   const zoneIds = getAllZoneIds();
   const counts: Record<RouteStatus, number> = {
@@ -368,7 +367,7 @@ export function countRoutesByStatus(
   };
 
   for (const zoneId of zoneIds) {
-    const routesData = readZoneRoutes(zoneId, period, mode);
+    const routesData = readZoneRoutes(zoneId, period);
     if (!routesData) continue;
 
     for (const route of routesData.r) {

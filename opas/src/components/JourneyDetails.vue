@@ -30,8 +30,6 @@ const getTransportIcon = (mode: string): string => {
       return '🚊'
     case 'subway':
       return '🚇'
-    case 'ferry':
-      return '⛴️'
     case 'rail':
       return '🚆'
     default:
@@ -49,8 +47,6 @@ const getModeLabel = (mode: string): string => {
       return 'Tram'
     case 'subway':
       return 'Metro'
-    case 'ferry':
-      return 'Ferry'
     case 'rail':
       return 'Train'
     default:

@@ -2,9 +2,9 @@
  * LayerService - Manages loading and caching of map layers and manifest
  */
 
-import { getLayerStyles, type MapThemeName, type LayerId, type LayerStyles } from '../config/mapThemes'
+import { getLayerStyles, getWaterGradient, getBackgroundColor, type MapThemeName, type LayerId, type LayerStyles, type WaterGradient } from '../config/mapThemes'
 
-export type { MapThemeName as ThemeName, LayerId, LayerStyles }
+export type { MapThemeName as ThemeName, LayerId, LayerStyles, WaterGradient }
 
 export interface LayerDefinition {
   id: string
@@ -110,6 +110,20 @@ class LayerService {
   }
 
   /**
+   * Get water gradient configuration for a theme
+   */
+  getWaterGradient(theme: MapThemeName): WaterGradient {
+    return getWaterGradient(theme)
+  }
+
+  /**
+   * Get background color for a theme
+   */
+  getBackgroundColor(theme: MapThemeName): string {
+    return getBackgroundColor(theme)
+  }
+
+  /**
    * Get the viewBox from manifest
    */
   getViewBox(): string | null {
@@ -117,17 +131,31 @@ class LayerService {
   }
 
   /**
+   * Extract paths from any layer for rendering
+   */
+  async getLayerPaths(layerId: LayerId): Promise<string[]> {
+    try {
+      const svg = await this.loadLayer(layerId)
+      const paths = svg.querySelectorAll('path')
+      return Array.from(paths).map((p) => p.getAttribute('d') || '')
+    } catch (error) {
+      console.error(`Failed to load ${layerId} paths:`, error)
+      return []
+    }
+  }
+
+  /**
    * Extract road paths from the roads layer for rendering
    */
   async getRoadPaths(): Promise<string[]> {
-    try {
-      const roadsSvg = await this.loadLayer('roads')
-      const paths = roadsSvg.querySelectorAll('path')
-      return Array.from(paths).map((p) => p.getAttribute('d') || '')
-    } catch (error) {
-      console.error('Failed to load road paths:', error)
-      return []
-    }
+    return this.getLayerPaths('roads')
+  }
+
+  /**
+   * Extract railway paths from the railways layer for rendering
+   */
+  async getRailwayPaths(): Promise<string[]> {
+    return this.getLayerPaths('railways')
   }
 
   /**

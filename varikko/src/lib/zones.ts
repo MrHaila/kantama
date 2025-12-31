@@ -4,7 +4,6 @@ import * as d3 from 'd3-geo';
 import type { Geometry, Position, Polygon, MultiPolygon, Feature, FeatureCollection } from 'geojson';
 import type { ProgressEmitter } from './events';
 import { ALL_FETCHERS, generateZoneId } from './city-fetchers';
-import { CITY_CODES } from './types';
 import type { StandardZone, ZoneData } from './types';
 import polylabel from 'polylabel';
 import { getWaterMask, clipZoneWithWater } from './coastline';
@@ -31,6 +30,18 @@ const WFS_URL =
   'https://geo.stat.fi/geoserver/wfs?service=WFS&version=2.0.0&request=GetFeature&typeName=postialue:pno_tilasto_2024&outputFormat=json&srsName=EPSG:4326';
 
 const TIME_PERIODS = ['MORNING', 'EVENING', 'MIDNIGHT'];
+
+/**
+ * Blacklist of zone IDs that should be permanently excluded from processing.
+ * These zones have been identified as having routing failures or other issues
+ * that prevent them from being included in the route network.
+ */
+const ZONE_BLACKLIST: Set<string> = new Set([
+  'HEL-500',
+  'HEL-532',
+  'HEL-531',
+  'ESP-316',
+]);
 
 interface FeatureProperties {
   postinumeroalue?: string;
@@ -333,13 +344,12 @@ export function saveZones(
   emitter?.emitProgress('fetch_zones', zones.length, zones.length * 2, 'Initializing route files...');
 
   // Initialize empty route files (all routes marked as PENDING)
-  // Create route files for both WALK and BICYCLE modes
+  // Create route files
   const zoneIds = zones.map((z) => z.id);
   const periods: TimePeriod[] = ['MORNING', 'EVENING', 'MIDNIGHT'];
-  const modes: ['WALK', 'BICYCLE'] = ['WALK', 'BICYCLE'];
-  initializeRoutes(zoneIds, periods, modes);
+  initializeRoutes(zoneIds, periods);
 
-  const routeCount = zones.length * zones.length * TIME_PERIODS.length * modes.length;
+  const routeCount = zones.length * zones.length * TIME_PERIODS.length;
 
   emitter?.emitComplete('fetch_zones', 'Zones saved successfully', {
     zoneCount: zones.length,
@@ -383,6 +393,7 @@ export async function downloadZonesMultiCity(
 
 export interface ProcessingStats {
   total: number;
+  blacklisted: number;
   insidePointFailed: number;
   geometryInvalid: number;
   outsideVisibleArea: number;
@@ -400,16 +411,17 @@ export async function processZonesMultiCity(
   const projection = createProjection();
   const visibleBounds = getVisibleAreaBounds(projection);
 
-  // Load water mask for coastline clipping (required for Espoo zones)
+  // Load water mask for coastline clipping (required for all coastal zones)
   const waterMask = await getWaterMask();
   if (!waterMask) {
     throw new Error(
-      `Water shapefile missing or failed to process. Required for Espoo zone coastline clipping.`
+      `Water shapefile missing or failed to process. Required for zone coastline clipping.`
     );
   }
 
   const stats: ProcessingStats = {
     total: standardZones.length,
+    blacklisted: 0,
     insidePointFailed: 0,
     geometryInvalid: 0,
     outsideVisibleArea: 0,
@@ -422,6 +434,12 @@ export async function processZonesMultiCity(
       // Generate zone ID with city prefix
       const id = generateZoneId(zone.cityCode, zone.originalId);
 
+      // Check if zone is blacklisted
+      if (ZONE_BLACKLIST.has(id)) {
+        stats.blacklisted++;
+        return null;
+      }
+
       // Clean geometry first (needed for inside point calculation)
       const cleanedGeometry = cleanGeometry(zone.geometry);
       if (!cleanedGeometry) {
@@ -429,17 +447,14 @@ export async function processZonesMultiCity(
         return null;
       }
 
-      // Apply water clipping for Espoo zones to follow coastline
+      // Apply water clipping to follow coastline (for all regions)
       let processedGeometry = cleanedGeometry;
-      if (zone.cityCode === CITY_CODES.ESPOO) {
-        // Only clip Polygon or MultiPolygon geometries (zones should always be these types)
-        if (cleanedGeometry.type === 'Polygon' || cleanedGeometry.type === 'MultiPolygon') {
-          const clipped = clipZoneWithWater(cleanedGeometry, waterMask);
-          if (clipped) {
-            processedGeometry = clipped;
-          }
-          // If clipping returns null, keep original (shouldn't happen for valid zones)
+      if (cleanedGeometry.type === 'Polygon' || cleanedGeometry.type === 'MultiPolygon') {
+        const clipped = clipZoneWithWater(cleanedGeometry, waterMask);
+        if (clipped) {
+          processedGeometry = clipped;
         }
+        // If clipping returns null, keep original (shouldn't happen for valid zones)
       }
 
       // Calculate pole of inaccessibility (guaranteed inside point)
@@ -508,6 +523,7 @@ export async function fetchZonesMultiCity(
   // Log filtering summary
   console.log('\n--- Zone Filtering Summary ---');
   console.log(`Total fetched:        ${stats.total}`);
+  console.log(`Blacklisted:          ${stats.blacklisted} (excluded - routing failures)`);
   console.log(`Outside visible area: ${stats.outsideVisibleArea} (filtered out)`);
   console.log(`Invalid geometry:     ${stats.geometryInvalid} (filtered out)`);
   console.log(`Inside point failed:  ${stats.insidePointFailed} (filtered out)`);
@@ -572,6 +588,7 @@ export async function fetchZones(
     cities: ['WFS'],
     filteringStats: {
       total: geojson.features.length,
+      blacklisted: 0,
       insidePointFailed: 0,
       geometryInvalid: 0,
       outsideVisibleArea: 0,

@@ -10,7 +10,6 @@ import {
 } from './datastore';
 import {
   TimePeriod,
-  TransportMode,
   CompactRoute,
   CompactLeg,
   RouteStatus,
@@ -53,9 +52,9 @@ export interface OTPConfig {
 
 export interface BuildRoutesOptions {
   period?: 'MORNING' | 'EVENING' | 'MIDNIGHT';
-  mode?: TransportMode;
   zones?: number;
   limit?: number;
+  retryFailed?: boolean;
   emitter?: ProgressEmitter;
 }
 
@@ -77,22 +76,6 @@ const TIME_MAPPING: Record<string, string> = {
   EVENING: '17:30:00',
   MIDNIGHT: '23:30:00',
 };
-
-/** Transport mode configuration for OTP queries */
-const TRANSPORT_MODE_CONFIG = {
-  WALK: {
-    modes: '[{mode: WALK}, {mode: TRANSIT}]',
-    bikeSpeed: null,
-    bikeSwitchTime: null,
-    bikeSwitchCost: null,
-  },
-  BICYCLE: {
-    modes: '[{mode: BICYCLE}, {mode: TRANSIT}]',
-    bikeSpeed: 5.0, // m/s (~18 km/h, reasonable city cycling speed)
-    bikeSwitchTime: 120, // seconds to park/unpark bike
-    bikeSwitchCost: 600, // 10-min penalty to discourage frequent switches
-  },
-} as const;
 
 // ============================================================================
 // Helper Functions
@@ -141,19 +124,9 @@ export async function fetchRoute(
   toLat: number,
   toLon: number,
   targetTime: string,
-  config: OTPConfig,
-  mode: TransportMode = 'WALK'
+  config: OTPConfig
 ): Promise<RouteResult> {
   const targetDate = getNextTuesday();
-  const modeConfig = TRANSPORT_MODE_CONFIG[mode];
-
-  // Build optional bike parameters
-  const bikeParams =
-    mode === 'BICYCLE'
-      ? `bikeSpeed: ${modeConfig.bikeSpeed}
-       bikeSwitchTime: ${modeConfig.bikeSwitchTime}
-       bikeSwitchCost: ${modeConfig.bikeSwitchCost}`
-      : '';
 
   const query = `
     {
@@ -163,8 +136,7 @@ export async function fetchRoute(
         date: "${targetDate}"
         time: "${targetTime}"
         numItineraries: 3
-        transportModes: ${modeConfig.modes}
-        ${bikeParams}
+        transportModes: [{mode: WALK}, {mode: TRANSIT}]
       ) {
         itineraries {
           duration
@@ -263,10 +235,12 @@ async function processPeriod(
   period: TimePeriod,
   placeMap: Map<string, { id: string; lat: number; lon: number }>,
   config: OTPConfig,
-  mode: TransportMode = 'WALK',
   zones?: number,
   limit?: number,
-  emitter?: ProgressEmitter
+  retryFailed?: boolean,
+  emitter?: ProgressEmitter,
+  progressOffset: number = 0,
+  totalTasks: number = 0
 ): Promise<{ processed: number; ok: number; noRoute: number; errors: number }> {
   const targetTime = TIME_MAPPING[period] || '08:30:00';
 
@@ -284,11 +258,11 @@ async function processPeriod(
   const pendingRoutes: Array<{ from_id: string; to_id: string }> = [];
 
   for (const fromId of selectedZones) {
-    const routesData = readZoneRoutes(fromId, period, mode);
+    const routesData = readZoneRoutes(fromId, period);
     if (!routesData) continue;
 
     for (const route of routesData.r) {
-      if (route.s === RouteStatus.PENDING) {
+      if (route.s === RouteStatus.PENDING || (retryFailed && route.s === RouteStatus.ERROR)) {
         pendingRoutes.push({ from_id: fromId, to_id: route.i });
       }
     }
@@ -322,7 +296,7 @@ async function processPeriod(
       errorCount++;
       completed++;
       if (emitter) {
-        emitter.emitProgress('build_routes', completed, tasks.length, undefined, {
+        emitter.emitProgress('build_routes', progressOffset + completed, totalTasks || tasks.length, undefined, {
           period,
           ok: okCount,
           noRoute: noRouteCount,
@@ -337,7 +311,7 @@ async function processPeriod(
       await new Promise((r) => setTimeout(r, Math.random() * config.rateLimitDelay));
     }
 
-    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime, config, mode);
+    const result = await fetchRoute(from.lat, from.lon, to.lat, to.lon, targetTime, config);
 
     // Create updated route
     let updatedRoute: CompactRoute;
@@ -376,7 +350,7 @@ async function processPeriod(
 
     // Emit progress updates
     if (emitter) {
-      emitter.emitProgress('build_routes', completed, tasks.length, undefined, {
+      emitter.emitProgress('build_routes', progressOffset + completed, totalTasks || tasks.length, undefined, {
         period,
         ok: okCount,
         noRoute: noRouteCount,
@@ -386,14 +360,14 @@ async function processPeriod(
 
     // Flush updates periodically (every 50 routes or at end)
     if (completed % 50 === 0 || completed === tasks.length) {
-      flushRouteUpdates(routeUpdates, period, mode);
+      flushRouteUpdates(routeUpdates, period);
     }
   };
 
   await Promise.all(tasks.map((t) => concurrencyLimit(() => runTask(t))));
 
   // Final flush of any remaining updates
-  flushRouteUpdates(routeUpdates, period, mode);
+  flushRouteUpdates(routeUpdates, period);
 
   return {
     processed: completed,
@@ -408,13 +382,12 @@ async function processPeriod(
  */
 function flushRouteUpdates(
   routeUpdates: Map<string, Map<string, CompactRoute>>,
-  period: TimePeriod,
-  mode: TransportMode = 'WALK'
+  period: TimePeriod
 ): void {
   for (const [fromId, updates] of routeUpdates.entries()) {
     if (updates.size === 0) continue;
 
-    const routesData = readZoneRoutes(fromId, period, mode);
+    const routesData = readZoneRoutes(fromId, period);
     if (!routesData) continue;
 
     // Apply updates
@@ -426,7 +399,7 @@ function flushRouteUpdates(
     }
 
     // Write back to file
-    writeZoneRoutes(fromId, period, routesData, mode);
+    writeZoneRoutes(fromId, period, routesData);
 
     // Clear processed updates
     updates.clear();
@@ -478,9 +451,9 @@ export async function buildRoutes(
 ): Promise<BuildRoutesResult> {
   const {
     period,
-    mode = 'WALK',
     zones,
     limit,
+    retryFailed,
     emitter,
   } = options;
 
@@ -511,9 +484,32 @@ export async function buildRoutes(
     ])
   );
 
+  // Count total tasks across all periods for cumulative progress
+  let totalTasksAllPeriods = 0;
+  const taskCountPerPeriod: Record<string, number> = {};
+
+  for (const p of periodsToRun) {
+    const allZoneIds = getAllZoneIds();
+    let selectedZones = allZoneIds;
+    if (zones) {
+      selectedZones = [...allZoneIds].sort(() => Math.random() - 0.5).slice(0, zones);
+    }
+
+    let pendingCount = 0;
+    for (const fromId of selectedZones) {
+      const routesData = readZoneRoutes(fromId, p);
+      if (!routesData) continue;
+      pendingCount += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+    }
+
+    const periodTasks = limit ? Math.min(pendingCount, limit) : pendingCount;
+    taskCountPerPeriod[p] = periodTasks;
+    totalTasksAllPeriods += periodTasks;
+  }
+
   // Emit start event
   if (emitter) {
-    emitter.emitStart('build_routes', undefined, undefined, {
+    emitter.emitStart('build_routes', totalTasksAllPeriods, undefined, {
       periods: periodsToRun,
       isLocal: config.isLocal,
       concurrency: config.concurrency,
@@ -528,32 +524,38 @@ export async function buildRoutes(
   let totalNoRoute = 0;
   let totalErrors = 0;
   let totalPending = 0;
+  let cumulativeProgress = 0;
 
   for (const p of periodsToRun) {
     const result = await processPeriod(
       p,
       placeMap,
       config,
-      mode,
       zones,
       limit,
-      emitter
+      retryFailed,
+      emitter,
+      cumulativeProgress,
+      totalTasksAllPeriods
     );
 
     totalProcessed += result.processed;
     totalOk += result.ok;
     totalNoRoute += result.noRoute;
     totalErrors += result.errors;
+    cumulativeProgress += result.processed;
   }
 
-  // Count remaining pending routes
-  for (const p of periodsToRun) {
-    const allZoneIds = getAllZoneIds();
-    for (const zoneId of allZoneIds) {
-      const routesData = readZoneRoutes(zoneId, p, mode);
-      if (!routesData) continue;
+  // Count remaining pending routes (skip for limited runs - too slow)
+  if (!zones && !limit) {
+    for (const p of periodsToRun) {
+      const allZoneIds = getAllZoneIds();
+      for (const zoneId of allZoneIds) {
+        const routesData = readZoneRoutes(zoneId, p);
+        if (!routesData) continue;
 
-      totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+        totalPending += routesData.r.filter((r) => r.s === RouteStatus.PENDING).length;
+      }
     }
   }
 

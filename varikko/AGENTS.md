@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This module serves as the **Data Pipeline** for Kantama. It provides a unified TUI (Terminal User Interface) for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and managing the local SQLite database (`varikko.db`) that stores all project data.
+This module serves as the **Data Pipeline** for Kantama. It provides a unified TUI (Terminal User Interface) and CLI for fetching geospatial zone data, calculating routes and travel times using the OTP (OpenTripPlanner) instance, and writing data directly to `opas/public/data/` in optimized formats (JSON + MessagePack).
 
 ## Architecture
 
@@ -14,16 +14,21 @@ varikko/
 │   ├── main.ts              # Entry point (TUI)
 │   ├── cli.ts               # CLI parser (Commander)
 │   ├── lib/                 # Pure business logic
-│   │   ├── db.ts            # Database utilities
+│   │   ├── datastore.ts     # File-based data operations
 │   │   ├── zones.ts         # Zone fetching (multi-city support)
 │   │   ├── geocoding.ts     # Geocoding logic
 │   │   ├── routing.ts       # Route calculation
 │   │   ├── clearing.ts      # Data clearing
-│   │   ├── deciles.ts       # Decile calculation
+│   │   ├── time-buckets.ts  # Time bucket calculation
 │   │   ├── maps.ts          # Map processing
 │   │   ├── types.ts         # Type definitions
 │   │   ├── city-fetchers.ts # City-specific zone fetchers
+│   │   ├── events.ts        # Progress event system
 │   │   └── gml-parser.ts    # GML XML parser for Espoo
+│   ├── shared/              # Shared types with opas
+│   │   ├── types.ts         # Data contract types
+│   │   ├── config.ts        # Shared configuration
+│   │   └── index.ts         # Public exports
 │   └── tui/                 # Interactive UI
 │       ├── app.tsx          # Root component
 │       ├── dashboard.tsx    # Main menu
@@ -32,38 +37,100 @@ varikko/
 └── plans/                   # Development docs
 ```
 
-## Data Schema (`varikko.db`)
+## Data Model (File-Based)
 
-Everything is consolidated into a single SQLite database:
+Data is written directly to `opas/public/data/` as the single source of truth:
 
-- **`places`**: Stores zone metadata.
-  - `id`: Zone ID with city prefix (e.g., "HEL-101", "VAN-51", "ESP-1").
-  - `name`: Name of the area (Finnish).
-  - `city`: City name (Helsinki, Vantaa, Espoo).
-  - `name_se`: Swedish name (optional).
-  - `admin_level`: Administrative level (osa-alue, kaupunginosa, tilastollinen_alue).
-  - `lat`, `lon`: Centroid coordinates (geometric).
-  - `routing_lat`, `routing_lon`: Geocoded routing points.
-  - `geometry`: GeoJSON polygon string.
-  - `svg_path`: Pre-rendered SVG path data.
-  - `source_layer`: Source WFS layer name.
+### File Structure
 
-- **`routes`**: Stores pre-calculated transit metadata between places.
-  - `from_id`, `to_id`, `time_period`: Unique identifier for a route at a specific time (MORNING, EVENING, MIDNIGHT).
-  - `duration`: Travel time in seconds.
-  - `numberOfTransfers`: Number of transit transfers.
-  - `walkDistance`: Total walking distance in meters.
-  - `legs`: Detailed JSON blob of the journey steps (from, to, mode, duration, distance).
-  - `status`: Processing state (`PENDING`, `OK`, `NO_ROUTE`, `ERROR`).
+```
+opas/public/data/
+├── zones.json           # Zone metadata + time buckets
+├── pipeline.json        # Pipeline execution state
+├── manifest.json        # Data summary for frontend
+└── routes/              # Per-zone route files (MessagePack)
+    ├── {zoneId}-M.msgpack       # Morning routes
+    ├── {zoneId}-E.msgpack       # Evening routes
+    ├── {zoneId}-N.msgpack       # Midnight routes
+    └── ...
+```
 
-- **`deciles`**: Heatmap color distribution.
-  - `time_period`: MORNING, EVENING, or MIDNIGHT.
-  - `decile_number`: 0-9 (10 equal quantiles).
-  - `min_duration`, `max_duration`: Duration range in minutes.
-  - `color_hex`: Vintage color palette (#E76F51 to #355C7D).
-  - `label`: Human-readable range ("8-15 min", ">60 min").
+### Data Formats
 
-- **`metadata`**: Key-value store for run progress and timestamps.
+**zones.json** (human-readable):
+```typescript
+{
+  version: 1,
+  timeBuckets: TimeBucket[],  // Color distribution for heatmap
+  zones: Zone[]               // Zone metadata
+}
+
+interface Zone {
+  id: string                  // e.g., "HEL-101", "VAN-51"
+  name: string                // Finnish name
+  city: string                // Helsinki, Vantaa, Espoo
+  svgPath: string            // Pre-rendered SVG path
+  routingPoint: [lat, lon]   // Geocoded routing coordinates
+  reachability?: {            // Pre-computed by "Calculate Reachability" workflow
+    rank: number              // 1 = best connected
+    score: number             // 0-1 composite score
+    zones15: number           // zones within 15 min
+    zones30: number           // zones within 30 min
+    zones45: number           // zones within 45 min
+    medianTime: number        // median travel time (seconds)
+  }
+}
+
+interface TimeBucket {
+  number: number             // 0-5
+  min: number                // Min duration (seconds)
+  max: number                // Max duration (seconds)
+  color: string              // Hex color
+  label: string              // "8-15 min"
+}
+```
+
+**routes/{zoneId}-{period}.msgpack** (compact binary):
+```typescript
+interface ZoneRoutesData {
+  f: string                   // fromId
+  p: string                   // period: "M", "E", "N"
+  r: CompactRoute[]          // all routes from this zone
+}
+
+interface CompactRoute {
+  i: string                   // toId
+  d: number | null           // duration (seconds)
+  t: number | null           // transfers
+  s: RouteStatus             // 0=OK, 1=NO_ROUTE, 2=ERROR, 3=PENDING
+  l?: CompactLeg[]           // journey legs
+}
+```
+
+**pipeline.json** (execution metadata):
+```typescript
+interface PipelineState {
+  lastFetch?: {
+    timestamp: string
+    zoneCount: number
+    cities: string[]
+    filteringStats: {...}
+  }
+  lastGeocoding?: {
+    timestamp: string
+    processed: number
+    successful: number
+    errors: Array<{zoneId, error}>
+  }
+  lastRouteCalculation?: {
+    timestamp: string
+    periods: string[]
+    OK: number
+    NO_ROUTE: number
+    ERROR: number
+  }
+}
+```
 
 ## Usage
 
@@ -119,7 +186,7 @@ Launches the TUI with keyboard-driven navigation:
 
 - Calculates transit routes via OTP
 
-- Three time periods: MORNING (08:30), EVENING (17:30), MIDNIGHT (23:30)
+- Three time periods: MORNING (08:30), EVENING (17:00), MIDNIGHT (24:00)
 
 - Supports both local and remote OTP instances
 
@@ -127,19 +194,19 @@ Launches the TUI with keyboard-driven navigation:
 
 ### 4. Clear Data
 
-- Selective clearing: routes, places, metadata, deciles
+- Selective clearing: routes, zones, pipeline state, time buckets
 
 - Confirmation prompt for safety
 
-- Non-destructive (never drops tables)
+- Deletes files from `opas/public/data/`
 
-### 5. Calculate Deciles
+### 5. Calculate Time Buckets
 
-- Generates heatmap color distribution
+- Generates heatmap color distribution based on actual route durations
 
-- 10 equal quantiles with vintage color palette
+- 6 equal quantiles with vintage color palette
 
-- Per time period
+- Stores in `zones.json` timeBuckets array
 
 ### 6. Process Maps
 
@@ -149,21 +216,42 @@ Launches the TUI with keyboard-driven navigation:
 
 - Water and road layers for background visualization
 
+### 7. Calculate Reachability
+
+Pre-computes zone connectivity scores for the default heatmap view. **Must run after Build Routes.**
+
+```bash
+varikko reachability [--period MORNING|EVENING|MIDNIGHT] [--force]
+```
+
+- Reads all msgpack route files for a given period (default: MORNING)
+- Computes for each zone:
+  - `zones15`: count of zones reachable within 15 minutes
+  - `zones30`: count of zones reachable within 30 minutes
+  - `zones45`: count of zones reachable within 45 minutes
+  - `medianTime`: median travel time to all reachable zones
+  - `score`: composite accessibility score (0-1, weighted formula)
+  - `rank`: 1 = best connected, N = worst connected
+- Updates `zones.json` with reachability data embedded in each zone
+- **Required** for opas default heatmap (no route data loads on page load)
+
 ## Environment Variables
 
 ```bash
-# Database path (default: ../opas/public/varikko.db)
-DB_PATH=/path/to/varikko.db
-
 # OTP Configuration
 OTP_URL=http://localhost:8080
 DIGITRANSIT_API_KEY=your_api_key
 HSL_API_KEY=your_api_key
 
+# Data output directory (default: ../opas/public/data)
+DATA_DIR=/path/to/data
+
 # Map output paths
 TOPOJSON_OUTPUT=/path/to/background_map.json
 SVG_OUTPUT=/path/to/background_map.svg
 ```
+
+Note: Data is written directly to `opas/public/data/` by default. Frontend reads from the same location.
 
 ## Development
 
@@ -234,12 +322,13 @@ interface CityFetcher {
 2. **Flexible Filtering**: All workflows support --limit and --zones for quick testing
 3. **Idempotency**: Operations pick up where they left off (PENDING routes)
 4. **Type Safety**: Full TypeScript coverage with strict mode
-5. **Relational Consolidation**: Single SQLite database for all persistence
+5. **File-Based Storage**: Direct writes to `opas/public/data/` - single source of truth
 6. **Multi-Period Support**: Routes calculated for different times of day
-7. **Rich Metadata**: Store full OTP leg information in JSON columns
+7. **Compact Binary Format**: MessagePack for efficient route storage
 8. **Multi-City Support**: Modular fetcher pattern for different administrative levels
 9. **Partial Success**: Continues processing even if some cities fail
-10. **Backward Compatibility**: Original postal code system preserved
+10. **Atomic Writes**: Temp files + rename for crash safety
+11. **Shared Types**: Contract types in `src/shared/` used by both varikko and opas
 
 ## Known Requirements
 
@@ -249,33 +338,21 @@ interface CityFetcher {
 4. **Terminal Size**: TUI requires minimum 80x24 terminal
 5. **Dependencies**: `fast-xml-parser` and `proj4` for Espoo GML parsing
 
-## Migration Guide
+## Data Architecture Benefits
 
-### From Postal Codes to Multi-City Zones
+### Why File-Based vs Database?
 
-1. **Backup Existing Data**:
+1. **Single Source of Truth**: Frontend directly reads production data files
+2. **No Export Step**: Data written in final format during pipeline
+3. **Version Control Friendly**: JSON files can be committed and diffed
+4. **Simpler Deployment**: No database migrations or schema management
+5. **Optimized for Read**: Frontend only needs file fetch, no SQL queries
+6. **Atomic Updates**: Each zone's routes in separate file - parallel processing safe
+7. **Transparent**: Human-readable zones.json for debugging
+8. **Efficient**: MessagePack binary format for route data (~70% size reduction)
 
-   ```bash
-   cp ../opas/public/varikko.db ../opas/public/varikko.db.backup
-   ```
+### Trade-offs
 
-2. **Clear Existing Zones**:
-   - Use TUI option 4 (Clear Data) → Clear places and routes
-
-3. **Fetch Multi-City Zones**:
-   - Use TUI option 1 (Fetch Zones) → Runs in multi-city mode by default
-
-4. **Update Visualizations**:
-   - Zone IDs changed from postal codes (e.g., "00100") to city-prefixed (e.g., "HEL-101")
-
-   - Update any hardcoded postal code references in Opas
-
-5. **Rebuild Routes**:
-   - Clear and rebuild all routes due to zone changes
-
-### Rollback
-
-To rollback to postal codes:
-
-1. Restore backup: `cp ../opas/public/varikko.db.backup ../opas/public/varikko.db`
-2. Use original `fetchZones()` function (still available in zones.ts)
+- **No Ad-hoc Queries**: Can't SQL query route data (pre-compute what you need)
+- **Atomic File Operations**: Updates replace entire zone route files
+- **Memory for Processing**: Must load relevant data files into memory for calculations

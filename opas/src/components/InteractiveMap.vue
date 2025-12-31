@@ -2,11 +2,11 @@
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
 import { useMapDataStore } from '../stores/mapData'
 import { storeToRefs } from 'pinia'
-import { MAP_CONFIG } from '../config/mapConfig'
+import { MAP_CONFIG, MAP_CENTER, MAP_SCALE } from '../config/mapConfig'
 import { geoMercator } from 'd3-geo'
-import HeatmapLegend from './HeatmapLegend.vue'
 import ZonePolygon from './ZonePolygon.vue'
 import { decodePolyline } from '../utils/polyline'
+import { useLayerVisibility } from '../composables/useLayerVisibility'
 
 // Type for ZonePolygon component instance
 type ZonePolygonInstance = InstanceType<typeof ZonePolygon>
@@ -17,21 +17,45 @@ interface Props {
   showRoads?: boolean
   roadColor?: string
   roadWidth?: number
+  showRailways?: boolean
+  railwayColor?: string
+  railwayWidth?: number
+  showTransit?: boolean
+  transitColor?: string
+  transitWidth?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showRoads: true,
   roadColor: undefined,
   roadWidth: 0.5,
+  showRailways: true,
+  railwayColor: undefined,
+  railwayWidth: 1.2,
+  showTransit: true,
+  transitColor: undefined,
+  transitWidth: 1.0,
 })
 
-const { showRoads, roadColor, roadWidth } = props
+const { showRoads, roadColor, roadWidth, showRailways, railwayColor, railwayWidth, showTransit, transitColor, transitWidth } = props
 
 const store = useMapDataStore()
 const { zones, currentRouteLegs } = storeToRefs(store)
+const { layerVisibility } = useLayerVisibility()
+
+const shouldShowZoneColors = computed(() => layerVisibility.zoneColors)
+const shouldShowTransit = computed(() => showTransit && layerVisibility.transit)
+const shouldShowZoneBorders = computed(() => layerVisibility.zoneBorders)
+const shouldShowRoads = computed(() => showRoads && layerVisibility.infrastructure)
+const shouldShowRailways = computed(() => showRailways && layerVisibility.infrastructure)
 
 // Store references to ZonePolygon components
 const zoneRefs = ref<Map<string, ZonePolygonInstance>>(new Map())
+
+// Store transit, road, and railway paths
+const transitPaths = ref<string[]>([])
+const roadPaths = ref<string[]>([])
+const railwayPaths = ref<string[]>([])
 
 // Function to register zone component references
 function registerZoneRef(id: string, el: unknown) {
@@ -83,7 +107,7 @@ function updateZoneColors(animate: boolean = true) {
 
 // Watch for state changes that should trigger color updates
 watch(
-  () => [store.transportState.activeZoneId, store.transportState.overlayMode, store.reachabilityScores],
+  () => [store.transportState.activeZoneId, store.transportState.overlayMode, store.reachabilityScores, store.currentCosts],
   () => {
     updateZoneColors(true)
   },
@@ -101,9 +125,6 @@ watch(
   },
   { immediate: true }
 )
-
-// Road paths loaded from layer service
-const roadPaths = ref<string[]>([])
 
 // Zones without route data (for debugging visual)
 const zonesWithoutData = computed(() => {
@@ -125,6 +146,19 @@ const zonesWithoutData = computed(() => {
   return []
 })
 
+// Load transit paths from layer service
+async function loadTransitPaths() {
+  if (!showTransit) return
+
+  try {
+    const period = store.currentTimePeriod
+    const layerId = period === 'MORNING' ? 'transit-M' : period === 'EVENING' ? 'transit-E' : 'transit-N'
+    transitPaths.value = await layerService.getLayerPaths(layerId)
+  } catch (error) {
+    console.error('Failed to load transit paths:', error)
+  }
+}
+
 // Load road paths from layer service
 async function loadRoadPaths() {
   if (!showRoads) return
@@ -136,14 +170,25 @@ async function loadRoadPaths() {
   }
 }
 
+// Load railway paths from layer service
+async function loadRailwayPaths() {
+  if (!showRailways) return
+
+  try {
+    railwayPaths.value = await layerService.getRailwayPaths()
+  } catch (error) {
+    console.error('Failed to load railway paths:', error)
+  }
+}
+
 // Create D3 projection to convert lat/lon to SVG coordinates
-// Must match the projection used in fetch_zones.ts
+// Must match the projection used in varikko data generation
 const projection = computed(() => {
   const width = MAP_CONFIG.width
   const height = MAP_CONFIG.height
   return geoMercator()
-    .center([24.93, 60.17])
-    .scale(120000)
+    .center(MAP_CENTER)
+    .scale(MAP_SCALE)
     .translate([width / 2, height / 2])
 })
 
@@ -217,7 +262,12 @@ const routeStops = computed(() => {
 
 // Load data on mount
 onMounted(async () => {
-  await Promise.all([store.loadData(), loadRoadPaths()])
+  await Promise.all([store.loadData(), loadTransitPaths(), loadRoadPaths(), loadRailwayPaths()])
+})
+
+// Reload transit layer when period changes
+watch(() => store.currentTimePeriod, () => {
+  loadTransitPaths()
 })
 
 // ESC key handler to deselect zone
@@ -237,12 +287,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="relative w-full aspect-square">
-    <HeatmapLegend />
+  <div data-testid="interactive-map" class="relative w-full h-full">
     <div class="absolute inset-0 overflow-hidden rounded-lg shadow-inner">
       <svg
+        data-testid="interactive-map-svg"
         :viewBox="MAP_CONFIG.viewBox"
-        class="w-full h-auto"
+        class="w-full h-full"
         style="position: absolute; top: 0; left: 0; pointer-events: auto"
       >
         <!-- Pattern definitions -->
@@ -252,17 +302,32 @@ onUnmounted(() => {
           </pattern>
         </defs>
 
-        <g class="zones-layer">
+        <g data-testid="zones-layer" class="zones-layer">
           <!-- Render all zones with independent animation controlled by parent -->
           <ZonePolygon
             v-for="zone in zones"
             :key="zone.id"
             :ref="(el) => registerZoneRef(zone.id, el)"
             :zone="zone"
+            :show-fill="shouldShowZoneColors"
+            :show-stroke="shouldShowZoneBorders"
+          />
+        </g>
+        <!-- Transit layer - on top of zones, under borders -->
+        <g v-if="shouldShowTransit" class="transit-layer pointer-events-none">
+          <path
+            v-for="(d, index) in transitPaths"
+            :key="`transit-${index}`"
+            :d="d"
+            fill="none"
+            :stroke="transitColor"
+            :stroke-width="transitWidth"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
         </g>
         <!-- Roads layer - on top of zones, under borders -->
-        <g v-if="showRoads" class="road-layer pointer-events-none">
+        <g v-if="shouldShowRoads" class="road-layer pointer-events-none">
           <path
             v-for="(d, index) in roadPaths"
             :key="`road-${index}`"
@@ -271,6 +336,20 @@ onUnmounted(() => {
             :class="roadColor ? '' : 'stroke-current text-vintage-dark/50'"
             :stroke="roadColor"
             :stroke-width="roadWidth || 0.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </g>
+        <!-- Railways layer - on top of roads, under borders -->
+        <g v-if="shouldShowRailways" class="railway-layer pointer-events-none">
+          <path
+            v-for="(d, index) in railwayPaths"
+            :key="`railway-${index}`"
+            :d="d"
+            fill="none"
+            :class="railwayColor ? '' : 'stroke-current text-vintage-dark/70'"
+            :stroke="railwayColor"
+            :stroke-width="railwayWidth || 1.2"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
@@ -316,7 +395,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Routing reference points for each zone (always visible) -->
-        <g class="routing-points">
+        <g v-if="shouldShowZoneBorders" class="routing-points">
           <circle
             v-for="zone in zones"
             :key="`ref-${zone.id}`"
@@ -331,7 +410,7 @@ onUnmounted(() => {
           />
         </g>
         <!-- Route visualization layer -->
-        <g v-if="routePaths.length" class="route-paths">
+        <g v-if="routePaths.length" data-testid="route-paths" class="route-paths">
           <!-- White outline for contrast -->
           <path
             v-for="route in routePaths"

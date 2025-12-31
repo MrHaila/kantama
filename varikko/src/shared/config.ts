@@ -15,8 +15,8 @@
 
 export const MAP_CONFIG = {
   // Base dimensions
-  baseWidth: 800,
-  baseHeight: 800,
+  baseWidth: 900,
+  baseHeight: 600,
 
   // Current zoom level (1.0 = 100%, 1.2 = 20% zoom out)
   zoomLevel: 1.2,
@@ -37,8 +37,8 @@ export const MAP_CONFIG = {
   },
 
   get viewBoxY() {
-    // Keep bottom edge fixed by moving up more than we expand
-    const baseOffset = -120;
+    // Shift map up by 50px to show higher latitude areas
+    const baseOffset = -70;
     const additionalExpansion = this.height - this.baseHeight;
     return baseOffset - additionalExpansion;
   },

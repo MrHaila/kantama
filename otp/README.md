@@ -13,7 +13,7 @@ This sub-project handles fetching HSL routing data and running a local instance 
 1.  Ensure you have a `.env` file in the monorepo root (or `varikko/` or `data/otp/`) with your Digitransit subscription key:
 
     ```env
-    DIGITRANSIT_SUBSCRIPTION_KEY=your_key_here
+    HSL_API_KEY=your_key_here
     ```
 
 2.  Install dependencies:
@@ -52,7 +52,7 @@ pnpm run clean
 After fetching and extracting the data, you can start OTP using Docker:
 
 ```bash
-docker-compose up
+docker compose up
 ```
 
 OTP will be available at [http://localhost:8080/otp/routers/default/index.html](http://localhost:8080/otp/routers/default/index.html).

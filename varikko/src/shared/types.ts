@@ -15,6 +15,17 @@ export interface Zone {
   city: string;
   svgPath: string;
   routingPoint: [number, number]; // [lat, lon]
+  reachability?: ZoneReachability; // Pre-computed by varikko
+}
+
+/** Pre-computed reachability scores for a zone (computed by varikko, consumed by opas) */
+export interface ZoneReachability {
+  rank: number; // 1 = best connected
+  score: number; // 0-1 composite score
+  zones15: number; // zones within 15 min
+  zones30: number; // zones within 30 min
+  zones45: number; // zones within 45 min
+  medianTime: number; // median travel time (seconds)
 }
 
 // ============================================================================
@@ -64,14 +75,10 @@ export interface CompactRoute {
 
 export type TimePeriod = 'MORNING' | 'EVENING' | 'MIDNIGHT';
 
-/** Transport mode for routing */
-export type TransportMode = 'WALK' | 'BICYCLE';
-
 /** Per-zone route file structure (minimized keys, one file per period) */
 export interface ZoneRoutesData {
   f: string; // fromId
   p: string; // period (M, E, N)
-  m?: TransportMode; // mode (optional for backward compatibility, defaults to WALK)
   r: CompactRoute[]; // routes
 }
 
@@ -105,6 +112,7 @@ export interface FetchMetadata {
   cities: string[];
   filteringStats: {
     total: number;
+    blacklisted: number;
     insidePointFailed: number;
     geometryInvalid: number;
     outsideVisibleArea: number;
@@ -136,4 +144,5 @@ export interface PipelineState {
   lastGeocoding?: GeocodingMetadata;
   lastRouteCalculation?: RouteCalculationMetadata;
   timeBucketsCalculatedAt?: string;
+  reachabilityCalculatedAt?: string;
 }

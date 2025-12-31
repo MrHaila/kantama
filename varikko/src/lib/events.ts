@@ -6,10 +6,17 @@ export type WorkflowStage =
   | 'build_routes'
   | 'clear_data'
   | 'calculate_time_buckets'
+  | 'calculate_reachability'
   | 'process_map'
   | 'generate_svg'
   | 'export_layers'
-  | 'export';
+  | 'export'
+  | 'validate_data'
+  | 'extract'
+  | 'generate'
+  | 'generate_transit_layers'
+  | 'simplify_routes'
+  | 'process';
 
 export interface ProgressEvent {
   stage: WorkflowStage;

@@ -6,9 +6,14 @@ import { useMapDataStore } from '../stores/mapData'
 
 interface Props {
   zone: Zone
+  showFill?: boolean
+  showStroke?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showFill: true,
+  showStroke: true,
+})
 
 const store = useMapDataStore()
 
@@ -38,13 +43,24 @@ defineExpose({
 
 // Computed states
 const isActive = computed(() => store.transportState.activeZoneId === props.zone.id)
-const fillOpacity = computed(() => (isActive.value ? 0 : 1))
+const fillOpacity = computed(() => {
+  if (!props.showFill) return 0
+  return 1 // Always show fill, color changes based on active state
+})
+const strokeWidth = computed(() => props.showStroke ? 2 : 0)
+
+// Active zones get golden color, others use regular zone color
+const zoneColor = computed(() => {
+  return isActive.value ? store.selectedZoneColor : currentColor.value
+})
 
 // CSS variables for dynamic styling
 const styleVars = computed(() => ({
-  '--zone-color': currentColor.value,
+  '--zone-color': zoneColor.value,
+  '--zone-border-color': store.zoneBorderColor,
   '--animation-delay': `${currentDelay.value}ms`,
   '--fill-opacity': fillOpacity.value,
+  '--stroke-width': strokeWidth.value,
 }))
 
 // Handle zone interactions - integrated into component
@@ -63,6 +79,7 @@ function handleMouseLeave() {
 
 <template>
   <path
+    :data-testid="`zone-${zone.id}`"
     :d="zone.svgPath"
     :style="styleVars"
     class="zone-polygon"
@@ -77,10 +94,11 @@ function handleMouseLeave() {
   cursor: pointer;
   fill: var(--zone-color);
   fill-opacity: var(--fill-opacity, 1);
-  stroke: var(--color-vintage-dark);
-  stroke-width: 2;
+  stroke: var(--zone-border-color, #264653);
+  stroke-width: var(--stroke-width, 2);
   transition:
     fill 150ms ease-in-out var(--animation-delay),
+    stroke 200ms ease-in-out,
     stroke-width 200ms ease-in-out,
     fill-opacity 150ms ease-in-out;
 }

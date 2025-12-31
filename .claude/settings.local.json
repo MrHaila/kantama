@@ -23,7 +23,19 @@
       "Bash(sqlite3:*)",
       "Bash(python3:*)",
       "Bash(pnpm --filter opas exec tsc:*)",
-      "Bash(pnpm exec vue-tsc:*)"
+      "Bash(pnpm exec vue-tsc:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(wc:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm --filter varikko exec tsc:*)",
+      "Bash(pnpm --filter opas exec vue-tsc --noEmit)",
+      "Bash(pnpm --filter opas build:*)",
+      "Bash(pnpm varikko:*)",
+      "Bash(pnpm --filter varikko dev:*)",
+      "Bash(pnpm test:alignment:*)",
+      "Bash(pnpm varikko:dev:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:www.hsl.fi)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,6 @@
+[build]
+publish = "dist"
+publishOrigin = "ui"
+commandOrigin = "ui"
+base = "opas"
+command = "pnpm run build"

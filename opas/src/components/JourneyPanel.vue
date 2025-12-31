@@ -63,6 +63,7 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
 <template>
   <div
     v-if="journeyDetails"
+    data-testid="journey-panel"
     class="p-6 bg-vintage-cream border-2 border-vintage-dark shadow-[4px_4px_0px_rgba(38,70,83,1)] w-sm"
   >
     <!-- Header -->
@@ -74,14 +75,14 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
     </div>
 
     <!-- Hint State -->
-    <div v-if="journeyDetails.isHint" class="text-center py-8">
+    <div v-if="journeyDetails.isHint" data-testid="journey-hint" class="text-center py-8">
       <div class="text-4xl mb-3">👆</div>
       <p class="text-sm text-vintage-dark/70">Hover over another zone to see journey details</p>
       <p class="text-xs text-vintage-dark/50 mt-2">from {{ journeyDetails.from.name }}</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="journeyDetails.isError" class="text-center py-8">
+    <div v-else-if="journeyDetails.isError" data-testid="journey-error" class="text-center py-8">
       <div class="text-4xl mb-3">❌</div>
       <p class="text-sm text-vintage-dark/70">No route found</p>
       <p class="text-xs text-vintage-dark/50 mt-2">
@@ -96,15 +97,15 @@ const journeyDetails = computed<JourneyDetailsData | null>(() => {
         <div class="grid grid-cols-[auto_1fr_auto] gap-x-4 gap-y-2 items-center">
           <!-- From row -->
           <span class="text-xs uppercase tracking-wide text-vintage-dark/50 font-medium">From</span>
-          <span class="text-sm font-medium text-vintage-dark">{{ journeyDetails.from.name }}</span>
+          <span data-testid="journey-from" class="text-sm font-medium text-vintage-dark">{{ journeyDetails.from.name }}</span>
           <!-- Duration spans From and To rows -->
-          <div class="text-2xl font-bold text-vintage-dark row-span-2 flex items-center">
+          <div data-testid="journey-duration" class="text-2xl font-bold text-vintage-dark row-span-2 flex items-center">
             {{ journeyDetails.duration ? Math.round(journeyDetails.duration / 60) + ' min' : '' }}
           </div>
 
           <!-- To row -->
           <span class="text-xs uppercase tracking-wide text-vintage-dark/50 font-medium">To</span>
-          <span class="text-sm font-medium text-vintage-dark">{{ journeyDetails.to?.name }}</span>
+          <span data-testid="journey-to" class="text-sm font-medium text-vintage-dark">{{ journeyDetails.to?.name }}</span>
         </div>
       </div>
 

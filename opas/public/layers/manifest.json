@@ -1,5 +1,5 @@
 {
-  "viewBox": "-20 -280 960 960",
+  "viewBox": "-30 -190 1080 720",
   "layers": [
     {
       "id": "water",
@@ -18,12 +18,6 @@
       "file": "railways.svg",
       "description": "Railway network",
       "zIndex": 20
-    },
-    {
-      "id": "ferries",
-      "file": "ferries.svg",
-      "description": "Ferry routes",
-      "zIndex": 30
     }
   ]
 }

@@ -6,7 +6,6 @@ export const modeColors: Record<string, string> = {
   BUS: '#007AC9',
   TRAM: '#00985F',
   SUBWAY: '#FF4200',
-  FERRY: '#00B9E4',
   RAIL: '#8C4799',
 }
 

@@ -10,15 +10,25 @@ import {
   type CompactLeg,
   RouteStatus,
 } from '../services/DataService'
-import { themes } from '../config/themes'
+import { getTimeBucketColors, getZoneBorderColor, getSelectedZoneColor, type MapThemeName } from '../config/mapThemes'
 import { useTransportState } from '../composables/useTransportState'
 import {
   computeReachabilityScores,
-  getReachabilityColor,
+  getReachabilityColorByRank,
   generateReachabilityLegend,
   type ReachabilityScore,
   type ReachabilityBucket,
 } from '../services/ReachabilityService'
+
+// Map TimePeriod to MapThemeName
+function toMapTheme(period: TimePeriod): MapThemeName {
+  switch (period) {
+    case 'MORNING': return 'morning'
+    case 'EVENING': return 'evening'
+    case 'MIDNIGHT': return 'midnight'
+    default: return 'morning'
+  }
+}
 
 // Get time bucket color for a given duration
 function getTimeBucketColor(duration: number, timeBuckets: TimeBucket[]): string {
@@ -30,18 +40,14 @@ function getTimeBucketColor(duration: number, timeBuckets: TimeBucket[]): string
   return '#e0e0e0'
 }
 
-// Get themed time bucket colors
-function getThemedTimeBuckets(timeBuckets: TimeBucket[]): TimeBucket[] {
-  const currentTheme = themes.vintage
+// Get themed time bucket colors based on map theme
+function getThemedTimeBuckets(timeBuckets: TimeBucket[], mapTheme: MapThemeName): TimeBucket[] {
+  const themeColors = getTimeBucketColors(mapTheme)
 
-  if (!currentTheme || !currentTheme.timeBucketColors) {
-    return timeBuckets
-  }
-
-  if (timeBuckets.length === currentTheme.timeBucketColors.length) {
+  if (timeBuckets.length === themeColors.length) {
     return timeBuckets.map((bucket, index) => ({
       ...bucket,
-      color: currentTheme.timeBucketColors[index] || bucket.color,
+      color: themeColors[index] || bucket.color,
     }))
   }
 
@@ -57,6 +63,12 @@ export const useMapDataStore = defineStore('mapData', () => {
   const currentCosts = ref<Map<string, number>>(new Map())
   const currentTimePeriod = ref<TimePeriod>('MORNING')
   const timeBuckets = ref<TimeBucket[]>([])
+  const rawTimeBuckets = ref<TimeBucket[]>([])
+
+  // Derived map theme from time period
+  const currentMapTheme = computed(() => toMapTheme(currentTimePeriod.value))
+  const zoneBorderColor = computed(() => getZoneBorderColor(currentMapTheme.value))
+  const selectedZoneColor = computed(() => getSelectedZoneColor(currentMapTheme.value))
 
   // Reachability state
   const reachabilityScores = ref<Map<string, ReachabilityScore>>(new Map())
@@ -85,13 +97,13 @@ export const useMapDataStore = defineStore('mapData', () => {
       }
 
       zones.value = dataService.getZones()
-      const rawTimeBuckets = dataService.getTimeBuckets()
-      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets)
+      rawTimeBuckets.value = dataService.getTimeBuckets()
+      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets.value, currentMapTheme.value)
+
+      // Load pre-computed reachability scores from zones.json
+      loadPrecomputedReachability()
 
       console.log('Data loaded:', zones.value.length, 'zones')
-
-      // Compute reachability scores in background
-      await computeReachability()
     } catch (e) {
       initError.value = {
         type: 'network_error',
@@ -105,19 +117,52 @@ export const useMapDataStore = defineStore('mapData', () => {
   }
 
   /**
-   * Compute reachability scores for all zones
+   * Load pre-computed reachability scores from zones.json
+   * These are computed by varikko during the route calculation phase
+   */
+  function loadPrecomputedReachability() {
+    const scores = new Map<string, ReachabilityScore>()
+
+    for (const zone of zones.value) {
+      if (zone.reachability) {
+        scores.set(zone.id, {
+          zoneId: zone.id,
+          rank: zone.reachability.rank,
+          score: zone.reachability.score,
+          zonesWithin15min: zone.reachability.zones15,
+          zonesWithin30min: zone.reachability.zones30,
+          zonesWithin45min: zone.reachability.zones45,
+          medianTravelTime: zone.reachability.medianTime,
+          avgTravelTime: zone.reachability.medianTime, // Use median as fallback
+        })
+      }
+    }
+
+    reachabilityScores.value = scores
+    console.log('Loaded pre-computed reachability scores for', scores.size, 'zones')
+  }
+
+  /**
+   * Compute reachability scores for all zones (on-demand, not on page load)
+   * Uses parallel batched loading for better performance
    */
   async function computeReachability() {
     if (zones.value.length === 0) return
 
     const period = currentTimePeriod.value
     const routesByZone = new Map<string, CompactRoute[]>()
+    const BATCH_SIZE = 20
 
-    // Load all zone routes for the current period
+    // Load all zone routes in parallel batches
+    const zonesToLoad = zones.value.filter((z) => !dataService.hasRoutesLoaded(z.id, period))
+
+    for (let i = 0; i < zonesToLoad.length; i += BATCH_SIZE) {
+      const batch = zonesToLoad.slice(i, i + BATCH_SIZE)
+      await Promise.all(batch.map((zone) => dataService.loadRoutesForZone(zone.id, period)))
+    }
+
+    // Collect routes from cache
     for (const zone of zones.value) {
-      if (!dataService.hasRoutesLoaded(zone.id, period)) {
-        await dataService.loadRoutesForZone(zone.id, period)
-      }
       const routes = dataService.getRoutes(zone.id, period)
       if (routes) {
         routesByZone.set(zone.id, routes)
@@ -170,6 +215,15 @@ export const useMapDataStore = defineStore('mapData', () => {
   })
 
   /**
+   * Update time bucket colors when map theme changes
+   */
+  watch(currentMapTheme, () => {
+    if (rawTimeBuckets.value.length > 0) {
+      timeBuckets.value = getThemedTimeBuckets(rawTimeBuckets.value, currentMapTheme.value)
+    }
+  })
+
+  /**
    * Get duration to a specific zone from the active zone
    */
   function getDuration(toId: string): number | null {
@@ -185,7 +239,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     if (transportState.overlayMode.value === 'reachability') {
       const score = reachabilityScores.value.get(zoneId)
       if (!score) return '#e0e0e0'
-      return getReachabilityColor(score.score)
+      return getReachabilityColorByRank(score.rank, reachabilityScores.value.size)
     }
 
     // Zone selection mode - show travel times from active zone
@@ -267,6 +321,11 @@ export const useMapDataStore = defineStore('mapData', () => {
     timeBuckets,
     currentRouteDetails,
     currentRouteLegs,
+
+    // Map theme
+    currentMapTheme,
+    zoneBorderColor,
+    selectedZoneColor,
 
     // Reachability
     reachabilityScores,

@@ -4,9 +4,8 @@
  */
 
 import { ref, computed, watch } from 'vue'
-import type { AppState, TransportMode, OverlayMode } from '../types/state'
+import type { AppState, OverlayMode } from '../types/state'
 
-const transportMode = ref<TransportMode>('public')
 const overlayMode = ref<OverlayMode>('reachability')
 const activeZoneId = ref<string | null>(null)
 const hoveredZoneId = ref<string | null>(null)
@@ -34,17 +33,6 @@ export function useTransportState() {
     hoveredZoneId.value = zoneId
   }
 
-  const setTransportMode = (mode: TransportMode) => {
-    if (mode !== 'public') {
-      // Not yet implemented - keep as public
-      console.warn(`Transport mode ${mode} not yet implemented`)
-      return
-    }
-    transportMode.value = mode
-    // Reset selection when changing modes
-    activeZoneId.value = null
-  }
-
   const toggleOverlay = () => {
     if (overlayMode.value === 'reachability') {
       overlayMode.value = 'none'
@@ -55,7 +43,6 @@ export function useTransportState() {
 
   // Computed state
   const currentState = computed<Partial<AppState>>(() => ({
-    transportMode: transportMode.value,
     overlayMode: overlayMode.value,
     activeZoneId: activeZoneId.value,
     hoveredZoneId: hoveredZoneId.value,
@@ -68,7 +55,6 @@ export function useTransportState() {
 
   return {
     // State
-    transportMode,
     overlayMode,
     activeZoneId,
     hoveredZoneId,
@@ -84,7 +70,6 @@ export function useTransportState() {
     selectZone,
     clearZone,
     setHoveredZone,
-    setTransportMode,
     toggleOverlay,
   }
 }
