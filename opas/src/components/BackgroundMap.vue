@@ -79,6 +79,18 @@ async function loadLayers() {
     svg.setAttribute('viewBox', viewBox.value)
     svg.setAttribute('class', 'w-full h-full')
 
+    // Parse viewBox for background rect dimensions
+    const [minX, minY, width, height] = viewBox.value.split(' ').map(Number)
+
+    // Create background rect to fill islands/holes in water
+    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
+    bgRect.setAttribute('x', minX.toString())
+    bgRect.setAttribute('y', minY.toString())
+    bgRect.setAttribute('width', width.toString())
+    bgRect.setAttribute('height', height.toString())
+    bgRect.setAttribute('fill', layerService.getBackgroundColor(theme))
+    svg.appendChild(bgRect)
+
     // Create water gradient if needed (uses absolute coordinates from viewBox)
     const waterGradientFill = createWaterGradientDefs(svg, theme, viewBox.value)
 

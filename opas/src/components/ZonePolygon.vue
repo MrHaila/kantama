@@ -45,13 +45,18 @@ defineExpose({
 const isActive = computed(() => store.transportState.activeZoneId === props.zone.id)
 const fillOpacity = computed(() => {
   if (!props.showFill) return 0
-  return isActive.value ? 0 : 1
+  return 1 // Always show fill, color changes based on active state
 })
 const strokeWidth = computed(() => props.showStroke ? 2 : 0)
 
+// Active zones get golden color, others use regular zone color
+const zoneColor = computed(() => {
+  return isActive.value ? store.selectedZoneColor : currentColor.value
+})
+
 // CSS variables for dynamic styling
 const styleVars = computed(() => ({
-  '--zone-color': currentColor.value,
+  '--zone-color': zoneColor.value,
   '--zone-border-color': store.zoneBorderColor,
   '--animation-delay': `${currentDelay.value}ms`,
   '--fill-opacity': fillOpacity.value,

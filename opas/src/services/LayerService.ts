@@ -2,7 +2,7 @@
  * LayerService - Manages loading and caching of map layers and manifest
  */
 
-import { getLayerStyles, getWaterGradient, type MapThemeName, type LayerId, type LayerStyles, type WaterGradient } from '../config/mapThemes'
+import { getLayerStyles, getWaterGradient, getBackgroundColor, type MapThemeName, type LayerId, type LayerStyles, type WaterGradient } from '../config/mapThemes'
 
 export type { MapThemeName as ThemeName, LayerId, LayerStyles, WaterGradient }
 
@@ -114,6 +114,13 @@ class LayerService {
    */
   getWaterGradient(theme: MapThemeName): WaterGradient {
     return getWaterGradient(theme)
+  }
+
+  /**
+   * Get background color for a theme
+   */
+  getBackgroundColor(theme: MapThemeName): string {
+    return getBackgroundColor(theme)
   }
 
   /**

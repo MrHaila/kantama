@@ -10,7 +10,7 @@ import {
   type CompactLeg,
   RouteStatus,
 } from '../services/DataService'
-import { getTimeBucketColors, getZoneBorderColor, type MapThemeName } from '../config/mapThemes'
+import { getTimeBucketColors, getZoneBorderColor, getSelectedZoneColor, type MapThemeName } from '../config/mapThemes'
 import { useTransportState } from '../composables/useTransportState'
 import {
   computeReachabilityScores,
@@ -68,6 +68,7 @@ export const useMapDataStore = defineStore('mapData', () => {
   // Derived map theme from time period
   const currentMapTheme = computed(() => toMapTheme(currentTimePeriod.value))
   const zoneBorderColor = computed(() => getZoneBorderColor(currentMapTheme.value))
+  const selectedZoneColor = computed(() => getSelectedZoneColor(currentMapTheme.value))
 
   // Reachability state
   const reachabilityScores = ref<Map<string, ReachabilityScore>>(new Map())
@@ -324,6 +325,7 @@ export const useMapDataStore = defineStore('mapData', () => {
     // Map theme
     currentMapTheme,
     zoneBorderColor,
+    selectedZoneColor,
 
     // Reachability
     reachabilityScores,

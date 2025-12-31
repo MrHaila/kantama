@@ -26,6 +26,8 @@ export interface MapTheme {
   layers: Record<LayerId, LayerStyles>
   timeBucketColors: string[]
   zoneBorderColor: string
+  selectedZoneColor: string
+  backgroundColor: string
   waterGradient: WaterGradient
 }
 
@@ -50,6 +52,8 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       '#0284c7', // Darker blue - 75-90min+
     ],
     zoneBorderColor: '#264653',
+    selectedZoneColor: '#fef9c3', // Very light yellow (near white)
+    backgroundColor: '#334155', // Neutral slate
     waterGradient: {
       type: 'radial',
       colors: ['#93c5fd', '#1e40af'], // Light center → darker edges
@@ -75,6 +79,8 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       '#a855f7', // Purple - 75-90min+
     ],
     zoneBorderColor: '#264653',
+    selectedZoneColor: '#fef3c7', // Light warm yellow (near white)
+    backgroundColor: '#374151', // Neutral gray
     waterGradient: {
       type: 'radial',
       colors: ['#475569', '#1e293b'], // Lighter center → darker edges
@@ -99,7 +105,9 @@ export const mapThemes: Record<MapThemeName, MapTheme> = {
       '#22d3ee', // Cyan - 60-75min
       '#06b6d4', // Teal - 75-90min+
     ],
-    zoneBorderColor: '#e2e8f0',
+    zoneBorderColor: '#264653',
+    selectedZoneColor: '#fffbeb', // Very light cream (near white)
+    backgroundColor: '#1e293b', // Dark slate
     waterGradient: {
       type: 'solid', // Uniform dark blue at night
     },
@@ -139,4 +147,18 @@ export function getZoneBorderColor(themeName: MapThemeName): string {
  */
 export function getWaterGradient(themeName: MapThemeName): WaterGradient {
   return mapThemes[themeName]?.waterGradient || { type: 'solid' }
+}
+
+/**
+ * Get selected zone color for a theme
+ */
+export function getSelectedZoneColor(themeName: MapThemeName): string {
+  return mapThemes[themeName]?.selectedZoneColor || '#fbbf24'
+}
+
+/**
+ * Get background color for a theme
+ */
+export function getBackgroundColor(themeName: MapThemeName): string {
+  return mapThemes[themeName]?.backgroundColor || '#334155'
 }
