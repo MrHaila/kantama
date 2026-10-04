@@ -5,44 +5,44 @@ Data pipeline CLI for Kantama. Fetches zone data, calculates transit routes via 
 ## Quick Start
 
 ```bash
-pnpm install
-pnpm dev          # Show status
-pnpm dev fetch    # Fetch zones from city WFS endpoints
-pnpm dev routes   # Calculate routes (requires OTP running)
+bun install
+bun run dev          # Show status
+bun run dev fetch    # Fetch zones from city WFS endpoints
+bun run dev routes   # Calculate routes (requires OTP running)
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `pnpm dev` | Show pipeline status |
-| `pnpm dev map` | Process background map shapefiles |
-| `pnpm dev fetch` | Fetch zones from Helsinki, Vantaa, Espoo, Kauniainen |
-| `pnpm dev geocode` | Resolve street addresses for routing points |
-| `pnpm dev routes` | Calculate transit routes via OTP |
-| `pnpm dev simplify-routes` | Optimize route files for size |
-| `pnpm dev time-buckets` | Generate heatmap color distribution |
-| `pnpm dev reachability` | Pre-compute zone connectivity scores |
-| `pnpm dev transit-layer` | Generate transit visualization layer |
-| `pnpm dev zones list` | List all zones with metadata (debugging) |
-| `pnpm dev clear` | Clear data files |
+| `bun run dev` | Show pipeline status |
+| `bun run dev map` | Process background map shapefiles |
+| `bun run dev fetch` | Fetch zones from Helsinki, Vantaa, Espoo, Kauniainen |
+| `bun run dev geocode` | Resolve street addresses for routing points |
+| `bun run dev routes` | Calculate transit routes via OTP |
+| `bun run dev simplify-routes` | Optimize route files for size |
+| `bun run dev time-buckets` | Generate heatmap color distribution |
+| `bun run dev reachability` | Pre-compute zone connectivity scores |
+| `bun run dev transit-layer` | Generate transit visualization layer |
+| `bun run dev zones list` | List all zones with metadata (debugging) |
+| `bun run dev clear` | Clear data files |
 
 ### Command Options
 
 **Route Calculation:**
 ```bash
-pnpm dev routes                       # All periods, all routes
-pnpm dev routes --period MORNING      # Single period
-pnpm dev routes --zones 5             # Routes from 5 random zones
-pnpm dev routes --limit 10            # 10 random routes total
+bun run dev routes                       # All periods, all routes
+bun run dev routes --period MORNING      # Single period
+bun run dev routes --zones 5             # Routes from 5 random zones
+bun run dev routes --limit 10            # 10 random routes total
 ```
 
 Time periods: MORNING (08:30), EVENING (17:00), MIDNIGHT (24:00)
 
 **Zone Listing:**
 ```bash
-pnpm dev zones list                   # List all zones
-pnpm dev zones list --limit 10        # Show first 10 zones only
+bun run dev zones list                   # List all zones
+bun run dev zones list --limit 10        # Show first 10 zones only
 ```
 
 ## Data Output
@@ -73,15 +73,15 @@ HSL_API_KEY=your_key
 ## Development
 
 ```bash
-pnpm test           # Run tests
-pnpm test:ui        # Tests with UI
-pnpm test:coverage  # Coverage report
-pnpm lint           # Lint code
-pnpm build          # Build TypeScript
+bun run test           # Run tests
+bun run test:ui        # Tests with UI
+bun run test:coverage  # Coverage report
+bun run lint           # Lint code
+bun run build          # Build TypeScript
 ```
 
 ## Requirements
 
 - Node.js 18+
-- pnpm
+- bun
 - OpenTripPlanner instance (local Docker or remote Digitransit API)

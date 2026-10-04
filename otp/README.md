@@ -4,7 +4,7 @@ This sub-project handles fetching HSL routing data and running a local instance 
 
 ## Prerequisites
 
-- [PNPM](https://pnpm.io/)
+- [Bun](https://bun.sh/)
 - [Docker](https://www.docker.com/)
 - A Digitransit subscription key.
 
@@ -18,7 +18,7 @@ This sub-project handles fetching HSL routing data and running a local instance 
 
 2.  Install dependencies:
     ```bash
-    pnpm install
+    bun install
     ```
 
 ## Commands
@@ -28,7 +28,7 @@ This sub-project handles fetching HSL routing data and running a local instance 
 Downloads the latest HSL graph data and extracts it to the `hsl/` directory.
 
 ```bash
-pnpm run fetch
+bun run fetch
 ```
 
 ### Validate data

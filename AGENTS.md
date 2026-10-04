@@ -42,34 +42,34 @@ See each sub-project's `AGENTS.md` for specific implementation details.
 
 ## Global Rules
 
-1. **Package Manager**: Always use `pnpm`, never `npm` or `yarn`.
-1. **Validation**: Use `pnpm lint` and `pnpm format` at the repo root to check all sub-projects.
+1. **Package Manager**: Always use `bun` (workspaces, text `bun.lock`), never `npm`, `yarn` or `pnpm`.
+1. **Validation**: Use `bun run lint` and `bun run format` at the repo root to check all sub-projects.
 
 ## Quick Start
 
 ```bash
 # Install all dependencies
-pnpm install
+bun install
 
 # Common development (Opas only)
-pnpm opas:dev
+bun run opas:dev
 ```
 
 ## Testing
 
 ```bash
 # Run all tests (currently varikko only)
-pnpm test
+bun run test
 
 # Run varikko tests with UI
-pnpm varikko:test
+bun run varikko:test
 
 # Lint all sub-projects
-pnpm lint
+bun run lint
 
 # Format all files
-pnpm format
+bun run format
 
 # Build all sub-projects
-pnpm build
+bun run build
 ```

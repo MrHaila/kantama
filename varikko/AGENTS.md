@@ -137,7 +137,7 @@ interface PipelineState {
 ### Interactive Mode
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 Launches the TUI with keyboard-driven navigation:
@@ -296,24 +296,24 @@ Note: Data is written directly to `opas/public/data/` by default. Frontend reads
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Run in dev mode
-pnpm dev
+bun run dev
 
 # Run tests
-pnpm test
-pnpm test:ui
-pnpm test:coverage
+bun run test
+bun run test:ui
+bun run test:coverage
 
 # Lint
-pnpm lint
+bun run lint
 
 # Build for production
-pnpm build
+bun run build
 
 # Clean build artifacts
-pnpm clean
+bun run clean
 ```
 
 ## Multi-City Zoning Architecture

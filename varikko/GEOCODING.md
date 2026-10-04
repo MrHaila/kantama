@@ -31,13 +31,13 @@ HSL_API_KEY=your-key-here
 ### Test with Limited Zones
 
 ```bash
-pnpm dev geocode --limit 5
+bun run dev geocode --limit 5
 ```
 
 ### Full Geocoding
 
 ```bash
-pnpm dev geocode
+bun run dev geocode
 ```
 
 Takes ~30-40 seconds for all zones (100ms rate limit between requests).
@@ -45,7 +45,7 @@ Takes ~30-40 seconds for all zones (100ms rate limit between requests).
 ### Rebuild Routes After Geocoding
 
 ```bash
-pnpm dev routes
+bun run dev routes
 ```
 
 Routing automatically uses geocoded points when available, falls back to inside points otherwise.

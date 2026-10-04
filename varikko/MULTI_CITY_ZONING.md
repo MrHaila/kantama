@@ -54,10 +54,10 @@ Zones use prefixed IDs: `{CITY_CODE}-{ORIGINAL_ID}`
 
 ```bash
 # Fetch all zones
-pnpm dev fetch
+bun run dev fetch
 
 # Test with limited zones
-pnpm dev fetch --limit 5
+bun run dev fetch --limit 5
 ```
 
 ## Data Storage

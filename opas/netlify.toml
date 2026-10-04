@@ -3,4 +3,5 @@ publish = "dist"
 publishOrigin = "ui"
 commandOrigin = "ui"
 base = "opas"
-command = "pnpm run build"
+# Runs from the repo root so the bun workspace (varikko types) resolves.
+command = "cd .. && bun install --frozen-lockfile && bun run opas:build"

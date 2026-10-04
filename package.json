@@ -4,19 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "pnpm -r lint",
+    "lint": "bun run --filter '*' lint",
     "format": "prettier --write .",
-    "test": "pnpm -r test",
-    "build": "pnpm -r build",
-    "opas:dev": "pnpm --filter opas dev",
-    "opas:build": "pnpm --filter opas build",
-    "opas:lint": "pnpm --filter opas lint",
-    "varikko:dev": "pnpm --filter varikko dev",
-    "varikko:build": "pnpm --filter varikko build",
-    "varikko:test": "pnpm --filter varikko test",
-    "varikko:lint": "pnpm --filter varikko lint",
-    "opas:test": "pnpm --filter opas test",
-    "opas:test:ui": "pnpm --filter opas test:ui"
+    "test": "bun run --filter '*' test",
+    "build": "bun run --filter '*' build",
+    "opas:dev": "bun run --filter opas dev",
+    "opas:build": "bun run --filter opas build",
+    "opas:lint": "bun run --filter opas lint",
+    "varikko:dev": "bun run --filter varikko dev",
+    "varikko:build": "bun run --filter varikko build",
+    "varikko:test": "bun run --filter varikko test",
+    "varikko:lint": "bun run --filter varikko lint",
+    "opas:test": "bun run --filter opas test",
+    "opas:test:ui": "bun run --filter opas test:ui"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -32,9 +32,14 @@
     "vitest": "^4.0.16",
     "vue-eslint-parser": "^10.0.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3"
-    ]
-  }
+  "workspaces": [
+    "varikko",
+    "opas",
+    "otp"
+  ],
+  "trustedDependencies": [
+    "better-sqlite3",
+    "esbuild",
+    "msgpackr-extract"
+  ]
 }
