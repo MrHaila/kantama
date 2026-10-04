@@ -1,0 +1,28 @@
+# Build and release to homelab's public static-site origin (services/sites in
+# the homelab-sysadmin repo). Runs on the self-hosted Gitea runner, reached via
+# the Gitea pull mirror of this GitHub repo: a mirror sync fires `push`.
+# GitHub ignores .gitea/, so this does nothing there.
+#
+# Contract with the runner: label `homelab-sites`, and `sitectl` at
+# /opt/sitectl. It keeps the last 5 releases; roll back on homelab with
+# `sitectl rollback <site>`.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: homelab-sites
+    steps:
+      - uses: actions/checkout@v4
+      # The job image is plain node (no bun), so fetch the current bun release.
+      # no-cache: the runner's actions cache is disabled.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          no-cache: true
+      - run: bun install --frozen-lockfile
+      - run: bun run opas:build
+      - run: /opt/sitectl/sitectl release kantama opas/dist
